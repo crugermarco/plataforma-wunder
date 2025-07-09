@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Employee Login</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="window-controls">
+    <button class="window-btn minimize-btn" id="minimizeBtn" title="Minimizar"></button>
+    <button class="window-btn close-btn" id="closeBtn" title="Cerrar"></button>
+  </div>
+
+  <div class="background-animation">
+    <div class="floating-shape"></div>
+    <div class="floating-shape"></div>
+    <div class="floating-shape"></div>
+  </div>
+
+  <div class="container">
+    <div class="header">
+      <div class="logo">WUNDER</div>
+      <h1 class="title">Login </h1>
+      <p class="subtitle">Accede a la plataforma</p>
+    </div>
+
+    <form class="form" id="loginForm">
+      <div class="form-group">
+        <label class="form-label" for="email">Email Registrado</label>
+        <div class="input-container">
+          <input type="email" id="email" class="form-input" placeholder="usuario@empresa.com" required autocomplete="email" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="password">Contraseña</label>
+        <div class="input-container">
+          <input type="password" id="password" class="form-input" placeholder="••••••••" required autocomplete="current-password" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <button type="submit" class="submit-btn" id="loginBtn">Iniciar Sesión</button>
+        <div class="remember-me">
+          <input type="checkbox" id="rememberMe" />
+          <label for="rememberMe">Recordar mis credenciales</label>
+        </div>
+      </div>
+    </form>
+
+    <div class="status-message" id="statusMessage"></div>
+  </div>
+
+  <div class="version-info">Gestion de credendiales Cruger 1.0 </div>
+
+  <script src="main.js"></script>
+</body>
+</html>

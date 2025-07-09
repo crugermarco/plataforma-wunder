@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Registro de Rotaciones</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="background-animation">
+    <div class="floating-shape"></div>
+    <div class="floating-shape"></div>
+    <div class="floating-shape"></div>
+  </div>
+
+  <div class="container">
+    <div class="header">
+      <h1 class="title">REGISTRO DE ROTACIONES</h1>
+      <p class="subtitle">Sistema de Gestión Cruger 1.0</p>
+    </div>
+
+    <form class="form" id="rotationForm">
+      <div class="form-group">
+        <label class="form-label" for="employeeName">Nombre del Empleado</label>
+        <div class="input-container">
+          <input type="text" id="employeeName" name="employeeName" class="form-input" placeholder="Escribe el nombre del empleado" autocomplete="off" required />
+          <div class="field-status" id="nameStatus"></div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="employeeId">ID del Empleado</label>
+        <div class="input-container">
+          <input type="text" id="employeeId" name="employeeId" class="form-input auto-field" placeholder="Se completará automáticamente" readonly />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="dateTime">Fecha y Hora</label>
+        <div class="input-container">
+          <input type="text" id="dateTime" name="dateTime" class="form-input auto-field" placeholder="Se establece automáticamente" readonly />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="operationName">Nombre de la Operación</label>
+        <div class="input-container">
+          <input type="text" id="operationName" name="operationName" class="form-input" placeholder="Describe la operación o actividad" required />
+        </div>
+      </div>
+
+      <div class="auto-info">
+        <div class="info-icon">i</div>
+        <span>La ID del empleado se busca automáticamente en la base de datos.Los contadores internos no se veran reflejados en pantalla .</span>
+      </div>
+
+      <button type="submit" class="submit-btn" id="submitBtn">✓ REGISTRAR ROTACIÓN</button>
+    </form>
+
+    <div id="statusMessage" style="display: none;"></div>
+  </div>
+
+  <div class="bathroom-panel" id="bathroomPanel" style="display: none;"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
