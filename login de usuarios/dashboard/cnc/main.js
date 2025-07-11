@@ -1,7 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
   const app = document.getElementById('app');
   
-  // Estado inicial
   let state = {
     formData: {
       fecha: '6/10/2025',
@@ -22,11 +21,11 @@ document.addEventListener('DOMContentLoaded', function() {
         '6774': 0, '6775': 0, '6776': 0, '6985': 0, '6001': 0, '6002': 0, '6003': 0, '6004': 0
       },
       bonding: {
-        '10': 0, '10_2': 0, '12': 0, '12R': 0, '14': 0, '14R': 0, 'NW': 0
+        '10': 0, '10R': 0, '12': 0, '12R': 0, '14': 0, '14R': 0, 'NW': 0
       },
       flycut: {
-        row1: { measures: [0.41, 0.45, 0.18, 0.125, 0.125, 0.412, 0.458, 0.25, 0.175], quantities: [0, 0, 0, 0, 0, 0, 0, 0, 0] },
-        row2: { measures: [0.3, 0.75, 0.65, 0.33, 0.4, 0.6, 0.45, 0.35, 0.39], quantities: [0, 0, 0, 0, 0, 0, 0, 0, 0] },
+        row1: { measures: [0.41, 0.45, 0.18, 0.125, 0.125R, 0.412, 0.458, 0.25, 0.175], quantities: [0, 0, 0, 0, 0, 0, 0, 0, 0] },
+        row2: { measures: [0.3, 0.75, 0.65, 0.33, 0.4, 0.6, 0.458, 0.35, 0.39], quantities: [0, 0, 0, 0, 0, 0, 0, 0, 0] },
         row3: { measures: [0.655, 0.15, 0.5, 0.9, 0, 0, 0, 0, 0], quantities: [0, 0, 0, 0, 0, 0, 0, 0, 0] }
       },
       materiales: {
@@ -38,7 +37,6 @@ document.addEventListener('DOMContentLoaded', function() {
     submitStatus: ''
   };
 
-  // Datos constantes
   const produccionSections = [
     { title: 'PRODUCCION', codes: ['9101', '9102', '9103', '9103R', '9104', '9105', '9114', '9115'] },
     { title: '', codes: ['1201', '1202', '1203', '1203R', '1204', '1205'] },
@@ -64,7 +62,6 @@ document.addEventListener('DOMContentLoaded', function() {
     { code: '1201-354', desc: '(0.354)', color: '' }
   ];
 
-  // Funciones para manejar el estado
   function setState(newState) {
     state = { ...state, ...newState };
     render();
@@ -85,7 +82,6 @@ document.addEventListener('DOMContentLoaded', function() {
   function handleSubmit() {
     setState({ isSubmitting: true, submitStatus: 'loading' });
     
-    // Simular envío
     setTimeout(() => {
       setState({ 
         isSubmitting: false,
@@ -96,7 +92,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 2000);
   }
 
-  // Renderizar la aplicación
   function render() {
     app.innerHTML = `
       <div class="min-h-screen">
@@ -230,9 +225,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     <span class="text-slate-300 font-medium">Nº Bins</span>
                   </div>
                   <div class="bonding-grid">
-                    ${['10', '10_2', '12', '12R', '14', '14R', 'NW'].map((bin, index) => `
+                    ${['10', '10R', '12', '12R', '14', '14R', 'NW'].map((bin, index) => `
                       <div class="space-y-2">
-                        <div class="code-label">${bin === '10_2' ? '10' : bin}</div>
+                        <div class="code-label">${bin === '10R' ? '10' : bin}</div>
                         <input
                           type="number"
                           value="${state.formData.bonding[bin] || 0}"
@@ -343,11 +338,9 @@ document.addEventListener('DOMContentLoaded', function() {
       </div>
     `;
     
-    // Recrear los íconos después de renderizar
     lucide.createIcons();
   }
 
-  // Exponer funciones al objeto global app
   window.app = {
     handleDateChange: (value) => setState({ formData: { ...state.formData, fecha: value } }),
     handleLeaderChange: (value) => setState({ formData: { ...state.formData, lider: value } }),
@@ -373,6 +366,5 @@ document.addEventListener('DOMContentLoaded', function() {
     handleSubmit
   };
 
-  // Renderizar la aplicación inicial
   render();
 });
