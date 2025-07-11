@@ -26,7 +26,6 @@ const formData = {
     }
 };
 
-// Production sections data
 const produccionSections = [
     { title: 'PRODUCCION', codes: ['9101', '9102', '9103', '9103R', '9104', '9105', '9114', '9115'] },
     { title: '', codes: ['1201', '1202', '1203', '1203R', '1204', '1205'] },
@@ -40,7 +39,6 @@ const produccionSections = [
     { title: '', codes: ['6774', '6775', '6776', '6985', '6001', '6002', '6003', '6004'] }
 ];
 
-// Materiales data
 const materialesData = [
     { code: '1201-195', desc: 'ABS PLATE', color: 'Black' },
     { code: '1201-196', desc: '(0.472)', color: '' },
@@ -53,9 +51,7 @@ const materialesData = [
     { code: '1201-354', desc: '(0.354)', color: '' }
 ];
 
-// Initialize the app when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    // Generate production sections
     const productionSectionsContainer = document.getElementById('production-sections');
     produccionSections.forEach(section => {
         const sectionDiv = document.createElement('div');
@@ -92,7 +88,6 @@ document.addEventListener('DOMContentLoaded', function() {
         productionSectionsContainer.appendChild(sectionDiv);
     });
 
-    // Generate bonding section
     const bondingSection = document.getElementById('bonding-section');
     ['10', '10R', '12', '12R', '14', '14R', 'NW'].forEach(bin => {
         const itemDiv = document.createElement('div');
@@ -100,7 +95,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const labelDiv = document.createElement('div');
         labelDiv.className = 'production-label';
-        labelDiv.textContent = bin === '10_2' ? '10' : bin;
+        labelDiv.textContent = bin === '10R' ? '10' : bin;
         
         const input = document.createElement('input');
         input.type = 'number';
@@ -118,7 +113,6 @@ document.addEventListener('DOMContentLoaded', function() {
         bondingSection.appendChild(itemDiv);
     });
 
-    // Generate material section
     const materialSection = document.getElementById('material-section');
     materialesData.forEach(material => {
         const cardDiv = document.createElement('div');
@@ -159,7 +153,6 @@ document.addEventListener('DOMContentLoaded', function() {
         materialSection.appendChild(cardDiv);
     });
 
-    // Bind form inputs
     document.getElementById('fecha').addEventListener('input', function() {
         formData.fecha = this.value;
     });
@@ -180,21 +173,17 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.maquinas = this.value;
     });
 
-    // Submit button
     document.getElementById('submit-btn').addEventListener('click', handleSubmit);
 });
 
-// Handle input changes
 function handleInputChange(section, key, value) {
     formData[section][key] = value;
 }
 
-// Handle form submission
 function handleSubmit() {
     const submitBtn = document.getElementById('submit-btn');
     const statusMessage = document.getElementById('status-message');
     
-    // Disable button and show loading
     submitBtn.disabled = true;
     submitBtn.classList.remove('submit-button-primary');
     submitBtn.classList.add('submit-button-disabled');
@@ -203,18 +192,14 @@ function handleSubmit() {
         ENVIANDO...
     `;
     
-    // Show loading status
     statusMessage.textContent = '⏳ Enviando producción...';
     statusMessage.className = 'status-message status-loading';
     statusMessage.classList.remove('hidden');
     
-    // Simulate submission
     setTimeout(() => {
-        // Show success status
         statusMessage.textContent = '✅ Producción enviada exitosamente';
         statusMessage.className = 'status-message status-success';
         
-        // Reset button after 3 seconds
         setTimeout(() => {
             submitBtn.disabled = false;
             submitBtn.classList.remove('submit-button-disabled');
@@ -227,7 +212,6 @@ function handleSubmit() {
                 ENVIAR PRODUCCION
             `;
             
-            // Hide status message after another 3 seconds
             setTimeout(() => {
                 statusMessage.classList.add('hidden');
             }, 3000);
