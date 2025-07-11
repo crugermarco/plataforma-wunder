@@ -18,7 +18,7 @@ const formData = {
         '6774': 0, '6775': 0, '6776': 0, '6985': 0, '6001': 0, '6002': 0, '6003': 0, '6004': 0
     },
     bonding: {
-        '10': 0, '10_2': 0, '12': 0, '12R': 0, '14': 0, '14R': 0, 'NW': 0
+        '10': 0, '10R': 0, '12': 0, '12R': 0, '14': 0, '14R': 0, 'NW': 0
     },
     materiales: {
         '1201-195': 0, '1201-196': 0, '1201-197': 0, '1201-21587': 0, '1201-199': 0,
@@ -94,7 +94,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Generate bonding section
     const bondingSection = document.getElementById('bonding-section');
-    ['10', '10_2', '12', '12R', '14', '14R', 'NW'].forEach(bin => {
+    ['10', '10R', '12', '12R', '14', '14R', 'NW'].forEach(bin => {
         const itemDiv = document.createElement('div');
         itemDiv.className = 'production-item';
         
