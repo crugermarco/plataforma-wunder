@@ -179,9 +179,9 @@ function updateBathroomPanel() {
         card.className = 'bathroom-card';
         
         // Determinar el estado según el tiempo
-        if (diff > 1200) { // Más de 20 minutos (1200 segundos)
+        if (diff > 900) { // Más de 20 minutos (1200 segundos)
             card.classList.add('critical-alert');
-        } else if (diff > 900) { // Más de 15 minutos (900 segundos)
+        } else if (diff > 600) { // Más de 15 minutos (900 segundos)
             card.classList.add('warning-alert');
         }
         
@@ -239,7 +239,7 @@ document.getElementById('rotationForm').addEventListener('submit', async functio
         const lower = operationName.toLowerCase();
         const existing = bathroomUsers.find(u => u.key === nameKey);
 
-        if (lower.includes('wc')) {
+        if (lower.includes('servicio')) {
             if (existing) {
                 // SALIDA DEL BAÑO
                 const exitTime = new Date();
