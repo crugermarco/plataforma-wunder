@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard - Repositorio de Aplicaciones</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <div class="background-effects">
+    <div class="circle"></div>
+    <div class="circle"></div>
+    <div class="circle"></div>
+  </div>
+
+  <div class="container">
+    <header class="header">
+      <h1 class="main-title">WUNDERBAR - GESTOR DE MÓDULOS</h1>
+      <p class="subtitle">Bienvenido, <span id="userNameDisplay"></span>. Las apps disponibles para tus credenciales mostrarán el botón verde.</p>
+    </header>
+
+    <div class="apps-grid" id="appsGrid">
+      <!-- Cada tarjeta de app está escrita directamente -->
+      <div class="app-card" data-app="rotaciones">
+        <div class="app-icon">🔄</div>
+        <div class="app-title">Registro de Rotaciones</div>
+        <div class="app-description">Sistema para registrar y gestionar las rotaciones de personal en tiempo real.</div>
+        <div class="app-status"></div>
+        <div class="app-actions">
+          <button class="action-btn primary">Abrir</button>
+          <button class="action-btn info-btn">Info</button>
+        </div>
+      </div>
+
+      <div class="app-card" data-app="vencimientos">
+        <div class="app-icon">📋</div>
+        <div class="app-title">Control de Vencimientos</div>
+        <div class="app-description">Gestión y monitoreo de vencimientos de químicos con hoja de seguridad.</div>
+        <div class="app-status"></div>
+        <div class="app-actions">
+          <button class="action-btn primary">Abrir</button>
+          <button class="action-btn info-btn">Info</button>
+        </div>
+      </div>
+
+      <!-- Repite lo mismo para las demás apps -->
+      <div class="app-card" data-app="wunder">
+        <div class="app-icon">⚙️</div>
+        <div class="app-title">Wunder Bar - Mantenimiento</div>
+        <div class="app-description">Sistema de mantenimiento y control de equipos industriales.</div>
+        <div class="app-status"></div>
+        <div class="app-actions">
+          <button class="action-btn primary">Abrir</button>
+          <button class="action-btn info-btn">Info</button>
+        </div>
+      </div>
+
+      <div class="app-card" data-app="empleados">
+        <div class="app-icon">👥</div>
+        <div class="app-title">Gestión de Empleados</div>
+        <div class="app-description">Sistema completo de vacaciones y gestión de personal.</div>
+        <div class="app-status"></div>
+        <div class="app-actions">
+          <button class="action-btn primary">Abrir</button>
+          <button class="action-btn info-btn">Info</button>
+        </div>
+      </div>
+
+      <div class="app-card" data-app="reportes">
+        <div class="app-icon">📊</div>
+        <div class="app-title">Reportes y Analytics</div>
+        <div class="app-description">Generación de reportes detallados y análisis de datos.</div>
+        <div class="app-status"></div>
+        <div class="app-actions">
+          <button class="action-btn primary">Abrir</button>
+          <button class="action-btn info-btn">Info</button>
+        </div>
+      </div>
+
+      <div class="app-card" data-app="inventario">
+        <div class="app-icon">📦</div>
+        <div class="app-title">Almacén</div>
+        <div class="app-description">Gestión completa de inventarios, stock y movimientos de materiales.</div>
+        <div class="app-status"></div>
+        <div class="app-actions">
+          <button class="action-btn primary">Abrir</button>
+          <button class="action-btn info-btn">Info</button>
+        </div>
+      </div>
+
+      <div class="app-card" data-app="produccion">
+        <div class="app-icon">🏭</div>
+        <div class="app-title">Control de Producción</div>
+        <div class="app-description">Monitoreo y control de procesos productivos en tiempo real.</div>
+        <div class="app-status"></div>
+        <div class="app-actions">
+          <button class="action-btn primary">Abrir</button>
+          <button class="action-btn info-btn">Info</button>
+        </div>
+      </div>
+
+      <div class="app-card" data-app="calidad">
+        <div class="app-icon">✅</div>
+        <div class="app-title">Control de Calidad - QC</div>
+        <div class="app-description">Sistema de gestión de calidad y control de procesos.</div>
+        <div class="app-status"></div>
+        <div class="app-actions">
+          <button class="action-btn primary">Abrir</button>
+          <button class="action-btn info-btn">Info</button>
+        </div>
+      </div>
+
+      <div class="app-card" data-app="configuracion">
+        <div class="app-icon">♦️</div>
+        <div class="app-title">Cnc - produccion</div>
+        <div class="app-description">Gestion de produccion y ajuste de inventario Cnc.</div>
+        <div class="app-status"></div>
+        <div class="app-actions">
+          <button class="action-btn primary">Abrir</button>
+          <button class="action-btn info-btn">Info</button>
+        </div>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <p class="footer-text">© 2025 Sistema Cruger 1.0 - Todas las aplicaciones integradas</p>
+    </footer>
+  </div>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>
