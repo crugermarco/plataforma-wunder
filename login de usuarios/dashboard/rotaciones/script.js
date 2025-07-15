@@ -239,7 +239,7 @@ document.getElementById('rotationForm').addEventListener('submit', async functio
         const lower = operationName.toLowerCase();
         const existing = bathroomUsers.find(u => u.key === nameKey);
 
-        if (lower.includes('baño')) {
+        if (lower.includes('wc')) {
             if (existing) {
                 // SALIDA DEL BAÑO
                 const exitTime = new Date();
