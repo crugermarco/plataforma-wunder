@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     wunder: './wunder/index.html',
     empleados: './empleados/index.html',
     reportes: './reportes/index.html',
-    inventario: './inventario/index.html',
+    enfermeria: './enfermeria/index.html',
     produccion: './produccion/index.html',
     calidad: './calidad/index.html',
     configuracion: './cnc/index.html'
@@ -97,3 +97,4 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 });
+
