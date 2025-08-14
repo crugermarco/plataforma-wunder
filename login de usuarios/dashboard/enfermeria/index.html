@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plataforma de Enfermería</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">🏥 ENFERMERÍA</div>
+                <div class="logo-subtitle">Sistema de Gestión CRUGER 2.0</div>
+            </div>
+           
+            <nav class="nav-menu">
+                <button class="nav-item active" onclick="showSection('consultas')">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Reporte de Consulta
+                </button>
+               
+                <button class="nav-item" onclick="showSection('estado')">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                    </svg>
+                    Estado de Consultorio
+                </button>
+               
+                <button class="nav-item" onclick="showSection('inventario')">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                    </svg>
+                    Inventario de Medicamentos
+                </button>
+
+                <button class="nav-item" onclick="showSection('permisos')">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                    </svg>
+                    Permisos Médicos
+                </button>
+            </nav>
+        </div>
+
+        <div class="main-content">
+            <div id="consultas-section" class="content-section active">
+                <div class="content-header">
+                    <h1 class="page-title">Reporte de Consulta</h1>
+                    <p class="page-subtitle">Gestión de consultas médicas y registros</p>
+                </div>
+               
+                <div class="table-container">
+                    <div class="table-header">
+                        <h2 class="table-title">Historial de Consultas</h2>
+                        <button class="add-button" onclick="openConsultaModal()">
+                            GENERAR REPORTE DE CONSULTA
+                        </button>
+                    </div>
+                   
+                    <div id="consultas-table-container"></div>
+                </div>
+            </div>
+
+            <div id="estado-section" class="content-section">
+                <div class="content-header">
+                    <h1 class="page-title">Estado de Consultorio</h1>
+                    <p class="page-subtitle">Control del estado actual del consultorio</p>
+                </div>
+               
+                <div class="toggle-container">
+                    <h3 style="color: white; font-size: 1.25rem; font-weight: 600;">Consultorio:</h3>
+                   
+                    <div>
+                        <div class="toggle-switch" id="consultorio-toggle" onclick="toggleConsultorio()">
+                            <div class="toggle-slider">ACTIVO</div>
+                        </div>
+                        <div class="status-labels" style="margin-top: 0.5rem;">
+                            <span class="status-label active">ACTIVO</span>
+                            <span class="status-label closed">CERRADO</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="inventario-section" class="content-section">
+                <div class="content-header">
+                    <h1 class="page-title">Inventario de Medicamentos</h1>
+                    <p class="page-subtitle">Control de stock y medicamentos disponibles</p>
+                </div>
+               
+                <div class="inventory-actions">
+                    <button class="add-button" onclick="openAddStockModal()">
+                        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        Agregar Stock
+                    </button>
+                </div>
+               
+                <div class="inventory-grid" id="inventory-grid">
+                </div>
+            </div>
+
+            <div id="permisos-section" class="content-section">
+                <div class="content-header">
+                    <h1 class="page-title">Permisos Médicos</h1>
+                    <p class="page-subtitle">Generación de permisos y pases médicos</p>
+                </div>
+               
+                <div class="table-container">
+                    <div class="table-header">
+                        <h2 class="table-title">Generar Permiso Médico</h2>
+                        <button class="add-button" onclick="openPermisoModal()">
+                            <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+                            NUEVO PERMISO
+                        </button>
+                     <button id="print-button" class="neon-print-btn" onclick="imprimirPermiso()">IMPRIMIR</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Consulta -->
+    <div id="consulta-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Nueva Consulta</h3>
+                <button class="close-button" onclick="closeConsultaModal()">&times;</button>
+            </div>
+           
+            <form id="consulta-form">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">Fecha y Hora</label>
+                        <input type="datetime-local" id="fecha-hora" class="form-input" readonly>
+                    </div>
+                   
+                    <div class="form-group">
+                        <label class="form-label">Nombre</label>
+                        <input type="text" id="nombre" class="form-input" list="nombres-list" placeholder="Buscar nombre..." required>
+                        <datalist id="nombres-list">
+                        </datalist>
+                    </div>
+                   
+                    <div class="form-group">
+                        <label class="form-label">Área</label>
+                        <input type="text" id="area" class="form-input" readonly>
+                    </div>
+                   
+                    <div class="form-group">
+                        <label class="form-label">Operación</label>
+                        <input type="text" id="operacion" class="form-input" readonly>
+                    </div>
+                   
+                    <div class="form-group">
+                        <label class="form-label">Tipo de Consulta</label>
+                        <select id="tipo-consulta" class="form-select" required>
+                            <option value="">Seleccionar tipo</option>
+                            <option value="INTERNA">INTERNA</option>
+                            <option value="EXTERNA">EXTERNA</option>
+                        </select>
+                    </div>
+                   
+                    <div class="form-group">
+                        <label class="form-label">Medicamento</label>
+                        <select id="medicamento" class="form-select">
+                            <option value="">Seleccionar medicamento</option>
+                        </select>
+                    </div>
+                   
+                    <div class="form-group">
+                        <label class="form-label">Dosis (pastillas)</label>
+                        <input type="number" id="dosis" class="form-input" min="1" placeholder="Número de pastillas">
+                    </div>
+                   
+                    <div class="form-group">
+                        <label class="form-label">Temperatura (°C)</label>
+                        <input type="number" id="temperatura" class="form-input" step="0.1" placeholder="36.5">
+                    </div>
+                   
+                    <div class="form-group">
+                        <label class="form-label">Presión Alta</label>
+                        <input type="number" id="presion-alta" class="form-input" placeholder="120">
+                    </div>
+                   
+                    <div class="form-group">
+                        <label class="form-label">Presión Baja</label>
+                        <input type="number" id="presion-baja" class="form-input" placeholder="80">
+                    </div>
+                   
+                    <div class="form-group">
+                        <label class="form-label">Oxímetro (%)</label>
+                        <input type="number" id="oximetro" class="form-input" min="0" max="100" placeholder="98">
+                    </div>
+                </div>
+               
+                <div class="form-group">
+                    <label class="form-label">Síntomas</label>
+                    <textarea id="sintomas" class="form-textarea" placeholder="Describa los síntomas..." required></textarea>
+                </div>
+               
+                <div class="form-group">
+                    <label class="form-label">Diagnóstico</label>
+                    <textarea id="diagnostico" class="form-textarea" placeholder="Diagnóstico médico..." required></textarea>
+                </div>
+               
+                <div class="form-group">
+                    <label class="form-label">Observaciones</label>
+                    <textarea id="observaciones" class="form-textarea" placeholder="Observaciones adicionales..."></textarea>
+                </div>
+               
+                <div style="text-align: center; margin-top: 2rem;">
+                    <button type="submit" class="add-button">Guardar Consulta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Alerta -->
+    <div id="alert-modal" class="modal">
+        <div class="modal-content alert-modal">
+            <div class="modal-header">
+                <h3 class="modal-title">⚠️ Medicamento Vencido</h3>
+                <button class="close-button" onclick="closeAlertModal()">&times;</button>
+            </div>
+            <div id="alert-content">
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Retirar Medicamento -->
+    <div id="remove-med-modal" class="modal">
+        <div class="modal-content alert-modal">
+            <div class="modal-header">
+                <h3 class="modal-title">❌ Retirar Medicamento Vencido</h3>
+                <button class="close-button" onclick="closeRemoveMedModal()">&times;</button>
+            </div>
+            <div id="remove-med-content">
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Agregar Stock -->
+    <div id="add-stock-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">➕ Agregar Stock</h3>
+                <button class="close-button" onclick="closeAddStockModal()">&times;</button>
+            </div>
+           
+            <form id="add-stock-form">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">Medicamento</label>
+                        <select id="add-medicamento" class="form-select" required>
+                            <option value="">Seleccionar medicamento</option>
+                        </select>
+                    </div>
+                   
+                    <div class="form-group">
+                        <label class="form-label">Cantidad de Cajas</label>
+                        <input type="number" id="add-cantidad" class="form-input" min="1" required>
+                    </div>
+                   
+                    <div class="form-group">
+                        <label class="form-label">Nueva Fecha de Caducidad</label>
+                        <input type="date" id="add-fecha-caducidad" class="form-input" required>
+                    </div>
+                </div>
+               
+                <div style="text-align: center; margin-top: 2rem;">
+                    <button type="submit" class="add-button">Actualizar Inventario</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Solicitud -->
+    <div id="request-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Solicitar Medicamento</h3>
+                <button class="close-button" onclick="closeRequestModal()">&times;</button>
+            </div>
+            <div style="padding: 1.5rem;">
+                <div class="form-group">
+                    <label class="form-label">Fecha y Hora</label>
+                    <input type="datetime-local" id="request-date" class="form-input" value="${new Date().toISOString().slice(0, 16)}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Artículo</label>
+                    <select id="request-article" class="form-select" required>
+                        <option value="">Seleccionar medicamento</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Cantidad (QTY)</label>
+                    <input type="number" id="request-quantity" class="form-input" min="1" value="1">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Unidad</label>
+                    <select id="request-unit" class="form-select" required>
+                        <option value="caja">caja</option>
+                        <option value="pza">pza</option>
+                    </select>
+                </div>
+                <div style="text-align: center; margin-top: 1.5rem;">
+                    <button onclick="submitRequest()" class="add-button">Enviar Solicitud</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Permiso Médico -->
+    <div id="permiso-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Generar Permiso Médico</h3>
+                <button class="close-button" onclick="closePermisoModal()">&times;</button>
+            </div>
+           
+            <form id="permiso-form">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">Nombre del empleado</label>
+                        <input type="text" id="permiso-nombre" class="form-input" list="nombres-list" placeholder="Buscar nombre..." required>
+                    </div>
+                   
+                    <div class="form-group">
+                        <label class="form-label">Número de empleado</label>
+                        <input type="text" id="permiso-numero" class="form-input" placeholder="Opcional">
+                    </div>
+                   
+                    <div class="form-group">
+                        <label class="form-label">Área</label>
+                        <input type="text" id="permiso-area" class="form-input" readonly>
+                    </div>
+                   
+                    <div class="form-group">
+                        <label class="form-label">Fecha</label>
+                        <input type="date" id="permiso-fecha" class="form-input" required>
+                    </div>
+                   
+                    <div class="form-group">
+                        <label class="form-label">Hora de salida</label>
+                        <input type="time" id="permiso-hora" class="form-input" required>
+                    </div>
+                </div>
+               
+                <div class="form-group">
+                    <label class="form-label">Comentarios</label>
+                    <textarea id="permiso-comentarios" class="form-textarea" placeholder="Ingrese cualquier comentario adicional..."></textarea>
+                </div>
+               
+                <div style="text-align: center; margin-top: 2rem;">
+                    <button type="submit" class="add-button">Generar Permiso</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sección de Impresión -->
+    <div id="print-section" style="display: none;">
+        <div class="print-header">
+            <h2>PASE MÉDICO</h2>
+            <div class="print-subheader">Sistema de Gestión CRUGER</div>
+        </div>
+        <div class="print-content">
+            <div class="print-row">
+                <div class="print-label">Nombre:</div>
+                <div class="print-value" id="print-nombre"></div>
+                <div class="print-label">Número de empleado:</div>
+                <div class="print-value" id="print-numero"></div>
+            </div>
+            <div class="print-row">
+                <div class="print-label">Área:</div>
+                <div class="print-value" id="print-area"></div>
+                <div class="print-label">Fecha y Hora:</div>
+                <div class="print-value" id="print-fecha-hora"></div>
+            </div>
+            <div class="print-row">
+                <div class="print-permiso" id="print-permiso">PERMISO DE SALIDA</div>
+            </div>
+            <div class="print-row">
+                <div class="print-label">Comentarios:</div>
+                <div class="print-value" id="print-comentarios"></div>
+            </div>
+            <div class="print-footer">
+                <div class="print-firma">Firma del Médico</div>
+                <div class="print-sello">SELLO</div>
+            </div>
+        </div>
+        <div class="print-actions">
+            <button id="print-button" class="neon-print-btn" onclick="imprimirPermiso()">IMPRIMIR</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
