@@ -432,6 +432,7 @@ function checkMissingEmployees() {
         'NO SE ESCANEA O NO CUENTA CON GAFETE',
         '5hrs',
         'Incapacidad'
+        'Error de Procceso'
       ].includes(motivo);
     });
     
@@ -868,4 +869,5 @@ function updatePageTitles(sectionName) {
 }
 
 // Iniciar la aplicación cuando el DOM esté cargado
+
 document.addEventListener('DOMContentLoaded', initializeApp);
