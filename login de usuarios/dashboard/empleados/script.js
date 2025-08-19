@@ -505,6 +505,7 @@ function updateAttendanceTypeOptions() {
     <option value="NO SE ESCANEA O NO CUENTA CON GAFETE">NO SE ESCANEA O NO CUENTA CON GAFETE</option>
     <option value="5hrs">5hrs</option>
     <option value="Incapacidad">Incapacidad</option>
+    <option value="Error de Procceso">Error de Procceso</option>
   `;
 }
 
@@ -871,4 +872,5 @@ function updatePageTitles(sectionName) {
 // Iniciar la aplicación cuando el DOM esté cargado
 
 document.addEventListener('DOMContentLoaded', initializeApp);
+
 
