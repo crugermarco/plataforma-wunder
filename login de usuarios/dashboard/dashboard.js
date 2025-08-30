@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     enfermeria: './enfermeria/index.html',
     produccion: './produccion/index.html',
     calidad: './calidad/index.html',
-    configuracion: './cnc/index.html'
+    configuracion: './cnc/produccion.html'
   };
 
   const cards = appsGrid.querySelectorAll('.app-card');
@@ -97,4 +97,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 });
+
 
