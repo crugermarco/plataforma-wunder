@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     empleados: './empleados/index.html',
     reportes: './reportes/index.html',
     enfermeria: './enfermeria/index.html',
-    produccion: './ZAB/index.html',
+    produccion: './zab/index.html',
     calidad: './calidad/index.html',
     configuracion: './cnc/produccion.html'
   };
@@ -97,6 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 });
+
 
 
 
