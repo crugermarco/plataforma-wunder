@@ -616,7 +616,10 @@ function openConsultaModal() {
     if (!verificarCredenciales()) return;
     
     document.getElementById('consulta-modal').classList.add('show');
-    document.getElementById('fecha-hora').value = new Date().toISOString().slice(0, 16);
+
+    const ahora = new Date();
+    const local = new Date(ahora.getTime() - ahora.getTimezoneOffset() * 60000);
+    document.getElementById('fecha-hora').value = local.toISOString().slice(0, 16);
 }
 
 function closeConsultaModal() {
@@ -1068,4 +1071,5 @@ window.openAddStockModal = openAddStockModal;
 window.closeAddStockModal = closeAddStockModal;
 window.openPermisoModal = openPermisoModal;
 window.closePermisoModal = closePermisoModal;
+
 window.imprimirPermiso = imprimirPermiso;
