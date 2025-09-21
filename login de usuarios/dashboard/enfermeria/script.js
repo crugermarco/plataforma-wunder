@@ -58,6 +58,7 @@ let personalData = [];
 let vencimientoAlertShown = false;
 let selectedMedForRemoval = null;
 let selectedMedForRequest = null;
+let criterioSeleccionado = null; // Variable para almacenar el criterio seleccionado
 
 function verificarCredenciales() {
     const usuariosAutorizados = ["Marco Cruger", "Ricardo Ruiz", "Sonia Vazquez", "Doctor Externo"];
@@ -262,6 +263,7 @@ async function cargarDatosDesdeSheets() {
         renderizarInventario();
         actualizarEstadoConsultorioUI();
         configurarAutocompletado();
+        configurarCriteriosMedicamentos();
 
     } catch (error) {
         console.error("Error al cargar datos:", error);
@@ -291,6 +293,152 @@ function configurarAutocompletado() {
                 document.getElementById('permiso-area').value = persona.area;
             }
         });
+    }
+}
+
+function configurarCriteriosMedicamentos() {
+    const medicamentoSelect = document.getElementById('medicamento');
+    if (!medicamentoSelect) return;
+
+    // Agregar opciones de criterios específicos al final de la lista de medicamentos
+    const criterios = [
+        { value: 'criterio_colicos', text: '💊TRATAMIENTO CÓLICOS (BUSCAPINA + KETEROLACO)' },
+        { value: 'criterio_muscular', text: '💪TRATAMIENTO MUSCULAR (IBUPROFENO + TRIBEDOCE)' },
+        { value: 'criterio_gripe', text: '🤧TRATAMIENTO GRIPE (DESENFRIOL-D + IBUPROFENO + LORATADINA)' },
+        { value: 'criterio_colitis', text: '🤢TRATAMIENTO COLITIS (BUSCAPINA + OMEPRAZOL)' },
+        { value: 'criterio_inyectado', text: '💉MEDICAMENTO INYECTADO (DEXAMETASONA + KETEROLACO)' }
+    ];
+
+    // Separador
+    const separator = document.createElement('option');
+    separator.disabled = true;
+    separator.textContent = '────────── TRATAMIENTOS ESPECIALES ──────────';
+    medicamentoSelect.appendChild(separator);
+
+    // Agregar criterios
+    criterios.forEach(criterio => {
+        const option = document.createElement('option');
+        option.value = criterio.value;
+        option.textContent = criterio.text;
+        medicamentoSelect.appendChild(option);
+    });
+
+    // Configurar el evento para almacenar el criterio seleccionado
+    medicamentoSelect.addEventListener('change', function() {
+        const valor = this.value;
+        if (valor.startsWith('criterio_')) {
+            criterioSeleccionado = valor;
+            // Mostrar información del criterio seleccionado
+            const infoDiv = document.getElementById('criterio-info');
+            if (infoDiv) {
+                const nombresCriterios = {
+                    'criterio_colicos': 'Cólicos',
+                    'criterio_muscular': 'Muscular',
+                    'criterio_gripe': 'Gripe',
+                    'criterio_colitis': 'Colitis',
+                    'criterio_inyectado': 'Medicamento inyectado'
+                };
+                infoDiv.innerHTML = `<div style="background: #e3f2fd; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                    <strong>Tratamiento seleccionado:</strong> ${nombresCriterios[valor]}<br>
+                    <small>Se descontarán los medicamentos al guardar la consulta</small>
+                </div>`;
+                infoDiv.style.display = 'block';
+            }
+        } else {
+            criterioSeleccionado = null;
+            const infoDiv = document.getElementById('criterio-info');
+            if (infoDiv) {
+                infoDiv.style.display = 'none';
+            }
+        }
+    });
+}
+
+// Función mejorada para buscar medicamentos de forma flexible
+function buscarMedicamentoFlexible(nombreBuscado) {
+    if (!nombreBuscado) return null;
+    
+    const nombreLimpio = nombreBuscado.toString().toLowerCase().trim();
+    
+    // Buscar coincidencia exacta primero
+    let medicamento = medicamentosData.find(med => 
+        med.nombre.toLowerCase().trim() === nombreLimpio
+    );
+    
+    if (medicamento) return medicamento;
+    
+    // Buscar coincidencia parcial (que contenga el texto)
+    medicamento = medicamentosData.find(med => 
+        med.nombre.toLowerCase().includes(nombreLimpio)
+    );
+    
+    if (medicamento) return medicamento;
+    
+    // Buscar por similitud (eliminando caracteres especiales y espacios)
+    const nombreNormalizado = nombreLimpio.replace(/[^a-z0-9]/g, '');
+    medicamento = medicamentosData.find(med => {
+        const medNormalizado = med.nombre.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return medNormalizado.includes(nombreNormalizado);
+    });
+    
+    return medicamento || null;
+}
+
+async function aplicarCriterioMedicamentos(criterio) {
+    const criteriosMedicamentos = {
+        'criterio_colicos': ['BUSCAPINA', 'KETEROLACO'],
+        'criterio_muscular': ['IBUPROFENO', 'TRIBEDOCE'],
+        'criterio_gripe': ['DESENFRIOL-D', 'IBUPROFENO', 'LORATADINA'],
+        'criterio_colitis': ['BUSCAPINA', 'OMEPRAZOL'],
+        'criterio_inyectado': ['DEXAMETASONA GOTAS OCULARES', 'KETEROLACO']
+    };
+
+    const nombresCriterios = {
+        'criterio_colicos': 'Cólicos',
+        'criterio_muscular': 'Muscular',
+        'criterio_gripe': 'Gripe',
+        'criterio_colitis': 'Colitis',
+        'criterio_inyectado': 'Medicamento inyectado'
+    };
+
+    const medicamentosAConsumir = criteriosMedicamentos[criterio];
+    const nombreCriterio = nombresCriterios[criterio];
+    
+    if (medicamentosAConsumir) {
+        try {
+            let exitosos = 0;
+            let fallidos = [];
+            
+            // Descontar cada medicamento con búsqueda flexible
+            for (const nombreMedicamento of medicamentosAConsumir) {
+                const medicamento = buscarMedicamentoFlexible(nombreMedicamento);
+                
+                if (medicamento) {
+                    const success = await descontarMedicamento(medicamento.nombre, 1);
+                    if (success) {
+                        exitosos++;
+                    } else {
+                        fallidos.push(nombreMedicamento);
+                    }
+                } else {
+                    fallidos.push(nombreMedicamento);
+                }
+            }
+            
+            // Actualizar la interfaz
+            renderizarInventario();
+            
+            // Mostrar resultado
+            if (fallidos.length === 0) {
+                alert(`✅ Tratamiento aplicado para: ${nombreCriterio}\nSe descontó 1 unidad de ${exitosos} medicamentos`);
+            } else {
+                alert(`⚠️ Tratamiento parcialmente aplicado\n✅ Exitoso: ${exitosos} medicamentos\n❌ No encontrados: ${fallidos.join(', ')}`);
+            }
+            
+        } catch (error) {
+            console.error('Error al aplicar criterio:', error);
+            alert('Error al aplicar el tratamiento automático');
+        }
     }
 }
 
@@ -503,6 +651,9 @@ function renderizarInventario() {
         }
     });
 
+    // Volver a configurar los criterios después de renderizar
+    configurarCriteriosMedicamentos();
+
     verificarMedicamentosVencidos();
 }
 
@@ -558,14 +709,16 @@ async function toggleConsultorio() {
 
 async function descontarMedicamento(nombreMedicamento, dosis) {
     try {
-        const medicamento = medicamentosData.find(med => med.nombre === nombreMedicamento);
+        // Buscar medicamento de forma flexible
+        const medicamento = buscarMedicamentoFlexible(nombreMedicamento);
+        
         if (!medicamento) {
-            alert("Medicamento no encontrado en el inventario");
+            alert(`Medicamento "${nombreMedicamento}" no encontrado en el inventario`);
             return false;
         }
 
         if (medicamento.unidades < dosis) {
-            alert(`No hay suficiente stock de ${nombreMedicamento}. Disponible: ${medicamento.unidades} unidades`);
+            alert(`No hay suficiente stock de ${medicamento.nombre}. Disponible: ${medicamento.unidades} unidades`);
             return false;
         }
 
@@ -612,76 +765,89 @@ function verificarMedicamentosVencidos() {
     }
 }
 
-// --- helpers ---
-function pad(n) { return n < 10 ? '0' + n : String(n); }
-
-// Devuelve "YYYY-MM-DDTHH:MM" usando la hora local del navegador
-function getLocalDatetimeForInput(date = new Date()) {
-    return date.getFullYear() + '-' +
-        pad(date.getMonth() + 1) + '-' +
-        pad(date.getDate()) + 'T' +
-        pad(date.getHours()) + ':' +
-        pad(date.getMinutes());
-}
-
-// --- funciones principales ---
 function openConsultaModal() {
     if (!verificarCredenciales()) return;
     
     document.getElementById('consulta-modal').classList.add('show');
-
-    // <-- Solo cambié la forma de obtener la hora (uso de getters locales)
-    document.getElementById('fecha-hora').value = getLocalDatetimeForInput();
+    document.getElementById('fecha-hora').value = new Date().toISOString().slice(0, 16);
+    
+    // Crear div para mostrar información del criterio si no existe
+    if (!document.getElementById('criterio-info')) {
+        const infoDiv = document.createElement('div');
+        infoDiv.id = 'criterio-info';
+        infoDiv.style.display = 'none';
+        infoDiv.style.margin = '10px 0';
+        const medicamentoGroup = document.querySelector('.form-group:has(#medicamento)');
+        if (medicamentoGroup) {
+            medicamentoGroup.parentNode.insertBefore(infoDiv, medicamentoGroup.nextSibling);
+        }
+    }
+    
+    // Resetear criterio seleccionado
+    criterioSeleccionado = null;
 }
 
 function closeConsultaModal() {
     document.getElementById('consulta-modal').classList.remove('show');
     document.getElementById('consulta-form').reset();
+    
+    // Ocultar información del criterio
+    const infoDiv = document.getElementById('criterio-info');
+    if (infoDiv) {
+        infoDiv.style.display = 'none';
+    }
+    
+    // Resetear criterio seleccionado
+    criterioSeleccionado = null;
 }
 
-// Registramos el listener cuando el DOM esté listo para evitar problemas en Vercel/SSR
-document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('consulta-form')?.addEventListener('submit', async function(e) {
-        e.preventDefault();
-       
-        const formData = {
-            fecha_y_hora: document.getElementById('fecha-hora').value,
-            nombre: document.getElementById('nombre').value,
-            area: document.getElementById('area').value,
-            operacion: document.getElementById('operacion').value,
-            tipo_de_consulta_interna_externa: document.getElementById('tipo-consulta').value,
-            sintomas: document.getElementById('sintomas').value,
-            diagnostico: document.getElementById('diagnostico').value,
-            medicamento: document.getElementById('medicamento').value,
-            dosis: parseInt(document.getElementById('dosis').value) || 0,
-            t_: parseFloat(document.getElementById('temperatura').value) || 0,
-            presion_arterial_alta: parseInt(document.getElementById('presion-alta').value) || 0,
-            presion_arterial_baja: parseInt(document.getElementById('presion-baja').value) || 0,
-            oximetro: parseInt(document.getElementById('oximetro').value) || 0,
-            observaciones: document.getElementById('observaciones').value
-        };
+document.getElementById('consulta-form')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+   
+    const formData = {
+        fecha_y_hora: document.getElementById('fecha-hora').value,
+        nombre: document.getElementById('nombre').value,
+        area: document.getElementById('area').value,
+        operacion: document.getElementById('operacion').value,
+        tipo_de_consulta_interna_externa: document.getElementById('tipo-consulta').value,
+        sintomas: document.getElementById('sintomas').value,
+        diagnostico: document.getElementById('diagnostico').value,
+        medicamento: document.getElementById('medicamento').value,
+        dosis: parseInt(document.getElementById('dosis').value) || 0,
+        t_: parseFloat(document.getElementById('temperatura').value) || 0,
+        presion_arterial_alta: parseInt(document.getElementById('presion-alta').value) || 0,
+        presion_arterial_baja: parseInt(document.getElementById('presion-baja').value) || 0,
+        oximetro: parseInt(document.getElementById('oximetro').value) || 0,
+        observaciones: document.getElementById('observaciones').value
+    };
 
-        if (!formData.nombre || !formData.tipo_de_consulta_interna_externa || !formData.sintomas || !formData.diagnostico) {
-            alert('Por favor complete todos los campos requeridos');
-            return;
+    // Validaciones
+    if (!formData.nombre || !formData.tipo_de_consulta_interna_externa || !formData.sintomas || !formData.diagnostico) {
+        alert('Por favor complete todos los campos requeridos');
+        return;
+    }
+
+    try {
+        // Aplicar criterio si está seleccionado (solo al guardar)
+        if (criterioSeleccionado) {
+            await aplicarCriterioMedicamentos(criterioSeleccionado);
+        }
+        
+        // Solo descontar medicamento específico si no es un criterio especial
+        if (formData.medicamento && !formData.medicamento.startsWith('criterio_') && formData.dosis > 0) {
+            const success = await descontarMedicamento(formData.medicamento, formData.dosis);
+            if (!success) return;
         }
 
-        try {
-            if (formData.medicamento && formData.dosis > 0) {
-                const success = await descontarMedicamento(formData.medicamento, formData.dosis);
-                if (!success) return;
-            }
-
-            await guardarEnSheets(sheetsConfig.consultas, formData);
-            consultas.push(formData);
-            actualizarTablaConsultas();
-            closeConsultaModal();
-            alert('Consulta registrada exitosamente');
-        } catch (error) {
-            console.error("Error al guardar consulta:", error);
-            alert('Error al guardar la consulta. Por favor intente nuevamente.');
-        }
-    });
+        await guardarEnSheets(sheetsConfig.consultas, formData);
+        consultas.push(formData);
+        actualizarTablaConsultas();
+        closeConsultaModal();
+        alert('Consulta registrada exitosamente');
+    } catch (error) {
+        console.error("Error al guardar consulta:", error);
+        alert('Error al guardar la consulta. Por favor intente nuevamente.');
+    }
 });
 
 function openRequestModal(nombreMedicamento) {
@@ -1062,6 +1228,7 @@ function imprimirPermiso() {
         alert("Error al preparar el pase médico para impresión. Por favor intente nuevamente.");
     }
 }
+
 document.addEventListener('DOMContentLoaded', function() {
     if (!verificarCredenciales()) return;
     
@@ -1086,6 +1253,4 @@ window.openAddStockModal = openAddStockModal;
 window.closeAddStockModal = closeAddStockModal;
 window.openPermisoModal = openPermisoModal;
 window.closePermisoModal = closePermisoModal;
-
 window.imprimirPermiso = imprimirPermiso;
-
