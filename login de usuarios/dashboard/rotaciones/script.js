@@ -1,16 +1,16 @@
 const GOOGLE_SHEETS_CONFIG = {
     employeeDatabase: {
-        scriptUrl: 'https://script.google.com/macros/s/AKfycbxaDn9mCZ5m5mFRyBO7lTI9jx7jAEhkrQJb_3S4tf78dhTRzQjBkSQyrL-x6q37L1Exew/exec',
+        scriptUrl: 'https://script.google.com/macros/s/AKfycbxyfp4T0voGemFW0VMFS8OdDA2mRSFryZF1IPWdNjoOtLwLRZVgpaHQpFPRSq3yCOwiXg/exec',
         spreadsheetId: '1VJf4jHb67XY7OI0JS4wAG51C4PWRYPRU_EVByYo0vY0',
         sheetName: 'DATA'
     },
     rotationRegistry: {
-        scriptUrl: 'https://script.google.com/macros/s/AKfycbyPW8MdC-jHLyWL31BnTd9tzqCoyDkbOpdzHdXkShAOj2OvX6YHMYtVyffTx1kNfJOkEw/exec',
+        scriptUrl: 'https://script.google.com/macros/s/AKfycbxyfp4T0voGemFW0VMFS8OdDA2mRSFryZF1IPWdNjoOtLwLRZVgpaHQpFPRSq3yCOwiXg/exec',
         spreadsheetId: '1VJf4jHb67XY7OI0JS4wAG51C4PWRYPRU_EVByYo0vY0',
         sheetName: 'FLUJO DE ROTACIONES'
     },
     bathroomRegistry: {
-        scriptUrl: 'https://script.google.com/macros/s/AKfycbzZnOWK4kqOBfgAyXozKGGlg4rgPzNIiiT_tbViiEXd3HuPuu9vJI-TWXr_gJDJLc9JPA/exec',
+        scriptUrl: 'https://script.google.com/macros/s/AKfycbxyfp4T0voGemFW0VMFS8OdDA2mRSFryZF1IPWdNjoOtLwLRZVgpaHQpFPRSq3yCOwiXg/exec',
         spreadsheetId: '1VJf4jHb67XY7OI0JS4wAG51C4PWRYPRU_EVByYo0vY0',
         sheetName: 'BAÑO'
     }
@@ -292,3 +292,4 @@ setInterval(updateBathroomPanel, 1000);
 
 // Establecer fecha y hora al cargar la página
 setCurrentDateTime();
+
