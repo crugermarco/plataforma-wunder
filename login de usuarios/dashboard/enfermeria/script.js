@@ -60,6 +60,18 @@ let selectedMedForRemoval = null;
 let selectedMedForRequest = null;
 let criterioSeleccionado = null; // Variable para almacenar el criterio seleccionado
 
+// --- helpers ---
+function pad(n) { return n < 10 ? '0' + n : String(n); }
+
+// Devuelve "YYYY-MM-DDTHH:MM" usando la hora local del navegador
+function getLocalDatetimeForInput(date = new Date()) {
+    return date.getFullYear() + '-' +
+        pad(date.getMonth() + 1) + '-' +
+        pad(date.getDate()) + 'T' +
+        pad(date.getHours()) + ':' +
+        pad(date.getMinutes());
+}
+
 function verificarCredenciales() {
     const usuariosAutorizados = ["Marco Cruger", "Ricardo Ruiz", "Sonia Vazquez", "Doctor Externo"];
     if (!usuariosAutorizados.includes(currentUser)) {
@@ -765,11 +777,14 @@ function verificarMedicamentosVencidos() {
     }
 }
 
+// --- funciones principales del modal de consultas ---
 function openConsultaModal() {
     if (!verificarCredenciales()) return;
-    
+
     document.getElementById('consulta-modal').classList.add('show');
-    document.getElementById('fecha-hora').value = new Date().toISOString().slice(0, 16);
+    
+    // SOLO MODIFICACIÓN: Usar la función helper para obtener la hora local correcta
+    document.getElementById('fecha-hora').value = getLocalDatetimeForInput();
     
     // Crear div para mostrar información del criterio si no existe
     if (!document.getElementById('criterio-info')) {
@@ -801,53 +816,55 @@ function closeConsultaModal() {
     criterioSeleccionado = null;
 }
 
-document.getElementById('consulta-form')?.addEventListener('submit', async function(e) {
-    e.preventDefault();
-   
-    const formData = {
-        fecha_y_hora: document.getElementById('fecha-hora').value,
-        nombre: document.getElementById('nombre').value,
-        area: document.getElementById('area').value,
-        operacion: document.getElementById('operacion').value,
-        tipo_de_consulta_interna_externa: document.getElementById('tipo-consulta').value,
-        sintomas: document.getElementById('sintomas').value,
-        diagnostico: document.getElementById('diagnostico').value,
-        medicamento: document.getElementById('medicamento').value,
-        dosis: parseInt(document.getElementById('dosis').value) || 0,
-        t_: parseFloat(document.getElementById('temperatura').value) || 0,
-        presion_arterial_alta: parseInt(document.getElementById('presion-alta').value) || 0,
-        presion_arterial_baja: parseInt(document.getElementById('presion-baja').value) || 0,
-        oximetro: parseInt(document.getElementById('oximetro').value) || 0,
-        observaciones: document.getElementById('observaciones').value
-    };
+// Registramos el listener cuando el DOM esté listo para evitar problemas en Vercel/SSR
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('consulta-form')?.addEventListener('submit', async function(e) {
+        e.preventDefault();
+       
+        const formData = {
+            fecha_y_hora: document.getElementById('fecha-hora').value,
+            nombre: document.getElementById('nombre').value,
+            area: document.getElementById('area').value,
+            operacion: document.getElementById('operacion').value,
+            tipo_de_consulta_interna_externa: document.getElementById('tipo-consulta').value,
+            sintomas: document.getElementById('sintomas').value,
+            diagnostico: document.getElementById('diagnostico').value,
+            medicamento: document.getElementById('medicamento').value,
+            dosis: parseInt(document.getElementById('dosis').value) || 0,
+            t_: parseFloat(document.getElementById('temperatura').value) || 0,
+            presion_arterial_alta: parseInt(document.getElementById('presion-alta').value) || 0,
+            presion_arterial_baja: parseInt(document.getElementById('presion-baja').value) || 0,
+            oximetro: parseInt(document.getElementById('oximetro').value) || 0,
+            observaciones: document.getElementById('observaciones').value
+        };
 
-    // Validaciones
-    if (!formData.nombre || !formData.tipo_de_consulta_interna_externa || !formData.sintomas || !formData.diagnostico) {
-        alert('Por favor complete todos los campos requeridos');
-        return;
-    }
-
-    try {
-        // Aplicar criterio si está seleccionado (solo al guardar)
-        if (criterioSeleccionado) {
-            await aplicarCriterioMedicamentos(criterioSeleccionado);
-        }
-        
-        // Solo descontar medicamento específico si no es un criterio especial
-        if (formData.medicamento && !formData.medicamento.startsWith('criterio_') && formData.dosis > 0) {
-            const success = await descontarMedicamento(formData.medicamento, formData.dosis);
-            if (!success) return;
+        if (!formData.nombre || !formData.tipo_de_consulta_interna_externa || !formData.sintomas || !formData.diagnostico) {
+            alert('Por favor complete todos los campos requeridos');
+            return;
         }
 
-        await guardarEnSheets(sheetsConfig.consultas, formData);
-        consultas.push(formData);
-        actualizarTablaConsultas();
-        closeConsultaModal();
-        alert('Consulta registrada exitosamente');
-    } catch (error) {
-        console.error("Error al guardar consulta:", error);
-        alert('Error al guardar la consulta. Por favor intente nuevamente.');
-    }
+        try {
+            // Aplicar criterio si está seleccionado (solo al guardar)
+            if (criterioSeleccionado) {
+                await aplicarCriterioMedicamentos(criterioSeleccionado);
+            }
+            
+            // Solo descontar medicamento específico si no es un criterio especial
+            if (formData.medicamento && !formData.medicamento.startsWith('criterio_') && formData.dosis > 0) {
+                const success = await descontarMedicamento(formData.medicamento, formData.dosis);
+                if (!success) return;
+            }
+
+            await guardarEnSheets(sheetsConfig.consultas, formData);
+            consultas.push(formData);
+            actualizarTablaConsultas();
+            closeConsultaModal();
+            alert('Consulta registrada exitosamente');
+        } catch (error) {
+            console.error("Error al guardar consulta:", error);
+            alert('Error al guardar la consulta. Por favor intente nuevamente.');
+        }
+    });
 });
 
 function openRequestModal(nombreMedicamento) {
@@ -860,7 +877,7 @@ function openRequestModal(nombreMedicamento) {
     }
     
     document.getElementById('request-modal').classList.add('show');
-    document.getElementById('request-date').value = new Date().toISOString().slice(0, 16);
+    document.getElementById('request-date').value = getLocalDatetimeForInput();
     document.getElementById('request-article').value = `${selectedMedForRequest.nombre} ${selectedMedForRequest.mg}`;
 }
 
