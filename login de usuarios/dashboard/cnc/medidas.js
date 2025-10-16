@@ -293,8 +293,8 @@ async function callGoogleScript(connection, action, data = {}) {
 
 function getShift() {
     const hour = new Date().getHours();
-    if (hour >= 6 && hour < 16) return '1';
-    if (hour >= 16 && hour < 23) return '2';
+    if (hour >= 6 && hour < 15) return '1';
+    if (hour >= 15 && hour < 22) return '2';
     return '3';
 }
 
@@ -908,3 +908,4 @@ window.clearAllRows = clearAllRows;
 window.startSetMeasurement = startSetMeasurement;
 window.openImageModal = openImageModal;
 window.closeImageModal = closeImageModal;
+
