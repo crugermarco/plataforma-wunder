@@ -95,11 +95,12 @@ function createImageModal() {
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0,0,0,0.7);
+        background: transparent; /* Cambiado a transparente */
         display: none;
-        z-index: 10000;
+        z-index: 10001;
         justify-content: flex-start;
         align-items: stretch;
+        pointer-events: none; /* Permite hacer clic a través del overlay */
       }
       
       .image-modal-overlay.active {
@@ -114,6 +115,7 @@ function createImageModal() {
         display: flex;
         flex-direction: column;
         animation: slideInRight 0.3s ease-out;
+        pointer-events: auto; /* Solo el contenido es clickeable */
       }
       
       @keyframes slideInRight {
@@ -195,13 +197,23 @@ function createImageModal() {
         font-size: 14px;
         line-height: 1.4;
       }
+
+      /* Asegurar que el modal principal no se oscurezca */
+      #modalOverlay.active {
+        background: rgba(0,0,0,0.5); /* Mantener el fondo oscuro del modal principal */
+        z-index: 10000;
+      }
+
+      #modalContent {
+        z-index: 10000;
+        position: relative;
+      }
     </style>
   `;
   
   document.head.insertAdjacentHTML('beforeend', styles);
 }
 
-// FUNCIONES PARA EL MODAL DE IMÁGENES
 function openImageModal(fieldLabel, imageUrl) {
   createImageModal();
   const overlay = document.getElementById('imageModalOverlay');
@@ -777,7 +789,6 @@ async function sendToGoogleSheets() {
                 row.shift,                   // D: SHIFT
                 row.type || '',              // E: TYPE
                 
-                // COLUMNAS F-L: SET 1 (Referencias)
                 row.referenceValues.plateThickness1 || 'N/A',  // F: PLATE THICKNESS (referencia)
                 row.referenceValues.trackRojo1 || 'N/A',       // G: TRACK ROJO (referencia)
                 row.referenceValues.trackAzul1 || 'N/A',       // H: TRACK AZUL (referencia)
@@ -786,41 +797,33 @@ async function sendToGoogleSheets() {
                 row.referenceValues.ballAzulCielo11 || 'N/A',  // K: BALL AZUL CIELO1 (referencia)
                 row.referenceValues.ballAzulCielo21 || 'N/A',  // L: BALL AZUL CIELO2 (referencia)
                 
-                // COLUMNAS M-S: SET 1 (Mediciones - igual a referencias)
-                row.referenceValues.plateThickness1 || 'N/A',  // M: PLATE THICKNESS (medido = referencia)
-                row.referenceValues.trackRojo1 || 'N/A',       // N: TRACK ROJO (medido = referencia)
-                row.referenceValues.trackAzul1 || 'N/A',       // O: TRACK AZUL (medido = referencia)
-                row.referenceValues.ballVerde1 || 'N/A',       // P: BALL VERDE (medido = referencia)
-                row.referenceValues.ballAmarillo1 || 'N/A',    // Q: BALL AMARILLO (medido = referencia)
-                row.referenceValues.ballAzulCielo11 || 'N/A',  // R: BALL AZUL CIELO1 (medido = referencia)
-                row.referenceValues.ballAzulCielo21 || 'N/A',  // S: BALL AZUL CIELO2 (medido = referencia)
                 
-                // COLUMNAS T-Y: SET 2 (Mediciones del usuario CON PLATE THICKNESS)
-                row.measurements.plateThickness2 || 'N/A',     // T: PLATE THICKNESS
-                row.measurements.trackRojo2 || 'N/A',          // U: TRACK ROJO
-                row.measurements.trackAzul2 || 'N/A',          // V: TRACK AZUL
-                row.measurements.ballVerde2 || 'N/A',          // W: BALL VERDE
-                row.measurements.ballAmarillo2 || 'N/A',       // X: BALL AMARILLO
-                row.measurements.ballAzulCielo12 || 'N/A',     // Y: BALL AZUL CIELO1
-                row.measurements.ballAzulCielo22 || 'N/A',     // Z: BALL AZUL CIELO2
+                // COLUMNAS M-S: SET 2 (Mediciones del usuario CON PLATE THICKNESS)
+                row.measurements.plateThickness2 || 'N/A',     // M: PLATE THICKNESS
+                row.measurements.trackRojo2 || 'N/A',          // N: TRACK ROJO
+                row.measurements.trackAzul2 || 'N/A',          // O: TRACK AZUL
+                row.measurements.ballVerde2 || 'N/A',          // P: BALL VERDE
+                row.measurements.ballAmarillo2 || 'N/A',       // Q: BALL AMARILLO
+                row.measurements.ballAzulCielo12 || 'N/A',     // R: BALL AZUL CIELO1
+                row.measurements.ballAzulCielo22 || 'N/A',     // S: BALL AZUL CIELO2
                 
-                // COLUMNAS AA-AF: SET 3 (Mediciones del usuario SIN PLATE THICKNESS)
-                row.measurements.trackRojo3 || 'N/A',          // AA: TRACK ROJO
-                row.measurements.trackAzul3 || 'N/A',          // AB: TRACK AZUL
-                row.measurements.ballVerde3 || 'N/A',          // AC: BALL VERDE
-                row.measurements.ballAmarillo3 || 'N/A',       // AD: BALL AMARILLO
-                row.measurements.ballAzulCielo13 || 'N/A',     // AE: BALL AZUL CIELO1
-                row.measurements.ballAzulCielo23 || 'N/A',     // AF: BALL AZUL CIELO2
+                // COLUMNAS T-Y: SET 3 (Mediciones del usuario SIN PLATE THICKNESS)
+                row.measurements.trackRojo3 || 'N/A',          // T: TRACK ROJO
+                row.measurements.trackAzul3 || 'N/A',          // U: TRACK AZUL
+                row.measurements.ballVerde3 || 'N/A',          // V: BALL VERDE
+                row.measurements.ballAmarillo3 || 'N/A',       // W: BALL AMARILLO
+                row.measurements.ballAzulCielo13 || 'N/A',     // X: BALL AZUL CIELO1
+                row.measurements.ballAzulCielo23 || 'N/A',     // Y: BALL AZUL CIELO2
                 
-                // COLUMNAS AG-AL: SET 4 (Mediciones del usuario SIN PLATE THICKNESS)
-                row.measurements.trackRojo4 || 'N/A',          // AG: TRACK ROJO
-                row.measurements.trackAzul4 || 'N/A',          // AH: TRACK AZUL
-                row.measurements.ballVerde4 || 'N/A',          // AI: BALL VERDE
-                row.measurements.ballAmarillo4 || 'N/A',       // AJ: BALL AMARILLO
-                row.measurements.ballAzulCielo14 || 'N/A',     // AK: BALL AZUL CIELO1
-                row.measurements.ballAzulCielo24 || 'N/A',     // AL: BALL AZUL CIELO2
+                // COLUMNAS Z-AE: SET 4 (Mediciones del usuario SIN PLATE THICKNESS)
+                row.measurements.trackRojo4 || 'N/A',          // Z: TRACK ROJO
+                row.measurements.trackAzul4 || 'N/A',          // AA: TRACK AZUL
+                row.measurements.ballVerde4 || 'N/A',          // AB: BALL VERDE
+                row.measurements.ballAmarillo4 || 'N/A',       // AC: BALL AMARILLO
+                row.measurements.ballAzulCielo14 || 'N/A',     // AD: BALL AZUL CIELO1
+                row.measurements.ballAzulCielo24 || 'N/A',     // AE: BALL AZUL CIELO2
                 
-                // COLUMNA AM: NOTAS
+                // COLUMNA AF: NOTAS
                 row.notes || ''
             ];
         });
