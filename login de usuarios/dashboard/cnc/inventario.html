@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventario de Herramientas - CRUGER 1.3</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --emerald-400: #34d399;
+            --emerald-500: #10b981;
+            --emerald-600: #059669;
+            --blue-500: #3b82f6;
+            --blue-600: #2563eb;
+            --purple-500: #8b5cf6;
+            --purple-600: #7c3aed;
+            --orange-500: #f97316;
+            --orange-600: #ea580c;
+            --red-400: #f87171;
+            --red-500: #ef4444;
+            --red-600: #dc2626;
+            --yellow-500: #eab308;
+            --yellow-600: #ca8a04;
+            --slate-300: #cbd5e1;
+            --slate-400: #94a3b8;
+            --slate-600: #475569;
+            --slate-700: #334155;
+            --slate-800: #1e293b;
+            --slate-900: #0f172a;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 25%, #334155 50%, #1e293b 75%, #0f172a 100%);
+            min-height: 100vh;
+            color: white;
+            overflow-x: hidden;
+        }
+
+        .background-animation {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            opacity: 0.3;
+            overflow: hidden;
+        }
+
+        .pulse-circle {
+            position: absolute;
+            background: linear-gradient(to right, #3b82f6, #8b5cf6);
+            border-radius: 50%;
+            animation: pulse 6s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.7; }
+            50% { transform: scale(1.1); opacity: 0.3; }
+        }
+
+        .container {
+            position: relative;
+            z-index: 10;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .main-title {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(to right, var(--emerald-400), var(--blue-500));
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--slate-400);
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            border-radius: 0.5rem;
+            padding: 0.5rem 1rem;
+            color: var(--slate-300);
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.875rem;
+            font-weight: 500;
+            backdrop-filter: blur(20px);
+        }
+
+        .filter-btn:hover {
+            background: rgba(51, 65, 85, 0.8);
+            border-color: var(--emerald-500);
+            color: white;
+        }
+
+        .filter-btn.active {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: var(--emerald-500);
+            color: var(--emerald-400);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-card {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(20px);
+            border-radius: 1rem;
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            padding: 2rem;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--slate-400);
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        .stat-total { color: var(--blue-500); }
+        .stat-low { color: var(--red-500); }
+        .stat-critical { color: var(--orange-500); }
+        .stat-good { color: var(--emerald-500); }
+
+        .inventory-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .tool-card {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(25px);
+            border-radius: 2rem;
+            border: 1px solid rgba(71, 85, 105, 0.3);
+            padding: 2rem;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.4),
+                0 0 0 1px rgba(255, 255, 255, 0.05);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tool-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: var(--emerald-500);
+            box-shadow: 
+                0 35px 80px -12px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(16, 185, 129, 0.5),
+                0 0 40px rgba(16, 185, 129, 0.15);
+        }
+
+        .tool-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--emerald-500), var(--blue-500), var(--purple-500));
+            opacity: 0;
+            transition: opacity 0.4s;
+        }
+
+        .tool-card:hover::before {
+            opacity: 1;
+        }
+
+        .tool-card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.05) 0%, transparent 50%);
+            opacity: 0;
+            transition: opacity 0.4s;
+            pointer-events: none;
+        }
+
+        .tool-card:hover::after {
+            opacity: 1;
+        }
+
+        .tool-image {
+            width: 100%;
+            height: 220px;
+            object-fit: cover;
+            border-radius: 1.5rem;
+            margin-bottom: 1.5rem;
+            background: rgba(51, 65, 85, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3.5rem;
+            color: var(--slate-500);
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(71, 85, 105, 0.3);
+        }
+
+        .tool-image::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(59, 130, 246, 0.1));
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .tool-card:hover .tool-image::before {
+            opacity: 1;
+        }
+
+        .tool-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 1.25rem;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .tool-card:hover .tool-image img {
+            transform: scale(1.05);
+        }
+
+        .tool-info {
+            margin-bottom: 1.5rem;
+        }
+
+        .tool-name {
+            font-size: 1.375rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 1.25rem;
+            line-height: 1.4;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .stock-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 1rem;
+            padding: 1.25rem;
+            border: 1px solid rgba(71, 85, 105, 0.3);
+        }
+
+        .stock-item {
+            text-align: center;
+        }
+
+        .stock-value {
+            font-size: 1.75rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .stock-label {
+            font-size: 0.8rem;
+            color: var(--slate-400);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.75px;
+        }
+
+        .stock-current { color: var(--blue-500); }
+        .stock-needed { color: var(--slate-300); }
+
+        .progress-container {
+            margin-bottom: 1.5rem;
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: rgba(71, 85, 105, 0.4);
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .progress-fill {
+            height: 100%;
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 1.5rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .status-critical {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.3));
+            color: var(--red-400);
+            border: 1px solid var(--red-500);
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+        }
+
+        .status-low {
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.2), rgba(234, 88, 12, 0.3));
+            color: #FDBA74; /* naranja claro */
+            border: 1px solid var(--orange-500);
+            box-shadow: 0 0 20px rgba(249, 115, 22, 0.3);
+        }
+
+        .status-good {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.3));
+            color: var(--emerald-400);
+            border: 1px solid var(--emerald-500);
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+        }
+
+        /* Estilos modernos para los botones dentro de las tarjetas */
+        .tool-buttons {
+            display: flex;
+            gap: 0.75rem;
+            flex-direction: column;
+        }
+
+        .tool-buttons button {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(51, 65, 85, 0.9));
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            border-radius: 1rem;
+            padding: 0.875rem 1.25rem;
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .tool-buttons button::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.6s;
+        }
+
+        .tool-buttons button:hover::before {
+            transform: translateX(100%);
+        }
+
+        .tool-buttons button:hover {
+            transform: translateY(-2px);
+            border-color: var(--emerald-500);
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.3));
+            box-shadow: 
+                0 8px 25px rgba(0, 0, 0, 0.3),
+                0 0 20px rgba(16, 185, 129, 0.3);
+            color: var(--emerald-400);
+        }
+
+        .tool-buttons button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .tool-buttons button:first-child {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.25));
+            border-color: rgba(59, 130, 246, 0.5);
+        }
+
+        .tool-buttons button:first-child:hover {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(37, 99, 235, 0.35));
+            border-color: var(--blue-500);
+            color: #93c5fd; /* azul claro */
+            box-shadow: 
+                0 8px 25px rgba(0, 0, 0, 0.3),
+                0 0 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .tool-buttons button:last-child {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(124, 58, 237, 0.25));
+            border-color: rgba(139, 92, 246, 0.5);
+        }
+
+        .tool-buttons button:last-child:hover {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(124, 58, 237, 0.35));
+            border-color: var(--purple-500);
+            color: #c4b5fd; /* morado claro */
+            box-shadow: 
+                0 8px 25px rgba(0, 0, 0, 0.3),
+                0 0 20px rgba(139, 92, 246, 0.3);
+        }
+
+        .loading-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 200px;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(16, 185, 129, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--emerald-500);
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--red-500);
+            border-radius: 1rem;
+            padding: 2rem;
+            text-align: center;
+            color: var(--red-400);
+            margin: 2rem 0;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--slate-400);
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        .progress-critical {
+            background: linear-gradient(90deg, var(--red-500), var(--red-600));
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+        }
+
+        .progress-low {
+            background: linear-gradient(90deg, var(--orange-500), var(--orange-600));
+            box-shadow: 0 0 10px rgba(249, 115, 22, 0.5);
+        }
+
+        .progress-good {
+            background: linear-gradient(90deg, var(--emerald-500), var(--emerald-600));
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+        }
+
+        /* --- MODAL --- */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(2, 6, 23, 0.7);
+            backdrop-filter: blur(8px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            padding: 1rem;
+        }
+
+        .modal {
+            background: rgba(17, 24, 39, 0.95);
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+            width: 100%;
+            max-width: 460px;
+            box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.6);
+            animation: fadeIn 0.25s ease-out;
+        }
+
+        .modal-neon {
+            position: relative;
+        }
+        .modal-neon::before {
+            content: "";
+            position: absolute;
+            inset: -2px;
+            border-radius: 1.6rem;
+            background: linear-gradient(135deg, rgba(16,185,129,0.35), rgba(59,130,246,0.35), rgba(139,92,246,0.35));
+            filter: blur(18px);
+            z-index: -1;
+        }
+
+        @keyframes fadeIn {
+            from { transform: translateY(8px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+        .modal-header h2 {
+            font-size: 1.25rem;
+            color: var(--emerald-400);
+            font-weight: 700;
+        }
+        .icon-btn {
+            background: transparent;
+            border: 1px solid rgba(71,85,105,0.6);
+            color: #e2e8f0;
+            border-radius: 0.75rem;
+            padding: 0.35rem 0.6rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .icon-btn:hover {
+            border-color: var(--emerald-500);
+            color: var(--emerald-400);
+        }
+
+        .modal-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+        .form-group label {
+            font-size: 0.9rem;
+            color: var(--slate-300);
+            font-weight: 600;
+        }
+        .modal-form input, .modal-form select {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(71, 85, 105, 0.6);
+            border-radius: 0.75rem;
+            color: white;
+            padding: 0.6rem 0.75rem;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .modal-form input:focus, .modal-form select:focus {
+            border-color: var(--emerald-500);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+        }
+        .hint {
+            color: var(--slate-400);
+            font-size: 0.8rem;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+        }
+        .save-btn, .cancel-btn {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border-radius: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            border: 1px solid rgba(71, 85, 105, 0.6);
+            transition: all 0.2s;
+        }
+        .save-btn {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.3));
+            color: var(--emerald-400);
+        }
+        .save-btn:hover {
+            border-color: var(--emerald-500);
+            transform: translateY(-1px);
+        }
+        .cancel-btn {
+            background: linear-gradient(135deg, rgba(148, 163, 184, 0.1), rgba(71, 85, 105, 0.2));
+            color: #e2e8f0;
+        }
+        .cancel-btn:hover {
+            border-color: rgba(148, 163, 184, 0.5);
+            transform: translateY(-1px);
+        }
+
+        @media (max-width: 768px) {
+            .main-title { font-size: 2rem; }
+            .inventory-grid { grid-template-columns: 1fr; }
+            .controls { flex-direction: column; align-items: center; }
+            .filter-buttons { justify-content: center; }
+            .tool-card { padding: 1.5rem; }
+            .tool-buttons { gap: 0.5rem; }
+            .stock-info { padding: 1rem; }
+        }
+        
+        /* BOTÓN DE NAVEGACIÓN */
+        .nav-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 10000;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+        
+        .nav-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.6);
+        }
+
+        .title-box {
+  position: relative;
+  background: rgba(15, 23, 42, 0.8);
+  border: 2px solid rgba(59, 130, 246, 0.3);
+  border-radius: 1.25rem;
+  padding: 2rem 2.5rem;
+  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.2);
+  backdrop-filter: blur(10px);
+  margin-bottom: 2rem;
+  overflow: hidden;
+  display: inline-block;
+  
+}
+
+/* BOTÓN DE NAVEGACIÓN */
+.nav-button1 {
+            position: fixed;
+            top: 10000;
+            left: 1000;
+            bottom: 20px;
+            right: 20px;
+            z-index: 10000;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #e0325e, #fa0036);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 4px 12px rgba(182, 39, 122, 0.815);
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+        
+        .nav-button1:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(221, 9, 193, 0.6);
+        }
+
+        .title-box {
+  position: relative;
+  background: rgba(15, 23, 42, 0.8);
+  border: 2px solid rgba(59, 130, 246, 0.3);
+  border-radius: 1.25rem;
+  padding: 2rem 2.5rem;
+  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.2);
+  backdrop-filter: blur(10px);
+  margin-bottom: 2rem;
+  overflow: hidden;
+  display: inline-block;
+  }
+
+  .nav-button2 {
+            position: fixed;
+            top: 10000;
+            left: 1000;
+            bottom: 20px;
+            right: 20px;
+            z-index: 10000;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #d330e9, #c000fa);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 4px 12px rgba(195, 0, 255, 0.815);
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+        
+        .nav-button2:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(221, 9, 193, 0.6);
+        }
+        .title-box {
+     position: relative;
+     background: rgba(15, 23, 42, 0.8);
+     border: 2px solid rgba(59, 130, 246, 0.3);
+     border-radius: 1.25rem;
+     padding: 2rem 2.5rem;
+     box-shadow: 0 10px 30px rgba(59, 130, 246, 0.2);
+     backdrop-filter: blur(10px);
+     margin-bottom: 2rem;
+     overflow: hidden;
+     display: inline-block;
+     }
+
+
+  
+  .nav-button {
+    bottom: 90px; /* Separación del borde inferior de 90px */
+    right: 20px;
+  }
+
+
+ .nav-button1 {
+    bottom: 20px; /* Separación del borde inferior de 20px */
+    right: 20px;
+ }
+
+ .nav-button2 {
+       bottom: 160px; 
+       right: 20px;
+} 
+
+
+
+
+.title {
+  font-size: 2.25rem;
+  font-weight: 800;
+  background: linear-gradient(to right, #3b82f6, #8b5cf6);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-align: center;
+  position: relative;
+  z-index: 2;
+}
+
+.title-box::after {
+  content: '';
+  position: absolute;
+  bottom: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 4px;
+  background: linear-gradient(to right, #3b82f6, #8b5cf6);
+  border-radius: 2px;
+  animation: underline-glow 2s infinite alternate ease-in-out;
+  z-index: 1;
+}
+
+@keyframes underline-glow {
+  0% {
+    width: 60%;
+    opacity: 0.5;
+  }
+  100% {
+    width: 80%;
+    opacity: 1;
+  }
+}
+    </style>
+</head>
+<body>
+    <div class="background-animation">
+        <div class="pulse-circle" style="width: 300px; height: 300px; top: 10%; left: 80%;"></div>
+        <div class="pulse-circle" style="width: 200px; height: 200px; top: 60%; left: 5%; animation-delay: 2s;"></div>
+        <div class="pulse-circle" style="width: 150px; height: 150px; top: 30%; left: 70%; animation-delay: 4s;"></div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <div class="title-box">
+               <h1 class="title">
+               🔧 INVENTARIO DE HERRAMIENTAS
+               </h1>
+            </div>
+            <p class="subtitle">Sistema de Control de Stock CRUGER 1.3</p>
+        </div>
+
+        <div class="controls">
+            <!-- Se eliminaron la búsqueda y el filtro 'Todas' -->
+            <div class="filter-buttons">
+                <button class="filter-btn" data-filter="critical">Crítico</button>
+                <button class="filter-btn" data-filter="low">Bajo</button>
+                <button class="filter-btn active" data-filter="good">Bueno</button>
+            </div>
+        </div>
+
+        <div class="stats-grid" id="statsGrid">
+            <!-- Las estadísticas se cargarán aquí -->
+        </div>
+
+        <div id="loadingContainer" class="loading-container">
+            <div class="loading-spinner"></div>
+        </div>
+
+        <div id="errorContainer" class="error-message" style="display: none;">
+            <h3>❌ Error al cargar los datos</h3>
+            <p>No se pudieron cargar los datos del inventario. Por favor, verifica la conexión y vuelve a intentar.</p>
+            <button id="retryButton" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #10b981; color: white; border: none; border-radius: 0.5rem; cursor: pointer;">
+                Reintentar
+            </button>
+        </div>
+
+        <div class="inventory-grid" id="inventoryGrid">
+            <!-- Los elementos del inventario se cargarán aquí -->
+        </div>
+    </div>
+
+    <!-- Modal Usar Herramienta -->
+    <div id="useModalOverlay" class="modal-overlay">
+        <div class="modal modal-neon">
+            <div class="modal-header">
+                <h2 id="useModalTitle">Usar herramienta</h2>
+                <button id="useModalClose" class="icon-btn" aria-label="Cerrar">✕</button>
+            </div>
+
+            <form id="useToolForm" class="modal-form">
+                <div class="form-group">
+                    <label for="useToolName">Herramienta</label>
+                    <input id="useToolName" type="text" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label for="useQty">Cantidad a usar</label>
+                    <input id="useQty" type="number" min="1" step="1" required placeholder="Ej. 1">
+                    <small id="useQtyHint" class="hint"></small>
+                </div>
+
+                <div class="form-group">
+                    <label for="useMachine">Máquina</label>
+                    <select id="useMachine" required>
+                        <!-- Se llenará por JS -->
+                    </select>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="submit" class="save-btn">Confirmar</button>
+                    <button type="button" id="useModalCancel" class="cancel-btn">Cancelar</button>
+                </div>
+
+                <input type="hidden" id="useToolId">
+            </form>
+        </div>
+    </div>
+
+    <!-- iframe oculto para la comunicación con Google Apps Script -->
+    <iframe name="hiddenFrame" style="display: none;"></iframe>
+
+    <!-- BOTÓN PARA VOLVER A PRODUCCIÓN -->
+    <a href="produccion.html" class="nav-button" title="Volver a Producción">
+        📊
+    </a>
+
+        <!-- BOTÓN PARA VOLVER A PRODUCCIÓN -->
+    <a href="medidas.html" class="nav-button1" title="Volver a Medir">
+        🔬
+     </a>
+
+     <a href="database.html" class="nav-button2" title="Volver a Base de Datos">
+        💾​
+    </a>
+
+
+    <script src="script.js"></script>
+</body>
+</html>

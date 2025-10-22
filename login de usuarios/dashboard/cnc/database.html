@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Base de Datos</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="database.css">
+</head>
+<body>
+    <div class="background-animation">
+        <div class="pulse-circle" style="width: 300px; height: 300px; top: 10%; left: 10%;"></div>
+        <div class="pulse-circle" style="width: 400px; height: 400px; top: 60%; right: 10%; animation-delay: 2s;"></div>
+        <div class="pulse-circle" style="width: 250px; height: 250px; bottom: 10%; left: 50%; animation-delay: 4s;"></div>
+    </div>
+
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <h3>📊 CONCENTRADOS</h3>
+                <div class="version-info">Sistema de Concentrados Cruger 2.0</div>
+            </div>
+            <div class="nav-item active" data-view="medidas">
+                📏 Concentrado de Medidas
+            </div>
+            <div class="nav-item" data-view="placas">
+                🔧 Concentrado de Placas
+            </div>
+            <div class="nav-item" data-view="flycut">
+                ✂️ Concentrado Flycut
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="header">
+                <div class="title-box">
+                    <h1 class="title">BASE DE DATOS</h1>
+                </div>
+            </div>
+
+            <div id="discrepanciasAlert" class="alert-discrepancias" style="display: none;">
+                <div class="alert-content">
+                    <h3 class="alert-title">SE DETECTAN DISCREPANCIAS</h3>
+                    <p class="alert-message" id="discrepanciasCount">0 PLACAS CON DISCREPANCIAS SIN RESOLVER</p>
+                </div>
+            </div>
+
+            <div id="medidasView" class="view-content">
+                <div class="filters-section">
+                    <h3 class="filters-title">🔍 Filtros - Concentrado de Medidas</h3>
+                    <div class="filters-grid">
+                        <div class="filter-group">
+                            <label>Mes</label>
+                            <select id="filterMesMedidas">
+                                <option value="">Todos</option>
+                                <option value="01">Enero</option>
+                                <option value="02">Febrero</option>
+                                <option value="03">Marzo</option>
+                                <option value="04">Abril</option>
+                                <option value="05">Mayo</option>
+                                <option value="06">Junio</option>
+                                <option value="07">Julio</option>
+                                <option value="08">Agosto</option>
+                                <option value="09">Septiembre</option>
+                                <option value="10">Octubre</option>
+                                <option value="11">Noviembre</option>
+                                <option value="12">Diciembre</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>MACHINE</label>
+                            <select id="filterMACHINE">
+                                <option value="">Todas</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Turno (Shift)</label>
+                            <select id="filterShift">
+                                <option value="">Todos</option>
+                                <option value="1">Turno 1</option>
+                                <option value="2">Turno 2</option>
+                                <option value="3">Turno 3</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>PROGRAM</label>
+                            <select id="filterProgram">
+                                <option value="">Todos</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn-filter" onclick="applyFilters()">Aplicar Filtros</button>
+                </div>
+                <div class="table-container">
+                    <div id="medidasTableContent"></div>
+                </div>
+            </div>
+
+            <div id="placasView" class="view-content" style="display: none;">
+                <div class="filters-section">
+                    <h3 class="filters-title">🔍 Filtros - Concentrado de Placas</h3>
+                    <div class="filters-grid">
+                        <div class="filter-group">
+                            <label>Mes</label>
+                            <select id="filterMesPlacas">
+                                <option value="">Todos</option>
+                                <option value="01">Enero</option>
+                                <option value="02">Febrero</option>
+                                <option value="03">Marzo</option>
+                                <option value="04">Abril</option>
+                                <option value="05">Mayo</option>
+                                <option value="06">Junio</option>
+                                <option value="07">Julio</option>
+                                <option value="08">Agosto</option>
+                                <option value="09">Septiembre</option>
+                                <option value="10">Octubre</option>
+                                <option value="11">Noviembre</option>
+                                <option value="12">Diciembre</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Líder</label>
+                            <select id="filterLiderPlacas">
+                                <option value="">Todos</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Categoría</label>
+                            <select id="filterCategoria">
+                                <option value="">Todas</option>
+                                <option value="scrap">Scrap</option>
+                                <option value="bonding">Bonding</option>
+                                <option value="produccion">Producción</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn-filter" onclick="applyFilters()">Aplicar Filtros</button>
+                </div>
+                <div class="table-container">
+                    <div id="placasTableContent"></div>
+                </div>
+            </div>
+
+            <div id="flycutView" class="view-content" style="display: none;">
+                <div class="filters-section">
+                    <h3 class="filters-title">🔍 Filtros - Concentrado Flycut</h3>
+                    <div class="filters-grid">
+                        <div class="filter-group">
+                            <label>Mes</label>
+                            <select id="filterMesFlycut">
+                                <option value="">Todos</option>
+                                <option value="01">Enero</option>
+                                <option value="02">Febrero</option>
+                                <option value="03">Marzo</option>
+                                <option value="04">Abril</option>
+                                <option value="05">Mayo</option>
+                                <option value="06">Junio</option>
+                                <option value="07">Julio</option>
+                                <option value="08">Agosto</option>
+                                <option value="09">Septiembre</option>
+                                <option value="10">Octubre</option>
+                                <option value="11">Noviembre</option>
+                                <option value="12">Diciembre</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Líder</label>
+                            <select id="filterLiderFlycut">
+                                <option value="">Todos</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Tipo</label>
+                            <select id="filterTipoFlycut">
+                                <option value="">Todos</option>
+                                <option value="PROCESO">PROCESO</option>
+                                <option value="ENTRADA">ENTRADA</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn-filter" onclick="applyFilters()">Aplicar Filtros</button>
+                </div>
+                <div class="table-container">
+                    <div id="flycutTableContent"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="discrepanciaModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Resolver Discrepancia</h3>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="nota-original">
+                    <h4>Nota Original:</h4>
+                    <p id="notaOriginal"></p>
+                </div>
+                <div class="respuesta-usuario">
+                    <h4>Tu Respuesta:</h4>
+                    <textarea id="respuestaUsuario" placeholder="Escribe tu respuesta aquí..."></textarea>
+                </div>
+                <div class="password-section">
+                    <h4>Contraseña:</h4>
+                    <input type="password" id="passwordInput" placeholder="Ingresa la contraseña">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btnResolver" class="btn-resolver">Resolver Discrepancia</button>
+                <button id="btnCancelar" class="btn-cancelar">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <a href="inventario.html" class="nav-button1" title="Volver a inventario">
+        🔧
+    </a>
+
+    <a href="produccion.html" class="nav-button" title="Volver a Producción">
+        📊
+    </a>
+
+    <a href="medidas.html" class="nav-button2" title="Volver a Medir">
+        🔬
+    </a>
+
+    <script src="database.js"></script>
+</body>
+</html>
