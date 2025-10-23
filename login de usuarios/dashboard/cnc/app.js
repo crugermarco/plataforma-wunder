@@ -1,4 +1,3 @@
-// Configuración de conexiones a Google Sheets
 const sheetConnections = {
   produccion: {
     scriptUrl: 'https://script.google.com/macros/s/AKfycbzwBWe6vj5qewHOwD_XY05zZ9a0Sk1MSi5wKhW7MaEjoj_jykEMQFSKHenNjuiDPVhX/exec',
@@ -31,7 +30,6 @@ const sheetConnections = {
   }
 };
 
-// Objeto principal para almacenar los datos del formulario
 const formData = {
     fecha: '', 
     lider: '',
@@ -79,7 +77,6 @@ const formData = {
     }
 };
 
-// Configuración de secciones
 const produccionSections = [
     { title: 'PRODUCCION', codes: ['9101', '9102', '9103', '9103R', '9104', '9105', '9114', '9115'] },
     { title: '', codes: ['1201', '1202', '1203', '1203R', '1204', '1205'] },
@@ -105,13 +102,11 @@ const materialesData = [
     { code: '1201-354', desc: '(0.354)', color: '' }
 ];
 
-// Objeto para almacenar los intervalos de actualización de stock
 const stockIntervals = {
   placas: null,
   platos: null
 };
 
-// Función para obtener fecha actual
 function getCurrentDateString() {
     const now = new Date();
     const month = now.getMonth() + 1;
@@ -120,7 +115,6 @@ function getCurrentDateString() {
     return `${month.toString().padStart(2,'0')}/${day.toString().padStart(2,'0')}/${year}`;
 }
 
-// Función para determinar líder y turno
 function getLeaderAndShift() {
     const now = new Date();
     const hour = now.getHours();
@@ -134,7 +128,6 @@ function getLeaderAndShift() {
     }
 }
 
-// Función para crear secciones de producción
 function createProductionSection(containerId, dataKey, inputClass = 'production-input') {
     const container = document.getElementById(containerId);
     
@@ -175,7 +168,6 @@ function createProductionSection(containerId, dataKey, inputClass = 'production-
     });
 }
 
-// Crear sección de bonding en el DOM
 function createBondingSection() {
     const container = document.getElementById('bonding-items');
     
@@ -205,7 +197,6 @@ function createBondingSection() {
     });
 }
 
-// Crear sección de flycut en el DOM
 function createFlycutSection() {
     const container = document.getElementById('flycut-items');
     
@@ -236,7 +227,6 @@ function createFlycutSection() {
     });
 }
 
-// Crear sección de materiales en el DOM
 function createMaterialSection() {
     const container = document.getElementById('material-items');
     
@@ -281,14 +271,12 @@ function createMaterialSection() {
     });
 }
 
-// Función para cargar datos de stock
 async function loadStockData(type) {
     try {
         const containerId = `${type}-stock`;
         const lastUpdatedElement = document.getElementById(`${type}-last-updated`);
         const refreshButton = document.getElementById(`refresh-${type}`);
         
-        // Mostrar estado de carga
         if (refreshButton) {
             refreshButton.disabled = true;
             refreshButton.classList.add('refreshing');
@@ -324,7 +312,6 @@ async function loadStockData(type) {
     }
 }
 
-// Función para renderizar los items de stock
 function renderStockItems(containerId, stockData) {
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -345,7 +332,6 @@ function renderStockItems(containerId, stockData) {
         input.value = item.stock;
         input.readOnly = true;
         
-        // Aplicar clase de parpadeo si el stock es bajo
         if (item.lowStock) {
             input.classList.add('low-stock');
         }
@@ -356,16 +342,12 @@ function renderStockItems(containerId, stockData) {
     });
 }
 
-// Configurar auto-refresco cada 5 minutos
 function setupStockAutoRefresh() {
-    // Limpiar intervalos existentes
     clearStockIntervals();
     
-    // Cargar datos iniciales
     loadStockData('placas');
     loadStockData('platos');
     
-    // Configurar intervalos de actualización
     stockIntervals.placas = setInterval(() => {
         loadStockData('placas');
     }, sheetConnections.stock.refreshInterval);
@@ -375,19 +357,16 @@ function setupStockAutoRefresh() {
     }, sheetConnections.stock.refreshInterval);
 }
 
-// Limpiar intervalos de stock
 function clearStockIntervals() {
     Object.values(stockIntervals).forEach(interval => {
         if (interval) clearInterval(interval);
     });
 }
 
-// Manejar cambios en los inputs
 function handleInputChange(section, key, value) {
     formData[section][key] = value;
 }
 
-// Función principal para enviar datos a Google Sheets
 async function handleSubmit() {
     const submitBtn = document.getElementById('submit-btn');
     const statusMessage = document.getElementById('status-message');
@@ -411,7 +390,6 @@ async function handleSubmit() {
             throw new Error('Por favor completa los campos requeridos (fecha y líder)');
         }
 
-        // === Enviar Producción ===
         const produccionFiltrada = {};
         Object.entries(formData.produccion).forEach(([key, val]) => {
             if (val > 0) produccionFiltrada[key] = val;
@@ -440,7 +418,6 @@ async function handleSubmit() {
             }
         }
 
-        // === Enviar Scrap ===
         const scrapFiltrada = {};
         Object.entries(formData.scrap).forEach(([key, val]) => {
             if (val > 0) scrapFiltrada[key] = -Math.abs(val);
@@ -470,7 +447,6 @@ async function handleSubmit() {
             }
         }
 
-        // === Enviar Bonding ===
         const bondingFiltrada = {};
         Object.entries(formData.bonding).forEach(([key, val]) => {
             if (val > 0) bondingFiltrada[key] = val;
@@ -499,7 +475,6 @@ async function handleSubmit() {
             }
         }
 
-        // === Enviar Flycut ===
         const flycutFiltrada = {};
         Object.entries(formData.flycut).forEach(([key, val]) => {
             if (val > 0) flycutFiltrada[key] = val;
@@ -528,7 +503,6 @@ async function handleSubmit() {
             }
         }
 
-        // === Enviar Materiales ===
         const materialesFiltrados = {};
         Object.entries(formData.materiales).forEach(([key, val]) => {
             if (val > 0) materialesFiltrados[key] = val;
@@ -614,26 +588,20 @@ function resetForm(tipo) {
     }
 }
 
-// Validar datos antes de enviar
 function validateProductionData() {
-    // Validar campos básicos
     if (!formData.fecha || !formData.lider || !formData.turno) {
         return false;
     }
     
-    // Validar que al menos un valor de producción sea mayor que 0
     const hasProduction = Object.values(formData.produccion).some(val => val > 0);
     
     return hasProduction;
 }
 
-// Inicializar la aplicación cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', function() {
-    // Establecer fecha actual
     formData.fecha = getCurrentDateString();
     document.getElementById('fecha').value = formData.fecha;
 
-    // Establecer líder y turno según la hora
     const leaderAndShift = getLeaderAndShift();
     formData.lider = leaderAndShift.lider;
     formData.turno = leaderAndShift.turno;
@@ -641,14 +609,12 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('lider').value = formData.lider;
     document.getElementById('turno').value = formData.turno;
 
-    // Crear todas las secciones del formulario
     createProductionSection('production-sections', 'produccion');
     createProductionSection('scrap-sections', 'scrap', 'production-input scrap-input');
     createBondingSection();
     createFlycutSection();
     createMaterialSection();
 
-    // Configurar pestañas
     const tabs = document.querySelectorAll('.section-tab');
     tabs.forEach(tab => {
         tab.addEventListener('click', function() {
@@ -660,7 +626,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const sectionId = this.dataset.section + '-section';
             document.getElementById(sectionId).classList.add('active');
 
-            // Configurar auto-refresco solo para la pestaña STOCK
             if (this.dataset.section === 'stock') {
                 setupStockAutoRefresh();
             } else {
@@ -669,7 +634,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Configurar botones de refrescar manual
     document.getElementById('refresh-placas')?.addEventListener('click', () => {
         loadStockData('placas');
     });
@@ -678,7 +642,6 @@ document.addEventListener('DOMContentLoaded', function() {
         loadStockData('platos');
     });
 
-    // Manejar cambios en horas y máquinas
     document.getElementById('horas').addEventListener('input', function() {
         formData.horas = this.value;
     });
@@ -687,6 +650,6 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.maquinas = this.value;
     });
 
-    // Configurar el botón de enviar
     document.getElementById('submit-btn').addEventListener('click', handleSubmit);
+
 });
