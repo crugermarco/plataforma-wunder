@@ -1,25 +1,20 @@
-// ---------------- CONFIGURACIÓN DE LA APLICACIÓN ----------------
 const CONFIG = {
     scriptUrl: 'https://script.google.com/macros/s/AKfycbzKmGJISYhLuP6ZONBBlSVUYi3-bdDdsGGYe3k0qc_UoagxPhccPSxHUrPxa-PAoVlV/exec',
     sheetName: 'Herramientas stock',
     headers: ['NOMBRE', 'STOCK FISICO', 'STOCK NECESARIO', 'IMAGEN']
 };
 
-// ---------------- VARIABLES GLOBALES ----------------
 let allTools = [];
-let currentFilter = 'all'; // por defecto mostramos todo
+let currentFilter = 'all'; 
 let retryCount = 0;
 const MAX_RETRIES = 3;
 
-// Buffer de cambios
 let stockUpdateBuffer = [];
 let stockUpdateTimeout = null;
 const STOCK_UPDATE_DELAY = 1500;
 
-// Modal - referencias
 let useModalOverlay, useModalClose, useModalCancel, useToolForm, useToolNameInput, useQtyInput, useQtyHint, useMachineSelect, useToolIdHidden;
 
-// ---------------- INICIALIZACIÓN ----------------
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         cacheModalRefs();
@@ -29,7 +24,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 100);
 });
 
-// ---------------- REFERENCIAS MODAL ----------------
 function cacheModalRefs() {
     useModalOverlay   = document.getElementById('useModalOverlay');
     useModalClose     = document.getElementById('useModalClose');
@@ -42,7 +36,6 @@ function cacheModalRefs() {
     useToolIdHidden   = document.getElementById('useToolId');
 }
 
-// ---------------- EVENTOS ----------------
 function setupEventListeners() {
     const filterButtons = document.querySelectorAll('.filter-btn');
     filterButtons.forEach(btn => btn.addEventListener('click', handleFilter));
@@ -54,7 +47,6 @@ function setupEventListeners() {
     });
 }
 
-// ---------------- MODAL ----------------
 function setupUseModal() {
     if (!useMachineSelect) return;
     useMachineSelect.innerHTML = '';
@@ -125,7 +117,6 @@ function openUseModal(tool) {
 }
 function closeUseModal() { if (useModalOverlay) useModalOverlay.style.display = 'none'; }
 
-// ---------------- CARGA DE DATOS JSONP ----------------
 function loadToolsDataJSONP() {
     showLoading(true);
     hideError();
@@ -187,7 +178,6 @@ function loadToolsDataJSONP() {
     }, 10000);
 }
 
-// ---------------- UI HELPERS ----------------
 function showLoading(show) {
     const container = document.getElementById('loadingContainer');
     if (container) container.style.display = show ? 'flex' : 'none';
@@ -212,7 +202,6 @@ function hideError() {
     if (container) container.style.display = 'none';
 }
 
-// ---------------- RENDER ESTADÍSTICAS ----------------
 function renderStatistics() {
     const statsGrid = document.getElementById('statsGrid');
     if (!statsGrid) return;
@@ -229,7 +218,6 @@ function renderStatistics() {
     `;
 }
 
-// ---------------- RENDER INVENTARIO ----------------
 function renderInventory() {
     const inventoryGrid = document.getElementById('inventoryGrid');
     if (!inventoryGrid) return;
@@ -239,7 +227,6 @@ function renderInventory() {
         return;
     }
 
-    // Mostrar todas las herramientas, pero aplicar filtro visual solo si se selecciona filtro distinto de "all"
     const filteredTools = currentFilter === 'all' ? [...allTools] : allTools.filter(tool => getStockStatus(tool) === currentFilter);
 
     inventoryGrid.innerHTML = filteredTools.map(tool => {
@@ -268,7 +255,6 @@ function renderInventory() {
     }).join('');
 }
 
-// ---------------- HELPERS ----------------
 function getStockStatus(tool) {
     if (tool.currentStock <= 5) return 'critical';
     if (tool.currentStock > 5 && tool.currentStock < tool.neededStock) return 'low';
@@ -284,7 +270,6 @@ function handleFilter(event) {
     renderInventory(); 
 }
 
-// ---------------- MANEJO DE STOCK ----------------
 function handleAddStock(id) {
     const tool = allTools.find(t => t.id === id);
     const input = prompt(`Agregar cantidad de ${tool.name}:`, '1');
@@ -302,7 +287,6 @@ function handleUseTool(id) {
     openUseModal(tool);
 }
 
-// ---------------- BUFFER DE ACTUALIZACIONES ----------------
 function bufferStockUpdate(tool) {
     const index = stockUpdateBuffer.findIndex(t => t.name === tool.name);
     if (index >= 0) stockUpdateBuffer[index] = { name: tool.name, stock: tool.currentStock };
@@ -323,7 +307,6 @@ async function flushStockUpdates() {
     } catch (err) { console.error('Error actualizando stock en Sheets:', err); }
 }
 
-// ---------------- REGISTRO DE CAMBIO DE HERRAMIENTA ----------------
 async function recordToolChange(tool, qty, machine) {
     await fetch(CONFIG.scriptUrl, {
         method:'POST',
@@ -336,3 +319,4 @@ async function recordToolChange(tool, qty, machine) {
         })
     });
 }
+
