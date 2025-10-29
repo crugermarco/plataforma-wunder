@@ -8,147 +8,160 @@
     <link rel="stylesheet" href="medidas.css">
 </head>
 <style>
-        .nav-button {
-            position: fixed;
-            top: 1000;
-            left: 500;
-            bottom: 20px;
-            right: 20px;
-            z-index: 10000;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
-            border: none;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-        }
-        
-        .nav-button:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.6);
-        }
+    .nav-button {
+        position: fixed;
+        top: 1000;
+        left: 500;
+        bottom: 20px;
+        right: 20px;
+        z-index: 10000;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+    }
+    
+    .nav-button:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 16px rgba(16, 185, 129, 0.6);
+    }
 
-        .title-box {
-  position: relative;
-  background: rgba(15, 23, 42, 0.8);
-  border: 2px solid rgba(59, 130, 246, 0.3);
-  border-radius: 1.25rem;
-  padding: 2rem 2.5rem;
-  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.2);
-  backdrop-filter: blur(10px);
-  margin-bottom: 2rem;
-  overflow: hidden;
-  display: inline-block;
-        }
-            .nav-button1 {
-            position: fixed;
-            top: 10000;
-            left: 1000;
-            bottom: 20px;
-            right: 20px;
-            z-index: 10000;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #2c29ce, #0832ee);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            box-shadow: 0 4px 12px rgba(18, 1, 243, 0.815);
-            border: none;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-        }
-        
-        .nav-button1:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 16px rgba(88, 73, 230, 0.6);
-        }
+    .title-box {
+        position: relative;
+        background: rgba(15, 23, 42, 0.8);
+        border: 2px solid rgba(59, 130, 246, 0.3);
+        border-radius: 1.25rem;
+        padding: 2rem 2.5rem;
+        box-shadow: 0 10px 30px rgba(59, 130, 246, 0.2);
+        backdrop-filter: blur(10px);
+        margin-bottom: 2rem;
+        overflow: hidden;
+        display: inline-block;
+    }
 
-        .title-box {
-  position: relative;
-  background: rgba(15, 23, 42, 0.8);
-  border: 2px solid rgba(59, 130, 246, 0.3);
-  border-radius: 1.25rem;
-  padding: 2rem 2.5rem;
-  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.2);
-  backdrop-filter: blur(10px);
-  margin-bottom: 2rem;
-  overflow: hidden;
-  display: inline-block;
-  }
+    .nav-button1 {
+        position: fixed;
+        top: 10000;
+        left: 1000;
+        bottom: 20px;
+        right: 20px;
+        z-index: 10000;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #2c29ce, #0832ee);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        box-shadow: 0 4px 12px rgba(18, 1, 243, 0.815);
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+    }
+    
+    .nav-button1:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 16px rgba(88, 73, 230, 0.6);
+    }
 
-  .nav-button2 {
-            position: fixed;
-            top: 10000;
-            left: 1000;
-            bottom: 20px;
-            right: 20px;
-            z-index: 10000;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #d330e9, #c000fa);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            box-shadow: 0 4px 12px rgba(195, 0, 255, 0.815);
-            border: none;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-        }
-        
-        .nav-button2:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 16px rgba(221, 9, 193, 0.6);
-        }
-        .title-box {
-     position: relative;
-     background: rgba(15, 23, 42, 0.8);
-     border: 2px solid rgba(59, 130, 246, 0.3);
-     border-radius: 1.25rem;
-     padding: 2rem 2.5rem;
-     box-shadow: 0 10px 30px rgba(59, 130, 246, 0.2);
-     backdrop-filter: blur(10px);
-     margin-bottom: 2rem;
-     overflow: hidden;
-     display: inline-block;
-     }
+    .nav-button2 {
+        position: fixed;
+        top: 10000;
+        left: 1000;
+        bottom: 20px;
+        right: 20px;
+        z-index: 10000;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #d330e9, #c000fa);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        box-shadow: 0 4px 12px rgba(195, 0, 255, 0.815);
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+    }
+    
+    .nav-button2:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 16px rgba(221, 9, 193, 0.6);
+    }
 
+    .nav-button {
+        bottom: 90px;
+        right: 20px;
+    }
 
-  
-  .nav-button {
-    bottom: 90px; /* Separación del borde inferior de 90px */
-    right: 20px;
-  }
+    .nav-button1 {
+        bottom: 20px;
+        right: 20px;
+    }
 
+    .nav-button2 {
+        bottom: 160px;
+        right: 20px;
+    }
 
- .nav-button1 {
-    bottom: 20px; /* Separación del borde inferior de 20px */
-    right: 20px;
- }
+    .delete-row-btn {
+        background: rgba(239, 68, 68, 0.2);
+        border: 1px solid rgba(239, 68, 68, 0.5);
+        color: #f87171;
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        margin-left: auto;
+    }
 
- .nav-button2 {
-       bottom: 160px; 
-       right: 20px;
-} 
+    .delete-row-btn:hover {
+        background: rgba(239, 68, 68, 0.3);
+        border-color: #ef4444;
+        color: #fca5a5;
+        transform: scale(1.1);
+    }
 
+    .reference-value {
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        font-size: 1.1em !important;
+        text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+    }
 
+    .input-error {
+        border-color: #ef4444 !important;
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+        background: rgba(239, 68, 68, 0.05) !important;
+    }
 
+    .error-message-machine {
+        color: #ef4444;
+        font-size: 0.8rem;
+        margin-top: 0.25rem;
+        display: none;
+    }
 </style>
 <body>
     <div class="background-animation">
@@ -191,17 +204,16 @@
     
     <a href="inventario.html" class="nav-button1" title="Volver a inventario">
         🔧
-</a>
+    </a>
 
-<a href="produccion.html" class="nav-button" title="Volver a Producción">
-            📊
-</a>
+    <a href="produccion.html" class="nav-button" title="Volver a Producción">
+        📊
+    </a>
 
-<a href="database.html" class="nav-button2" title="Volver a Base de Datos">
-    💾​
-</a>
+    <a href="database.html" class="nav-button2" title="Volver a Base de Datos">
+        💾​
+    </a>
 
     <script src="medidas.js"></script>
 </body>
-
 </html>
