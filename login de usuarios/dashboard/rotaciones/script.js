@@ -1,16 +1,19 @@
-const GOOGLE_SHEETS_CONFIG = {
+const SCRIPT_BASE_URL = 'https://script.google.com/macros/s/AKfycbyTr9JHkSwC6lC_5mfe6aG-s3tjUFxm-fd4_JvpfFRZWkC9RpD3hmmvj_DNtN1l4xkpMg/exec',
+
+
+GOOGLE_SHEETS_CONFIG = {
     employeeDatabase: {
-        scriptUrl: 'https://script.google.com/macros/s/AKfycbxyfp4T0voGemFW0VMFS8OdDA2mRSFryZF1IPWdNjoOtLwLRZVgpaHQpFPRSq3yCOwiXg/exec',
+        scriptUrl: SCRIPT_BASE_URL,
         spreadsheetId: '1VJf4jHb67XY7OI0JS4wAG51C4PWRYPRU_EVByYo0vY0',
         sheetName: 'DATA'
     },
     rotationRegistry: {
-        scriptUrl: 'https://script.google.com/macros/s/AKfycbxyfp4T0voGemFW0VMFS8OdDA2mRSFryZF1IPWdNjoOtLwLRZVgpaHQpFPRSq3yCOwiXg/exec',
+        scriptUrl: SCRIPT_BASE_URL,
         spreadsheetId: '1VJf4jHb67XY7OI0JS4wAG51C4PWRYPRU_EVByYo0vY0',
         sheetName: 'FLUJO DE ROTACIONES'
     },
     bathroomRegistry: {
-        scriptUrl: 'https://script.google.com/macros/s/AKfycbxyfp4T0voGemFW0VMFS8OdDA2mRSFryZF1IPWdNjoOtLwLRZVgpaHQpFPRSq3yCOwiXg/exec',
+        scriptUrl: SCRIPT_BASE_URL,
         spreadsheetId: '1VJf4jHb67XY7OI0JS4wAG51C4PWRYPRU_EVByYo0vY0',
         sheetName: 'BAÑO'
     }
@@ -18,16 +21,12 @@ const GOOGLE_SHEETS_CONFIG = {
 
 const employeeDatabase = {
     'marco cruger': { id: '3378', fullName: 'Marco Cruger' },
-    'javier raygoza': { id: '1908', fullName: 'Javier Raygoza' },
-    'carlos lopez': { id: '3380', fullName: 'Carlos López' },
-    'maria rodriguez': { id: '3381', fullName: 'María Rodríguez' },
-    'jose martinez': { id: '3382', fullName: 'José Martínez' }
 };
 
 let searchTimeout;
 let bathroomUsers = [];
+let pendingBathroomRecords = []; 
 
-// Función para establecer fecha y hora actual
 function setCurrentDateTime() {
     const now = new Date();
     const options = {
@@ -42,7 +41,6 @@ function setCurrentDateTime() {
     document.getElementById('dateTime').value = now.toLocaleString('es-MX', options);
 }
 
-// Función para buscar empleado
 async function searchEmployee(name) {
     const nameStatus = document.getElementById('nameStatus');
     const employeeIdField = document.getElementById('employeeId');
@@ -90,7 +88,6 @@ async function searchEmployee(name) {
     }
 }
 
-// Función para mostrar mensajes de estado
 function showStatus(message, type) {
     const statusElement = document.getElementById('statusMessage');
     statusElement.textContent = message;
@@ -102,7 +99,6 @@ function showStatus(message, type) {
     }, 5000);
 }
 
-// Función para enviar datos a Google Sheets (rotaciones)
 async function sendToGoogleSheets(formData) {
     try {
         const queryString = new URLSearchParams({
@@ -135,30 +131,75 @@ async function sendToGoogleSheets(formData) {
     }
 }
 
-// Función para enviar registros de baño
 async function sendBathroomRecord(recordData) {
-    try {
-        const queryString = new URLSearchParams({
-            action: 'logBathroom',
-            ...recordData
-        }).toString();
-
-        const url = `${GOOGLE_SHEETS_CONFIG.bathroomRegistry.scriptUrl}?${queryString}`;
-        const response = await fetch(url, { method: 'GET', mode: 'cors' });
-
-        if (!response.ok) throw new Error('Error al conectar con el servidor');
+    return new Promise((resolve, reject) => {
+        pendingBathroomRecords.push({ recordData, resolve, reject });
         
-        const result = await response.json();
-        if (!result.success) throw new Error(result.message || 'Error al registrar baño');
+        if (pendingBathroomRecords.length === 1) {
+            processBathroomQueue();
+        }
+    });
+}
+
+async function processBathroomQueue() {
+    while (pendingBathroomRecords.length > 0) {
+        const { recordData, resolve, reject } = pendingBathroomRecords[0];
         
-        return { success: true };
-    } catch (error) {
-        console.error('Error en sendBathroomRecord:', error);
-        throw error;
+        try {
+            const queryString = new URLSearchParams({
+                action: 'logBathroom',
+                ...recordData
+            }).toString();
+
+            const url = `${GOOGLE_SHEETS_CONFIG.bathroomRegistry.scriptUrl}?${queryString}`;
+            const response = await fetch(url, { 
+                method: 'GET', 
+                mode: 'cors',
+                signal: AbortSignal.timeout(10000)
+            });
+
+            if (!response.ok) throw new Error('Error al conectar con el servidor');
+            
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message || 'Error al registrar baño');
+            
+            resolve({ success: true });
+        } catch (error) {
+            console.warn('Error en registro de baño (se reintentará):', error);
+            
+            setTimeout(async () => {
+                try {
+                    const queryString = new URLSearchParams({
+                        action: 'logBathroom',
+                        ...recordData
+                    }).toString();
+
+                    const url = `${GOOGLE_SHEETS_CONFIG.bathroomRegistry.scriptUrl}?${queryString}`;
+                    const response = await fetch(url, { method: 'GET', mode: 'cors' });
+
+                    if (!response.ok) throw new Error('Error en reintento');
+                    
+                    const result = await response.json();
+                    if (!result.success) throw new Error(result.message);
+                    
+                    resolve({ success: true });
+                } catch (retryError) {
+                    reject(retryError);
+                } finally {
+                    pendingBathroomRecords.shift();
+                    if (pendingBathroomRecords.length > 0) {
+                        processBathroomQueue();
+                    }
+                }
+            }, 2000);
+            
+            return;
+        }
+        
+        pendingBathroomRecords.shift();
     }
 }
 
-// Función para actualizar el panel de baño
 function updateBathroomPanel() {
     const panel = document.getElementById('bathroomPanel');
     if (bathroomUsers.length === 0) {
@@ -167,7 +208,9 @@ function updateBathroomPanel() {
     }
 
     panel.style.display = 'block';
-    panel.innerHTML = '<div class="bathroom-title">PERSONAL EN BAÑO</div>';
+    
+    const fragment = document.createDocumentFragment();
+    fragment.innerHTML = '<div class="bathroom-title">PERSONAL EN BAÑO</div>';
 
     const now = new Date();
     bathroomUsers.forEach(user => {
@@ -178,10 +221,9 @@ function updateBathroomPanel() {
         const card = document.createElement('div');
         card.className = 'bathroom-card';
         
-        // Determinar el estado según el tiempo
-        if (diff > 900) { // Más de 20 minutos (1200 segundos)
+        if (diff > 600) { // Más de 10 minutos
             card.classList.add('critical-alert');
-        } else if (diff > 600) { // Más de 15 minutos (900 segundos)
+        } else if (diff > 900) { // Más de 15 minutos
             card.classList.add('warning-alert');
         }
         
@@ -190,18 +232,50 @@ function updateBathroomPanel() {
             <div class="time">${minutes}:${seconds}</div>
             <div class="label">Tiempo en el baño</div>
         `;
-        panel.appendChild(card);
+        fragment.appendChild(card);
     });
+
+    panel.innerHTML = '';
+    panel.appendChild(fragment);
 }
 
-// Evento para búsqueda de empleados
+async function handleBathroomExit(employeeName, employeeId, existing) {
+    const exitTime = new Date();
+    const durationMs = exitTime - existing.startTime;
+    const durationMin = (durationMs / 60000).toFixed(2);
+
+    const index = bathroomUsers.findIndex(u => u.key === existing.key);
+    if (index !== -1) {
+        bathroomUsers.splice(index, 1);
+        updateBathroomPanel(); 
+    }
+
+    const recordData = {
+        employeeName: employeeName,
+        employeeId: employeeId,
+        entryTime: existing.startTime.toLocaleTimeString('es-MX'),
+        exitTime: exitTime.toLocaleTimeString('es-MX'),
+        duration: durationMin,
+        date: exitTime.toLocaleDateString('es-MX')
+    };
+
+    sendBathroomRecord(recordData)
+        .then(() => {
+            console.log('✅ Registro de baño guardado exitosamente');
+        })
+        .catch(error => {
+            console.warn('⚠️ Error en registro de baño (pero usuario ya fue removido):', error);
+        });
+
+    return `✅ ${employeeName} salió del baño después de ${durationMin} minutos`;
+}
+
 document.getElementById('employeeName').addEventListener('input', function(e) {
     const name = e.target.value;
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => searchEmployee(name), 500);
 });
 
-// Evento submit del formulario
 document.getElementById('rotationForm').addEventListener('submit', async function(e) {
     e.preventDefault();
 
@@ -233,47 +307,32 @@ document.getElementById('rotationForm').addEventListener('submit', async functio
 
     try {
         showStatus('📤 Enviando registro a Google Sheets...', 'loading');
+        
         await sendToGoogleSheets(formData);
-        showStatus('✅ Registro enviado exitosamente', 'success');
-
+        
         const lower = operationName.toLowerCase();
         const existing = bathroomUsers.find(u => u.key === nameKey);
 
         if (lower.includes('servicio')) {
             if (existing) {
-                // SALIDA DEL BAÑO
-                const exitTime = new Date();
-                const durationMs = exitTime - existing.startTime;
-                const durationMin = (durationMs / 60000).toFixed(2);
-
-                await sendBathroomRecord({
-                    employeeName: employeeName,
-                    employeeId: employeeId,
-                    entryTime: existing.startTime.toLocaleTimeString('es-MX'),
-                    exitTime: exitTime.toLocaleTimeString('es-MX'),
-                    duration: durationMin,
-                    date: exitTime.toLocaleDateString('es-MX')
-                });
-
-                // Remover del panel
-                const index = bathroomUsers.findIndex(u => u.key === nameKey);
-                if (index !== -1) bathroomUsers.splice(index, 1);
-
+                const exitMessage = await handleBathroomExit(employeeName, employeeId, existing);
+                showStatus(exitMessage, 'success');
             } else {
-                // ENTRADA AL BAÑO
                 if (bathroomUsers.length >= 3) {
                     showStatus("⛔ Ya hay 3 personas en el baño. No puedes registrar más.", 'error');
                 } else {
                     bathroomUsers.push({ name: employeeName, key: nameKey, startTime: now });
+                    updateBathroomPanel(); 
                     showStatus(`✅ ${employeeName} registrado en el baño`, 'success');
                 }
             }
         } else {
-            // Si no se menciona "baño", eliminar en caso de que haya registro residual
             const index = bathroomUsers.findIndex(u => u.key === nameKey);
             if (index !== -1) {
                 bathroomUsers.splice(index, 1);
+                updateBathroomPanel(); // Actualización inmediata
             }
+            showStatus('✅ Registro enviado exitosamente', 'success');
         }
 
         document.getElementById('rotationForm').reset();
@@ -287,9 +346,6 @@ document.getElementById('rotationForm').addEventListener('submit', async functio
     }
 });
 
-// Actualizar panel de baño cada segundo
 setInterval(updateBathroomPanel, 1000);
 
-// Establecer fecha y hora al cargar la página
 setCurrentDateTime();
-
