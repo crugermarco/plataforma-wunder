@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SISTEMA ANDON DIGITAL CRUGER 3.0</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="background-animation">
+        <div class="pulse-circle" style="width: 300px; height: 300px; top: 10%; left: 10%;"></div>
+        <div class="pulse-circle" style="width: 400px; height: 400px; top: 60%; right: 10%; animation-delay: 2s;"></div>
+        <div class="pulse-circle" style="width: 250px; height: 250px; bottom: 10%; left: 50%; animation-delay: 4s;"></div>
+    </div>
+
+    <header class="header">
+        <h1>SISTEMA ANDON DIGITAL CRUGER 3.0</h1>
+        <div class="header-info">
+            <div class="info-item">
+                <span>🕒</span>
+                <span id="current-time"></span>
+            </div>
+            <div class="info-item">
+                <span>📊</span>
+                <span id="total-machines">0 Máquinas</span>
+            </div>
+            <div class="info-item">
+                <span>🔄</span>
+                <span>Auto-actualización: 60s</span>
+            </div>
+            <button id="tech-btn" class="btn-tech" style="display: none;">
+                ⚙️ Panel Técnico
+            </button>
+            <button id="request-btn" class="btn-request">
+                ✉️ Solicitar Mantenimiento
+            </button>
+        </div>
+    </header>
+
+    <div class="controls">
+        <button id="refresh-btn" class="btn-refresh">
+            🔄 Actualizar Datos
+        </button>
+    </div>
+
+    <div class="container">
+        <div id="content" class="machines-container">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Cargando datos del sistema...</p>
+            </div>
+        </div>
+        <div class="last-update">
+            Última actualización: <span id="last-update-time">--</span>
+        </div>
+    </div>
+
+    <div class="modal" id="request-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Solicitud de Mantenimiento</h3>
+                <button class="close-modal" data-modal="request-modal">&times;</button>
+            </div>
+            <form id="request-form">
+                <div class="form-group">
+                    <label>Máquina</label>
+                    <select class="form-control" id="machine" required>
+                        <option value="">Seleccione una máquina</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Prioridad</label>
+                    <select class="form-control" id="priority" required>
+                        <option value="">Seleccione prioridad</option>
+                        <option value="Alta">Alta</option>
+                        <option value="Media">Media</option>
+                        <option value="Baja">Baja</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Descripción del Problema</label>
+                    <textarea class="form-control" id="problem-description" rows="4" required></textarea>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" data-modal="request-modal">Cancelar</button>
+                    <button type="submit" class="btn-submit">Enviar Solicitud</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="tech-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Actualizar Estado de Máquina</h3>
+                <button class="close-modal" data-modal="tech-modal">&times;</button>
+            </div>
+            <form id="tech-form">
+                <input type="hidden" id="machine-id">
+                <input type="hidden" id="machine-row">
+                
+                <div class="form-group">
+                    <label>Descripción del Problema</label>
+                    <textarea class="form-control" id="tech-problem-description" disabled rows="3"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Acción Realizada</label>
+                    <input type="text" class="form-control" id="action-taken" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Técnico</label>
+                    <input type="text" class="form-control" id="technician" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Estatus</label>
+                    <select class="form-control" id="status" required>
+                        <option value="FALSE">MT (Mantenimiento)</option>
+                        <option value="TRUE">Activa</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Cotizaciones (PDF)</label>
+                    <input type="file" class="form-control" id="quotations" accept=".pdf">
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" data-modal="tech-modal">Cancelar</button>
+                    <button type="submit" class="btn-submit">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="restriction-modal">
+        <div class="modal-content restriction-modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Acceso Restringido</h3>
+                <button class="close-modal" data-modal="restriction-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>❌ Solo los usuarios Marco Cruger o Josue Chavez pueden usar esta función</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" data-modal="restriction-modal">Entendido</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
