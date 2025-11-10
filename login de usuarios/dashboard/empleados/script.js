@@ -1,4 +1,3 @@
-// Configuración de conexiones a Google Sheets
 const sheetConnections = {
   productivity: {
     scriptUrl: 'https://script.google.com/macros/s/AKfycbw1r_Hkv3aWEvIOqtf3mP7o82tTlevWTFCGRInBKqSUqPNtlQKUNYNb3dh34NYIh2ld/exec',
@@ -22,14 +21,19 @@ const sheetConnections = {
   }
 };
 
-// Variables globales
 let attendanceData = [];
 let vacationData = [];
 let employeesData = [];
 let permissionsData = [];
 let currentUser = null;
+let currentFilters = {
+    date: '',
+    name: '',
+    subject: '',
+    points: ''
+};
+let filteredAttendanceData = [];
 
-// Elementos del DOM
 const elements = {
   navItems: null,
   sections: null,
@@ -57,7 +61,6 @@ const elements = {
   userNameDisplay: null
 };
 
-// Función para inicializar elementos del DOM
 function initializeDOMElements() {
   elements.navItems = document.querySelectorAll('.nav-item');
   elements.sections = document.querySelectorAll('.section-content');
@@ -85,7 +88,6 @@ function initializeDOMElements() {
   elements.userNameDisplay = document.getElementById('userNameDisplay');
 }
 
-// Función mejorada para formatear fechas
 function formatDate(dateString) {
   if (!dateString) return '';
   
@@ -97,37 +99,70 @@ function formatDate(dateString) {
     if (typeof dateString === 'string' && dateString.startsWith('Date(')) {
       const dateParts = dateString.match(/\d+/g);
       if (dateParts && dateParts.length >= 3) {
-        return `${dateParts[2].padStart(2, '0')}/${(parseInt(dateParts[1])).toString().padStart(2, '0')}/${dateParts[0]}`;
+        return `${dateParts[1].padStart(2, '0')}/${dateParts[2].padStart(2, '0')}/${dateParts[0]}`;
       }
     }
     
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return dateString;
     
-    const day = date.getDate().toString().padStart(2, '0');
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
     const year = date.getFullYear();
     
-    return `${day}/${month}/${year}`;
+    return `${month}/${day}/${year}`;
   } catch (e) {
     console.error('Error formateando fecha:', dateString, e);
     return dateString;
   }
 }
 
-// Función para calcular días entre fechas
-function daysBetweenDates(date1, date2) {
-  const oneDay = 24 * 60 * 60 * 1000;
-  const firstDate = new Date(date1);
-  const secondDate = new Date(date2);
-  
-  firstDate.setHours(0, 0, 0, 0);
-  secondDate.setHours(0, 0, 0, 0);
-  
-  return Math.round(Math.abs((firstDate - secondDate) / oneDay));
+function getMonthName(monthNumber) {
+  const months = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+  return months[parseInt(monthNumber) - 1] || '';
 }
 
-// Inicialización de la aplicación
+function getMonthNumber(monthName) {
+  const months = {
+    'enero': '01', 'febrero': '02', 'marzo': '03', 'abril': '04',
+    'mayo': '05', 'junio': '06', 'julio': '07', 'agosto': '08',
+    'septiembre': '09', 'octubre': '10', 'noviembre': '11', 'diciembre': '12'
+  };
+  return months[monthName.toLowerCase()] || '';
+}
+
+function isMondayOrFriday(dateString) {
+  try {
+    const date = new Date(dateString);
+    const dayOfWeek = date.getDay();
+    return dayOfWeek === 1 || dayOfWeek === 5;
+  } catch (e) {
+    return false;
+  }
+}
+
+function convertTo12Hour(time24) {
+  if (!time24) return '';
+  const [hours, minutes] = time24.split(':');
+  const hour = parseInt(hours);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const hour12 = hour % 12 || 12;
+  return `${hour12}:${minutes} ${ampm}`;
+}
+
+function convertTo24Hour(time12) {
+  if (!time12) return '';
+  const [time, ampm] = time12.split(' ');
+  const [hours, minutes] = time.split(':');
+  let hour = parseInt(hours);
+  if (ampm === 'PM' && hour < 12) hour += 12;
+  if (ampm === 'AM' && hour === 12) hour = 0;
+  return `${hour.toString().padStart(2, '0')}:${minutes}`;
+}
+
 async function initializeApp() {
   try {
     initializeDOMElements();
@@ -145,8 +180,6 @@ async function initializeApp() {
     
     if (elements.userNameDisplay) {
       elements.userNameDisplay.textContent = currentUser.name;
-    } else {
-      console.warn('Elemento userNameDisplay no encontrado');
     }
     
     await loadEmployeesData();
@@ -156,13 +189,94 @@ async function initializeApp() {
     
     setupVacationAutocomplete();
     setupPermissionAutocomplete();
+    setupFilterAutocomplete();
+    
+    applyBlinkingStyles();
+    addExportButton();
   } catch (error) {
     console.error('Error inicializando la aplicación:', error);
     showNotification('Error al cargar la aplicación', 'error');
   }
 }
 
-// Inicialización de eventos
+function addExportButton() {
+  const tableHeader = document.querySelector('.glassmorphism-table .table-header');
+  if (tableHeader && !document.getElementById('export-excel-btn')) {
+    const exportButton = document.createElement('button');
+    exportButton.id = 'export-excel-btn';
+    exportButton.className = 'modern-button export-button';
+    exportButton.innerHTML = `
+      <svg style="width: 1rem; height: 1rem; margin-right: 0.5rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+      </svg>
+      Exportar Excel
+    `;
+    exportButton.addEventListener('click', exportToExcel);
+    tableHeader.appendChild(exportButton);
+  }
+}
+
+function exportToExcel() {
+  if (filteredAttendanceData.length === 0) {
+    showNotification('No hay datos para exportar', 'error');
+    return;
+  }
+
+  let csvContent = "Fecha,Nombre del Empleado,Asunto,Puntos\n";
+  
+  filteredAttendanceData.forEach(item => {
+    const row = [
+      `"${formatDate(item.FECHA)}"`,
+      `"${item.NOMBRE || ''}"`,
+      `"${item.MOTIVO || ''}"`,
+      `"${item.PUNTOS || '0'}"`
+    ].join(',');
+    csvContent += row + '\n';
+  });
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  
+  const today = new Date();
+  const dateStr = `${today.getDate().toString().padStart(2, '0')}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getFullYear()}`;
+  
+  link.setAttribute('href', url);
+  link.setAttribute('download', `asistencias_${dateStr}.csv`);
+  link.style.visibility = 'hidden';
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  
+  showNotification('Datos exportados exitosamente', 'success');
+}
+
+function applyBlinkingStyles() {
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes blink-red {
+      0%, 100% { background-color: transparent; }
+      50% { background-color: rgba(255, 0, 0, 0.3); }
+    }
+    @keyframes blink-red-border {
+      0%, 100% { border-left-color: transparent; }
+      50% { border-left-color: #ff4444; }
+    }
+    .blinking-red {
+      animation: blink-red 1s infinite;
+    }
+    .blinking-red-border {
+      animation: blink-red-border 1s infinite;
+      border-left: 3px solid transparent;
+    }
+    .export-button {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 function initializeEventListeners() {
   elements.navItems.forEach(item => {
     item.addEventListener('click', () => {
@@ -186,7 +300,6 @@ function initializeEventListeners() {
   elements.cancelPermissionBtn.addEventListener('click', closePermissionModal);
   elements.permissionForm.addEventListener('submit', handlePermissionSubmit);
 
-  // Event listeners para los toggles de permisos
   document.getElementById('permission-hours').addEventListener('change', handlePermissionTypeChange);
   document.getElementById('permission-day').addEventListener('change', handlePermissionTypeChange);
   document.getElementById('permission-day-with-pay').addEventListener('change', handlePermissionTypeChange);
@@ -202,7 +315,6 @@ function initializeEventListeners() {
   initializeTableFilters();
 }
 
-// Función para obtener datos de Google Sheets
 async function fetchSheetData(connection, action = 'read', data = null) {
   try {
     const url = new URL(connection.scriptUrl);
@@ -244,12 +356,12 @@ async function fetchSheetData(connection, action = 'read', data = null) {
   }
 }
 
-// Funciones para cargar datos
 async function loadAttendanceData() {
   const result = await fetchSheetData(sheetConnections.productivity);
   if (result.error) return;
   
   attendanceData = result.data || [];
+  filteredAttendanceData = [...attendanceData];
   renderAttendanceTable();
   checkMissingEmployees();
 }
@@ -301,31 +413,52 @@ async function loadEmployeesData() {
   employeesData = result.data || [];
 }
 
-// Funciones para renderizar tablas
 function renderAttendanceTable() {
   if (!elements.attendanceTableBody) return;
   
   elements.attendanceTableBody.innerHTML = '';
   
-  if (attendanceData.length === 0) {
+  if (filteredAttendanceData.length === 0) {
     const row = document.createElement('tr');
     row.innerHTML = '<td colspan="4" class="no-data">No hay datos de asistencia disponibles</td>';
     elements.attendanceTableBody.appendChild(row);
     return;
   }
   
-  attendanceData.forEach(item => {
+  const hasActiveFilters = currentFilters.date || currentFilters.name || currentFilters.subject || currentFilters.points;
+  
+  let displayData;
+  if (hasActiveFilters) {
+    displayData = filteredAttendanceData;
+  } else {
+    const startIndex = Math.max(0, filteredAttendanceData.length - 20);
+    displayData = filteredAttendanceData.slice(startIndex);
+  }
+  
+  displayData.forEach(item => {
     const row = document.createElement('tr');
+    const formattedDate = formatDate(item.FECHA);
+    const isBlinkingDate = isMondayOrFriday(item.FECHA);
+    const isBlinkingSubject = (item.MOTIVO || '').toLowerCase() === 'falta injustificada';
+    
     row.innerHTML = `
-      <td>${formatDate(item.FECHA) || ''}</td>
+      <td class="${isBlinkingDate ? 'blinking-red-border' : ''}">${formattedDate || ''}</td>
       <td>${item.NOMBRE || ''}</td>
-      <td><span class="status-badge status-${(item.MOTIVO || '').toLowerCase().replace(/\s+/g, '-')}">
-        ${item.MOTIVO || ''}
-      </span></td>
+      <td class="${isBlinkingSubject ? 'blinking-red' : ''}">
+        <span class="status-badge status-${(item.MOTIVO || '').toLowerCase().replace(/\s+/g, '-')}">
+          ${item.MOTIVO || ''}
+        </span>
+      </td>
       <td>${item.PUNTOS || '0'}</td>
     `;
     elements.attendanceTableBody.appendChild(row);
   });
+  
+  if (!hasActiveFilters && filteredAttendanceData.length > 20) {
+    const row = document.createElement('tr');
+    row.innerHTML = `<td colspan="4" class="no-data">Mostrando las últimas 20 de ${filteredAttendanceData.length} registros. Usa filtros para ver más registros.</td>`;
+    elements.attendanceTableBody.appendChild(row);
+  }
 }
 
 function renderVacationTable() {
@@ -382,7 +515,6 @@ function renderVacationTable() {
   });
 }
 
-// Configurar autocompletado para formulario de vacaciones
 function setupVacationAutocomplete() {
   const nameInput = document.getElementById('vacation-employee-name');
   if (!nameInput) return;
@@ -429,7 +561,6 @@ function setupVacationAutocomplete() {
   });
 }
 
-// Configurar autocompletado para formulario de permisos
 function setupPermissionAutocomplete() {
   const nameInput = document.getElementById('permission-name');
   if (!nameInput) return;
@@ -473,7 +604,137 @@ function setupPermissionAutocomplete() {
   });
 }
 
-// Función para verificar empleados sin registro con nueva lógica de 5hrs
+function setupFilterAutocomplete() {
+  const filterInputs = document.querySelectorAll('.filter-input');
+  
+  filterInputs.forEach(input => {
+    if (!input) return;
+    
+    input.addEventListener('input', function() {
+      const tableName = this.dataset.table;
+      const column = parseInt(this.dataset.column);
+      
+      if (tableName === 'attendance') {
+        switch(column) {
+          case 0: currentFilters.date = this.value; break;
+          case 1: currentFilters.name = this.value; break;
+          case 2: currentFilters.subject = this.value; break;
+          case 3: currentFilters.points = this.value; break;
+        }
+        
+        applyFilters();
+      }
+    });
+    
+    if (input.dataset.table === 'attendance' && input.dataset.column === '0') {
+      input.addEventListener('input', function() {
+        const value = this.value.toLowerCase();
+        const datalist = document.createElement('datalist');
+        datalist.id = 'filter-months-list';
+        
+        if (value.length > 0) {
+          const months = [
+            'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+          ];
+          const matches = months.filter(month => 
+            month.toLowerCase().includes(value)
+          ).slice(0, 12);
+          
+          matches.forEach(month => {
+            const option = document.createElement('option');
+            option.value = month;
+            datalist.appendChild(option);
+          });
+        }
+        
+        const oldDatalist = document.getElementById('filter-months-list');
+        if (oldDatalist) document.body.removeChild(oldDatalist);
+        
+        if (datalist.childNodes.length > 0) {
+          document.body.appendChild(datalist);
+          this.setAttribute('list', 'filter-months-list');
+        } else {
+          this.removeAttribute('list');
+        }
+      });
+    }
+    
+    if (input.dataset.table === 'attendance' && input.dataset.column === '1') {
+      input.addEventListener('input', function() {
+        const value = this.value.toLowerCase();
+        const datalist = document.createElement('datalist');
+        datalist.id = 'filter-names-list';
+        
+        if (value.length > 1) {
+          const uniqueNames = [...new Set(attendanceData.map(item => item.NOMBRE).filter(Boolean))];
+          const matches = uniqueNames.filter(name => 
+            name.toLowerCase().includes(value)
+          ).slice(0, 10);
+          
+          matches.forEach(name => {
+            const option = document.createElement('option');
+            option.value = name;
+            datalist.appendChild(option);
+          });
+        }
+        
+        const oldDatalist = document.getElementById('filter-names-list');
+        if (oldDatalist) document.body.removeChild(oldDatalist);
+        
+        if (datalist.childNodes.length > 0) {
+          document.body.appendChild(datalist);
+          this.setAttribute('list', 'filter-names-list');
+        } else {
+          this.removeAttribute('list');
+        }
+      });
+    }
+  });
+}
+
+function applyFilters() {
+  filteredAttendanceData = [...attendanceData];
+  
+  if (currentFilters.date) {
+    const filterDate = currentFilters.date.toLowerCase();
+    const monthNumber = getMonthNumber(filterDate);
+    
+    if (monthNumber) {
+      filteredAttendanceData = filteredAttendanceData.filter(item => {
+        const itemDate = formatDate(item.FECHA);
+        const [itemMonth, itemDay, itemYear] = itemDate.split('/');
+        return itemMonth === monthNumber;
+      });
+    } else {
+      filteredAttendanceData = filteredAttendanceData.filter(item => {
+        const itemDate = formatDate(item.FECHA);
+        return itemDate.toLowerCase().includes(filterDate);
+      });
+    }
+  }
+  
+  if (currentFilters.name) {
+    filteredAttendanceData = filteredAttendanceData.filter(item => 
+      (item.NOMBRE || '').toLowerCase().includes(currentFilters.name.toLowerCase())
+    );
+  }
+  
+  if (currentFilters.subject) {
+    filteredAttendanceData = filteredAttendanceData.filter(item => 
+      (item.MOTIVO || '').toLowerCase().includes(currentFilters.subject.toLowerCase())
+    );
+  }
+  
+  if (currentFilters.points) {
+    filteredAttendanceData = filteredAttendanceData.filter(item => 
+      (item.PUNTOS || '').toString().includes(currentFilters.points)
+    );
+  }
+  
+  renderAttendanceTable();
+}
+
 function checkMissingEmployees() {
   if (!elements.missingEmployeesBody) return;
   
@@ -547,11 +808,17 @@ function renderMissingEmployees(employees) {
   });
 }
 
-// Funciones para modales
 function openAttendanceModal() {
   if (!elements.attendanceModal) return;
   elements.attendanceModal.classList.add('active');
-  document.getElementById('attendance-date').value = new Date().toISOString().split('T')[0];
+  
+  const today = new Date();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  const year = today.getFullYear();
+  const formattedDate = `${month}/${day}/${year}`;
+  
+  document.getElementById('attendance-date').value = formattedDate;
   
   const nameInput = document.getElementById('employee-name');
   if (nameInput) {
@@ -580,7 +847,6 @@ function updateAttendanceTypeOptions() {
   `;
 }
 
-// Función para configurar autocompletado
 function setupAutocomplete(inputElement) {
   const uniqueNames = [...new Set(attendanceData.map(item => item.NOMBRE).filter(Boolean))];
   
@@ -663,7 +929,6 @@ function closeVacationModal() {
   }
 }
 
-// Función para mostrar mensaje de acceso denegado
 function showAccessDeniedMessage() {
   const accessDeniedModal = document.createElement('div');
   accessDeniedModal.className = 'access-denied-modal';
@@ -684,25 +949,27 @@ function showAccessDeniedMessage() {
   }, 3000);
 }
 
-// Funciones para el modal de permisos - CORREGIDAS
 function openPermissionModal() {
   if (!elements.permissionModal) return;
   
-  // Configurar fecha actual EN FORMATO CORRECTO (dd/mm/aaaa)
   const today = new Date();
-  const day = String(today.getDate()).padStart(2, '0');
   const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
   const year = today.getFullYear();
-  const formattedDate = `${day}/${month}/${year}`;
+  const formattedDate = `${month}/${day}/${year}`;
   
   document.getElementById('permission-fill-date').value = formattedDate;
   
-  // Limpiar formulario pero mantener la fecha
   elements.permissionForm.reset();
   document.getElementById('permission-fill-date').value = formattedDate;
   
-  // Ocultar campos condicionales
   document.getElementById('hours-container').style.display = 'none';
+  
+  const entryTimeInput = document.getElementById('permission-entry-time');
+  const exitTimeInput = document.getElementById('permission-exit-time');
+  
+  entryTimeInput.value = '';
+  exitTimeInput.value = '';
   
   elements.permissionModal.classList.add('active');
 }
@@ -722,14 +989,10 @@ function handlePermissionTypeChange(e) {
   const permissionHours = document.getElementById('permission-hours');
   const hoursContainer = document.getElementById('hours-container');
   
-  // Mostrar/ocultar campo de horas
-  if (e.target.id === 'permission-hours' && e.target.checked) {
-    hoursContainer.style.display = 'grid';
-  } else if (e.target.id === 'permission-hours' && !e.target.checked) {
+  if (e.target.id === 'permission-hours') {
     hoursContainer.style.display = 'none';
   }
   
-  // Desmarcar otros toggles cuando se selecciona uno
   if (e.target.checked) {
     const allToggles = document.querySelectorAll('.toggle-input');
     allToggles.forEach(toggle => {
@@ -740,7 +1003,6 @@ function handlePermissionTypeChange(e) {
   }
 }
 
-// FUNCIÓN handlePermissionSubmit COMPLETAMENTE REESCRITA
 async function handlePermissionSubmit(e) {
   if (!e) return;
   e.preventDefault();
@@ -749,7 +1011,9 @@ async function handlePermissionSubmit(e) {
     return;
   }
   
-  // Obtener datos del formulario
+  const entryTime24 = convertTo24Hour(document.getElementById('permission-entry-time').value);
+  const exitTime24 = convertTo24Hour(document.getElementById('permission-exit-time').value);
+  
   const formData = {
     'Nombre': document.getElementById('permission-name').value,
     'NumeroEmpleado': document.getElementById('permission-employee-id').value,
@@ -762,18 +1026,16 @@ async function handlePermissionSubmit(e) {
     'Matrimonio': document.getElementById('permission-marriage').checked,
     'PermisoHoras': document.getElementById('permission-hours').checked,
     'HorasPermiso': document.getElementById('permission-hours-count').value || '0',
-    'PermisoEntrada': document.getElementById('permission-entry-time').value,
-    'PermisoSalida': document.getElementById('permission-exit-time').value,
+    'PermisoEntrada': entryTime24,
+    'PermisoSalida': exitTime24,
     'FechaInicio': document.getElementById('permission-start-date').value,
     'FechaRegreso': document.getElementById('permission-end-date').value,
     'Comentarios': document.getElementById('permission-comments').value
   };
   
   try {
-    // Mostrar mensaje de que se está guardando
     showNotification('Guardando datos en formato...', 'success');
     
-    // PRIMERO: Guardar los datos en la hoja FORMATO en celdas específicas
     const saveResult = await fetchSheetData(
       sheetConnections.permissions, 
       'append', 
@@ -787,13 +1049,10 @@ async function handlePermissionSubmit(e) {
     
     showNotification('Datos guardados exitosamente. Generando PDF...', 'success');
     
-    // SEGUNDO: Esperar para asegurar que los datos se guarden
     await new Promise(resolve => setTimeout(resolve, 3000));
     
-    // TERCERO: Generar y descargar el PDF
     await generatePermissionPDF(formData);
     
-    // CUARTO: Cerrar el modal después de que todo esté completo
     closePermissionModal();
     
   } catch (error) {
@@ -802,29 +1061,23 @@ async function handlePermissionSubmit(e) {
   }
 }
 
-// FUNCIÓN generatePermissionPDF MEJORADA
 async function generatePermissionPDF(formData) {
   try {
     showNotification('Generando PDF...', 'success');
     
-    // Crear URL directa para exportar SOLO la hoja FORMATO como PDF
     const spreadsheetId = sheetConnections.permissions.spreadsheetId;
     
-    // URL optimizada para PDF de solo la hoja FORMATO
     const pdfUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=pdf&portrait=true&size=A4&fitw=true&sheetnames=false&printtitle=false&pagenumbers=false&gridlines=false&fzr=false&gid=0`;
     
     console.log('Descargando PDF desde:', pdfUrl);
     
-    // Crear un enlace temporal para descargar el PDF
     const downloadLink = document.createElement('a');
     downloadLink.href = pdfUrl;
     downloadLink.target = '_blank';
     
-    // Nombre del archivo con timestamp para evitar caché
     const timestamp = new Date().getTime();
     downloadLink.download = `Formato_Permiso_${formData.Nombre.replace(/\s+/g, '_')}_${timestamp}.pdf`;
     
-    // Simular clic en el enlace para descargar
     document.body.appendChild(downloadLink);
     downloadLink.click();
     document.body.removeChild(downloadLink);
@@ -834,7 +1087,6 @@ async function generatePermissionPDF(formData) {
   } catch (error) {
     console.error('Error descargando PDF:', error);
     
-    // Si falla la descarga automática, proporcionar un enlace manual
     const spreadsheetId = sheetConnections.permissions.spreadsheetId;
     const fallbackUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=pdf&gid=0`;
     
@@ -856,7 +1108,6 @@ function validatePermissionForm() {
     return false;
   }
   
-  // Verificar que al menos un tipo de permiso esté seleccionado
   const permissionTypes = [
     'permission-day',
     'permission-day-with-pay',
@@ -875,11 +1126,12 @@ function validatePermissionForm() {
     return false;
   }
   
-  // Validaciones específicas para permisos por horas
   if (document.getElementById('permission-hours').checked) {
-    const hoursCount = document.getElementById('permission-hours-count').value;
-    if (!hoursCount || hoursCount < 1) {
-      showNotification('Ingrese la cantidad de horas para el permiso', 'error');
+    const entryTime = document.getElementById('permission-entry-time').value;
+    const exitTime = document.getElementById('permission-exit-time').value;
+    
+    if (!entryTime || !exitTime) {
+      showNotification('Para permiso por horas, debe especificar hora de entrada y salida', 'error');
       return false;
     }
   }
@@ -887,7 +1139,6 @@ function validatePermissionForm() {
   return true;
 }
 
-// Funciones para formularios
 async function handleAttendanceSubmit(e) {
   if (!e) return;
   e.preventDefault();
@@ -896,8 +1147,10 @@ async function handleAttendanceSubmit(e) {
     return;
   }
   
+  const fechaInput = document.getElementById('attendance-date').value;
+  
   const formData = {
-    FECHA: document.getElementById('attendance-date').value,
+    FECHA: fechaInput,
     NOMBRE: document.getElementById('employee-name').value,
     MOTIVO: document.getElementById('attendance-type').value,
     NOTAS: '',
@@ -935,15 +1188,14 @@ async function handleVacationSubmit(e) {
   
   const selectedEmployee = document.querySelector(`#employee-names-list option[value="${document.getElementById('vacation-employee-name').value}"]`);
   
-  // Estructura de datos corregida para enviar a Google Sheets
   const formData = {
     'Name': document.getElementById('vacation-employee-name').value,
     'Entry Date': selectedEmployee?.dataset.entryDate || '',
     'ID #': document.getElementById('vacation-employee-id').value,
-    'Days Vacations': days, // Se envía a columna G
-    'Fecha de salida': startDate, // Se envía a columna L
-    'Fecha de Regreso': calculateReturnDate(startDate, days), // Se envía a columna M
-    'Autorizadas': false // Se envía a columna N
+    'Days Vacations': days,
+    'Fecha de salida': startDate,
+    'Fecha de Regreso': calculateReturnDate(startDate, days),
+    'Autorizadas': false
   };
   
   const result = await fetchSheetData(
@@ -965,7 +1217,6 @@ function calculateReturnDate(startDate, days) {
   return date.toISOString().split('T')[0];
 }
 
-// Funciones de utilidad
 function getPoints(type) {
   const pointsMap = {
     'Asistencia': '+1',
@@ -1042,7 +1293,6 @@ function showNotification(message, type = 'success') {
   const notification = document.createElement('div');
   notification.className = `notification ${type}`;
   
-  // Si el mensaje contiene HTML, usamos innerHTML, sino textContent
   if (message.includes('<')) {
     notification.innerHTML = message;
   } else {
@@ -1071,56 +1321,10 @@ function showNotification(message, type = 'success') {
   }, 5000);
 }
 
-// Sistema de filtrado
 function initializeTableFilters() {
-  const filterInputs = document.querySelectorAll('.filter-input');
-  
-  filterInputs.forEach(input => {
-    if (!input) return;
-    
-    input.addEventListener('input', function() {
-      const column = parseInt(this.dataset.column);
-      const tableName = this.dataset.table;
-      const filterValue = this.value.toLowerCase();
-      
-      let tableId;
-      switch(tableName) {
-        case 'attendance': tableId = 'attendance-table'; break;
-        case 'vacation': tableId = 'vacation-table'; break;
-        case 'missing-employees': tableId = 'missing-employees-table'; break;
-        case 'permissions': tableId = 'permissions-table'; break;
-        default: return;
-      }
-      
-      filterTable(tableId, column, filterValue);
-    });
-  });
+  setupFilterAutocomplete();
 }
 
-function filterTable(tableId, columnIndex, filterValue) {
-  const table = document.getElementById(tableId);
-  if (!table) return;
-  
-  const tbody = table.querySelector('tbody');
-  if (!tbody) return;
-  
-  const rows = tbody.querySelectorAll('tr');
-  rows.forEach(row => {
-    const cell = row.cells[columnIndex];
-    if (cell) {
-      let cellText = cell.textContent.toLowerCase();
-      
-      if (cellText.includes('/') && cellText.match(/\d{1,2}\/\d{1,2}\/\d{4}/)) {
-        const [day, month, year] = cellText.split('/');
-        cellText = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-      }
-      
-      row.style.display = cellText.includes(filterValue.toLowerCase()) ? '' : 'none';
-    }
-  });
-}
-
-// Función para cambiar sección activa
 function switchActiveSection(clickedItem, sectionName) {
   if (!clickedItem || !sectionName) return;
   
@@ -1139,7 +1343,6 @@ function switchActiveSection(clickedItem, sectionName) {
   updatePageTitles(sectionName);
 }
 
-// Función para actualizar títulos de página
 function updatePageTitles(sectionName) {
   if (!elements.pageTitle || !elements.pageSubtitle) return;
   
@@ -1155,5 +1358,4 @@ function updatePageTitles(sectionName) {
   }
 }
 
-// Iniciar la aplicación cuando el DOM esté cargado
 document.addEventListener('DOMContentLoaded', initializeApp);
