@@ -800,3 +800,91 @@ body {
 .modal-content::-webkit-scrollbar-thumb:hover {
     background: var(--emerald-600);
 }
+
+/* Estilos para el contenedor de tabla con scroll */
+.attendance-table-container {
+    max-height: 800px;
+    overflow-y: auto;
+    border-radius: 0 0 12px 12px;
+}
+
+.attendance-table-container table {
+    width: 100%;
+    margin-bottom: 0;
+}
+
+/* Estilos para parpadeos */
+@keyframes blink-red {
+    0%, 100% { background-color: transparent; }
+    50% { background-color: rgba(255, 0, 0, 0.3); }
+}
+
+@keyframes blink-red-border {
+    0%, 100% { border-left-color: transparent; }
+    50% { border-left-color: #ff4444; }
+}
+
+.blinking-red {
+    animation: blink-red 1s infinite;
+}
+
+.blinking-red-border {
+    animation: blink-red-border 1s infinite;
+    border-left: 3px solid transparent;
+    padding-left: 8px;
+}
+
+/* Estilos para campos de tiempo en formato 12hrs */
+.form-input[type="time"] {
+    font-family: 'Inter', sans-serif;
+}
+
+/* Mejoras para filtros múltiples */
+.table-filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.filter-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+    font-size: 0.9rem;
+}
+
+.filter-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.filter-input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+#hours-container {
+    transition: all 0.3s ease;
+}
+
+.attendance-table-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.attendance-table-container::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.attendance-table-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+}
+
+.attendance-table-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
