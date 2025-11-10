@@ -18,7 +18,7 @@
         <div class="sidebar">
             <div class="sidebar-header">
                 <h1 class="sidebar-title">GESTIÓN DE EMPLEADOS</h1>
-                <p class="sidebar-subtitle">Panel de Control Sistema CRUGER 1.2</p>
+                <p class="sidebar-subtitle">Panel de Control Sistema CRUGER 2.1</p>
                 <div id="userNameDisplay" class="user-name-display"></div>
             </div>
             
@@ -62,22 +62,24 @@
                         </button>
                     </div>
                     <div class="table-filters">
-                        <input type="text" class="filter-input" placeholder="Filtrar por fecha..." data-column="0" data-table="attendance">
+                        <input type="text" class="filter-input" placeholder="Filtrar por mes (mm/aaaa)..." data-column="0" data-table="attendance">
                         <input type="text" class="filter-input" placeholder="Filtrar por nombre..." data-column="1" data-table="attendance">
                         <input type="text" class="filter-input" placeholder="Filtrar por asunto..." data-column="2" data-table="attendance">
                         <input type="text" class="filter-input" placeholder="Filtrar por puntos..." data-column="3" data-table="attendance">
                     </div>
-                    <table class="data-table" id="attendance-table">
-                        <thead>
-                            <tr>
-                                <th>Fecha</th>
-                                <th>Nombre del Empleado</th>
-                                <th>Asunto</th>
-                                <th>Puntos</th>
-                            </tr>
-                        </thead>
-                        <tbody id="attendance-table-body"></tbody>
-                    </table>
+                    <div class="attendance-table-container">
+                        <table class="data-table" id="attendance-table">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Nombre del Empleado</th>
+                                    <th>Asunto</th>
+                                    <th>Puntos</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendance-table-body"></tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <div class="mini-table-container">
@@ -188,7 +190,7 @@
             <form id="attendance-form">
                 <div class="form-group">
                     <label class="form-label">Fecha</label>
-                    <input type="date" class="form-input" id="attendance-date" required>
+                    <input type="text" class="form-input" id="attendance-date" placeholder="dd/mm/aaaa" required>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Nombre del Empleado</label>
