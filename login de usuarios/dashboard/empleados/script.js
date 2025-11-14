@@ -765,7 +765,9 @@ function checkMissingEmployees() {
         'Falta justificada',
         'NO SE ESCANEA O NO CUENTA CON GAFETE',
         '5hrs',
-        'Incapacidad'
+        'Incapacidad',
+        'Error de Procceso',
+        'Retardo',
       ].includes(motivo);
     });
     
@@ -1359,3 +1361,4 @@ function updatePageTitles(sectionName) {
 }
 
 document.addEventListener('DOMContentLoaded', initializeApp);
+
