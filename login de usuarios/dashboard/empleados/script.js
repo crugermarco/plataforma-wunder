@@ -846,6 +846,8 @@ function updateAttendanceTypeOptions() {
     <option value="NO SE ESCANEA O NO CUENTA CON GAFETE">NO SE ESCANEA O NO CUENTA CON GAFETE</option>
     <option value="5hrs">5hrs</option>
     <option value="Incapacidad">Incapacidad</option>
+    <option value="Error de Procceso">Error de Processo</option>
+    <option value="Retardo">Retardo</option>
   `;
 }
 
@@ -1361,4 +1363,5 @@ function updatePageTitles(sectionName) {
 }
 
 document.addEventListener('DOMContentLoaded', initializeApp);
+
 
