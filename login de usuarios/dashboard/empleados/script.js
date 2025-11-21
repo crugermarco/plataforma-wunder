@@ -1223,16 +1223,16 @@ function calculateReturnDate(startDate, days) {
 
 function getPoints(type) {
   const pointsMap = {
-    'Asistencia': '+1',
-    'Permiso - Por Hora': '0',
-    'Permiso - Por Día': '0',
-    'Falta injustificada': '-2',
-    'Vacaciones': '0',
-    'Suspensión': '-2',
-    'Falta justificada': '-1',
-    'NO SE ESCANEA O NO CUENTA CON GAFETE': '-1',
-    '5hrs': '+0.5',
-    'Incapacidad': '0'
+    'Asistencia': 'parametro de prueba',
+    'Permiso - Por Hora': 'Revisar hoja de permiso',
+    'Permiso - Por Día': '-10',
+    'Falta injustificada': '-10',
+    'Vacaciones': 'N/A',
+    'Suspensión': '-10',
+    'Falta justificada': '-10',
+    'NO SE ESCANEA O NO CUENTA CON GAFETE': '-$10',
+    '5hrs': 'N/A',
+    'Incapacidad': '-10'
   };
   return pointsMap[type] || '0';
 }
@@ -1363,5 +1363,6 @@ function updatePageTitles(sectionName) {
 }
 
 document.addEventListener('DOMContentLoaded', initializeApp);
+
 
 
