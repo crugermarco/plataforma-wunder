@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Empleados</title>
+    <title>Gestión de Empleados - Suspensiones</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -11,7 +11,8 @@
     <div class="background-animation">
         <div class="pulse-circle" style="top: 10%; left: 10%; width: 200px; height: 200px; animation-delay: 0s;"></div>
         <div class="pulse-circle" style="top: 60%; right: 15%; width: 150px; height: 150px; animation-delay: 2s;"></div>
-        <div class="pulse-circle" style="bottom: 20%; left: 20%; width: 120px; height: 120px; animation-delay: 4s;"></div>
+        <div class="pulse-circle" style="bottom: 20%; left: 20%; width: 300px; height: 300px; animation-delay: 4s;"></div>
+        <div class="pulse-circle" style="top: 5%; left: 60%; width: 400px; height: 400px; animation-delay: 4s;"></div>
     </div>
 
     <div class="dashboard-container">
@@ -21,7 +22,7 @@
                 <p class="sidebar-subtitle">Panel de Control Sistema CRUGER 2.1</p>
                 <div id="userNameDisplay" class="user-name-display"></div>
             </div>
-            
+           
             <nav class="nav-menu">
                 <div class="nav-item active" data-section="asistencias">
                     <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -29,11 +30,11 @@
                     </svg>
                     ASISTENCIAS
                 </div>
-                <div class="nav-item" data-section="vacaciones">
+                <div class="nav-item" data-section="suspensiones">
                     <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                     </svg>
-                    VACACIONES
+                    SUSPENSIONES
                 </div>
                 <div class="nav-item" data-section="permisos">
                     <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -106,39 +107,55 @@
                 </div>
             </div>
 
-            <div class="section-content" id="vacaciones-section">
+            <div class="section-content" id="suspensiones-section">
                 <div class="glassmorphism-table">
                     <div class="table-header">
-                        <h3 class="table-title">Vacaciones Agendadas</h3>
-                        <button class="modern-button" id="add-vacation-btn">
+                        <h3 class="table-title">Suspensiones Pendientes</h3>
+                        <button class="modern-button" id="refresh-suspensions-btn">
                             <svg style="width: 1rem; height: 1rem; margin-right: 0.5rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                             </svg>
-                            Agregar Vacaciones
+                            Actualizar
                         </button>
                     </div>
                     <div class="table-filters">
-                        <input type="text" class="filter-input" placeholder="Filtrar por nombre..." data-column="0" data-table="vacation">
-                        <input type="text" class="filter-input" placeholder="Filtrar por fecha entrada..." data-column="1" data-table="vacation">
-                        <input type="text" class="filter-input" placeholder="Filtrar por ID..." data-column="2" data-table="vacation">
-                        <input type="text" class="filter-input" placeholder="Filtrar por días vacaciones..." data-column="3" data-table="vacation">
-                        <input type="text" class="filter-input" placeholder="Filtrar por fecha salida..." data-column="4" data-table="vacation">
-                        <input type="text" class="filter-input" placeholder="Filtrar por fecha regreso..." data-column="5" data-table="vacation">
+                        <input type="text" class="filter-input" placeholder="Filtrar por nombre..." data-column="0" data-table="suspensions">
+                        <input type="text" class="filter-input" placeholder="Filtrar por primera falta..." data-column="1" data-table="suspensions">
+                        <input type="text" class="filter-input" placeholder="Filtrar por faltas..." data-column="2" data-table="suspensions">
+                        <input type="text" class="filter-input" placeholder="Filtrar por días..." data-column="3" data-table="suspensions">
                     </div>
-                    <table class="data-table" id="vacation-table">
+                    <table class="data-table" id="suspensions-table">
                         <thead>
                             <tr>
                                 <th>Nombre</th>
-                                <th>Fecha Ingreso</th>
-                                <th>ID #</th>
-                                <th>Días Vacaciones</th>
-                                <th>Fecha Salida</th>
-                                <th>Fecha Regreso</th>
-                                <th>Autorizadas</th>
+                                <th>Primera Falta</th>
+                                <th>Faltas</th>
+                                <th>Días Sugeridos</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
                             </tr>
                         </thead>
-                        <tbody id="vacation-table-body"></tbody>
+                        <tbody id="suspensions-table-body"></tbody>
                     </table>
+                </div>
+
+                <div class="mini-table-container">
+                    <div class="glassmorphism-table">
+                        <div class="table-header">
+                            <h3 class="mini-table-title">SUSPENSIONES NO APLICADAS</h3>
+                        </div>
+                        <table class="data-table" id="not-applied-suspensions-table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Primera Falta</th>
+                                    <th>Fecha Límite</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="not-applied-suspensions-body"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -155,33 +172,27 @@
                     </div>
                     <div class="table-filters">
                         <input type="text" class="filter-input" placeholder="Filtrar por nombre..." data-column="0" data-table="permissions">
-                        <input type="text" class="filter-input" placeholder="Filtrar por tipo..." data-column="1" data-table="permissions">
-                        <input type="text" class="filter-input" placeholder="Filtrar por fecha..." data-column="2" data-table="permissions">
-                        <input type="text" class="filter-input" placeholder="Filtrar por estado..." data-column="3" data-table="permissions">
+                        <input type="text" class="filter-input" placeholder="Filtrar por fecha..." data-column="1" data-table="permissions">
+                        <input type="text" class="filter-input" placeholder="Filtrar por tipo..." data-column="2" data-table="permissions">
                     </div>
                     <table class="data-table" id="permissions-table">
                         <thead>
                             <tr>
                                 <th>Nombre</th>
+                                <th>Fecha</th>
                                 <th>Tipo de Permiso</th>
-                                <th>Fecha Solicitud</th>
                                 <th>Estado</th>
-                                <th>Acciones</th>
                             </tr>
                         </thead>
-                        <tbody id="permissions-table-body">
-                            <tr>
-                                <td colspan="5" class="no-data">No hay permisos registrados</td>
-                            </tr>
-                        </tbody>
+                        <tbody id="permissions-table-body"></tbody>
                     </table>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal de Asistencias -->
-    <div class="modal" id="attendance-modal">
+     <!-- Modal de Asistencias -->
+     <div class="modal" id="attendance-modal">
         <div class="modal-content compact-modal">
             <div class="modal-header">
                 <h3 class="modal-title">Generar Reporte de Asistencia</h3>
@@ -222,43 +233,61 @@
         </div>
     </div>
 
-    <!-- Modal de Vacaciones -->
-    <div class="modal" id="vacation-modal">
+    <div class="modal" id="suspension-modal">
         <div class="modal-content compact-modal">
             <div class="modal-header">
-                <h3 class="modal-title">Agregar Vacaciones</h3>
-                <button class="close-button" id="close-vacation-modal">&times;</button>
+                <h3 class="modal-title">Aplicar Suspensión</h3>
+                <button class="close-button" id="close-suspension-modal">&times;</button>
             </div>
-            <form id="vacation-form">
+            <form id="suspension-form">
                 <div class="form-group">
                     <label class="form-label">Nombre del Empleado</label>
-                    <input type="text" class="form-input" id="vacation-employee-name" placeholder="Ingrese el nombre completo" required list="employee-names-list">
+                    <input type="text" class="form-input" id="suspension-employee-name" readonly>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Fecha de Inicio de Vacaciones</label>
-                    <input type="date" class="form-input" id="vacation-start-date" required>
+                    <label class="form-label">Número de Empleado</label>
+                    <input type="text" class="form-input" id="suspension-employee-id" readonly>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">ID del Empleado</label>
-                    <input type="text" class="form-input" id="vacation-employee-id" placeholder="EMP###" readonly required>
+                    <label class="form-label">Días de Suspensión Sugeridos</label>
+                    <input type="text" class="form-input" id="suspension-days-suggested" readonly>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Posición</label>
-                    <input type="text" class="form-input" id="vacation-position" placeholder="Cargo del empleado" readonly required>
+                    <label class="form-label">Fecha de Suspensión *</label>
+                    <input type="date" class="form-input" id="suspension-date" required>
+                    <small style="color: var(--slate-400);">Esta es la fecha del llenado del formato</small>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Días de Vacaciones</label>
-                    <input type="number" class="form-input" id="vacation-days" min="0.1" max="30" step="0.1" required>
+                    <label class="form-label">Descripción de Faltas</label>
+                    <textarea class="form-input" id="suspension-description" rows="3" readonly></textarea>
                 </div>
                 <div class="button-group">
-                    <button type="button" class="cancel-button" id="cancel-vacation">Cancelar</button>
-                    <button type="submit" class="modern-button">Agregar Vacaciones</button>
+                    <button type="button" class="cancel-button" id="cancel-suspension">Cancelar</button>
+                    <button type="submit" class="modern-button">Generar PDF de Suspensión</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Modal de Permisos -->
+    <div class="modal" id="suspension-date-modal">
+        <div class="modal-content compact-modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Seleccionar Fecha de Suspensión</h3>
+                <button class="close-button" id="close-suspension-date-modal">&times;</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Seleccione la fecha para aplicar la suspensión</label>
+                <input type="date" class="form-input" id="selected-suspension-date" required>
+                <small style="color: var(--slate-400);">Solo se permiten martes, miércoles o jueves dentro de los 30 días posteriores a la primera falta</small>
+            </div>
+            <div id="suspension-calendar" style="margin-top: 1rem;"></div>
+            <div class="button-group">
+                <button type="button" class="cancel-button" id="cancel-suspension-date">Cancelar</button>
+                <button type="button" class="modern-button" id="confirm-suspension-date">Confirmar Fecha</button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal" id="permission-modal">
         <div class="modal-content compact-modal">
             <div class="modal-header">
@@ -376,8 +405,13 @@
             </form>
         </div>
     </div>
+   
+
+    <div id="suspension-notification" class="notification" style="display: none;">
+        <span id="notification-message"></span>
+        <button class="close-notification">&times;</button>
+    </div>
 
     <script src="script.js"></script>
 </body>
 </html>
-
