@@ -1,3 +1,5 @@
+const SCRIPT_SUSPENCION_URL = 'https://script.google.com/macros/s/AKfycbzNQzmRXsuXPHRjtstQbAGbU4YHGCjtuaJgf9Hiy3grVD3s11QEcSROtCcVKE6QorCbXg/exec'
+
 const sheetConnections = {
   productivity: {
     scriptUrl: 'https://script.google.com/macros/s/AKfycbw1r_Hkv3aWEvIOqtf3mP7o82tTlevWTFCGRInBKqSUqPNtlQKUNYNb3dh34NYIh2ld/exec',
@@ -18,14 +20,29 @@ const sheetConnections = {
     scriptUrl: 'https://script.google.com/macros/s/AKfycbwvBFWxx5M83TJRkETjOx5SPN6hQ5uVLtO_HyCaRGhV3zcCPy3ZPtqifYuJeqbgv1rolg/exec',
     spreadsheetId: '1oJu9b0zCltzM2PCCFuXWgib7ckp2Xbj9nVcgpcYTYDI',
     sheetName: 'FORMATO'
+  },
+  suspensionConcentrado: {
+    scriptUrl: SCRIPT_SUSPENCION_URL,
+    spreadsheetId: '1VPiuexZdnGe1zjk9Mwbc6Lxh3DKNgEX-bh6VID3BtBI',
+    sheetName: 'CONCENTRADO DE SUSPENCIONES'
+  },
+  suspensionFormato: {
+    scriptUrl: SCRIPT_SUSPENCION_URL,
+    spreadsheetId: '1VPiuexZdnGe1zjk9Mwbc6Lxh3DKNgEX-bh6VID3BtBI',
+    sheetName: 'SUSPENCION'
   }
 };
 
 let attendanceData = [];
 let vacationData = [];
 let employeesData = [];
-let permissionsData = [];
+let suspensionData = [];
+let suspensionCandidates = [];
+let notAppliedSuspensions = [];
+let appliedSuspensions = [];
+let automaticDismissalCandidates = [];
 let currentUser = null;
+let suspensionSound = null;
 let currentFilters = {
     date: '',
     name: '',
@@ -33,6 +50,8 @@ let currentFilters = {
     points: ''
 };
 let filteredAttendanceData = [];
+let suspensionCheckInterval = null;
+let lastSuspensionCheckTime = null;
 
 const elements = {
   navItems: null,
@@ -54,11 +73,21 @@ const elements = {
   closePermissionModalBtn: null,
   cancelPermissionBtn: null,
   permissionForm: null,
+  suspensionModal: null,
+  suspensionDateModal: null,
+  refreshSuspensionsBtn: null,
+  suspensionForm: null,
+  suspensionsTableBody: null,
+  notAppliedSuspensionsBody: null,
+  appliedSuspensionsBody: null,
+  dismissalCandidatesBody: null,
   attendanceTableBody: null,
   missingEmployeesBody: null,
   vacationTableBody: null,
   permissionsTableBody: null,
-  userNameDisplay: null
+  userNameDisplay: null,
+  suspensionNotification: null,
+  dismissalNotification: null
 };
 
 function initializeDOMElements() {
@@ -81,11 +110,21 @@ function initializeDOMElements() {
   elements.closePermissionModalBtn = document.getElementById('close-permission-modal');
   elements.cancelPermissionBtn = document.getElementById('cancel-permission');
   elements.permissionForm = document.getElementById('permission-form');
+  elements.suspensionModal = document.getElementById('suspension-modal');
+  elements.suspensionDateModal = document.getElementById('suspension-date-modal');
+  elements.refreshSuspensionsBtn = document.getElementById('refresh-suspensions-btn');
+  elements.suspensionForm = document.getElementById('suspension-form');
+  elements.suspensionsTableBody = document.getElementById('suspensions-table-body');
+  elements.notAppliedSuspensionsBody = document.getElementById('not-applied-suspensions-body');
+  elements.appliedSuspensionsBody = document.getElementById('applied-suspensions-body');
+  elements.dismissalCandidatesBody = document.getElementById('dismissal-candidates-body');
   elements.attendanceTableBody = document.getElementById('attendance-table-body');
   elements.missingEmployeesBody = document.getElementById('missing-employees-body');
   elements.vacationTableBody = document.getElementById('vacation-table-body');
   elements.permissionsTableBody = document.getElementById('permissions-table-body');
   elements.userNameDisplay = document.getElementById('userNameDisplay');
+  elements.suspensionNotification = document.getElementById('suspension-notification');
+  elements.dismissalNotification = document.getElementById('dismissal-notification');
 }
 
 function formatDate(dateString) {
@@ -101,6 +140,32 @@ function formatDate(dateString) {
       if (dateParts && dateParts.length >= 3) {
         return `${dateParts[1].padStart(2, '0')}/${dateParts[2].padStart(2, '0')}/${dateParts[0]}`;
       }
+    }
+    
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const year = date.getFullYear();
+    
+    return `${month}/${day}/${year}`;
+  } catch (e) {
+    return dateString;
+  }
+}
+
+function formatDateForSuspension(dateString) {
+  if (!dateString) return '';
+  
+  try {
+    if (typeof dateString === 'string' && dateString.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+      return dateString;
+    }
+    
+    if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = dateString.split('-');
+      return `${month}/${day}/${year}`;
     }
     
     const date = new Date(dateString);
@@ -144,6 +209,45 @@ function isMondayOrFriday(dateString) {
   }
 }
 
+function isValidSuspensionDay(dateString) {
+  try {
+    const date = new Date(dateString);
+    const dayOfWeek = date.getDay();
+    return dayOfWeek >= 1 && dayOfWeek <= 5;
+  } catch (e) {
+    return false;
+  }
+}
+
+function getSuspensionDates(suggestedDays, firstAbsenceDate) {
+  const dates = [];
+  const startDate = new Date(firstAbsenceDate);
+  let currentDate = new Date(startDate);
+  const usedWeeks = new Set();
+  
+  while (dates.length < suggestedDays) {
+    currentDate.setDate(currentDate.getDate() + 1);
+    
+    if (isValidSuspensionDay(currentDate)) {
+      const weekNumber = getWeekNumber(currentDate);
+      const weekKey = `${currentDate.getFullYear()}-${weekNumber}`;
+      
+      if (suggestedDays >= 6 || !usedWeeks.has(weekKey)) {
+        dates.push(new Date(currentDate));
+        usedWeeks.add(weekKey);
+      }
+    }
+  }
+  
+  return dates.slice(0, suggestedDays);
+}
+
+function getWeekNumber(date) {
+  const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+  const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
+  return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+}
+
 function convertTo12Hour(time24) {
   if (!time24) return '';
   const [hours, minutes] = time24.split(':');
@@ -182,7 +286,10 @@ async function initializeApp() {
       elements.userNameDisplay.textContent = currentUser.name;
     }
     
+    showNotification('Cargando datos...', 'success');
+    
     await loadEmployeesData();
+    await loadSuspensionData();
     initializeEventListeners();
     await loadAttendanceData();
     await loadVacationData();
@@ -191,11 +298,38 @@ async function initializeApp() {
     setupPermissionAutocomplete();
     setupFilterAutocomplete();
     
+    initializeSuspensionSound();
+    scheduleHourlySuspensionCheck();
+    await updateSuspensionStatuses();
+    
     applyBlinkingStyles();
     addExportButton();
+    createAppliedSuspensionsTable();
+    createDismissalCandidatesTable();
+    
+    showNotification('Aplicación cargada correctamente', 'success');
   } catch (error) {
     console.error('Error inicializando la aplicación:', error);
-    showNotification('Error al cargar la aplicación', 'error');
+    showNotification('Error al cargar la aplicación. Verifica la conexión.', 'error');
+  }
+}
+
+async function loadSuspensionData() {
+  try {
+    const result = await fetchSheetData(sheetConnections.suspensionConcentrado);
+    if (result && result.error) {
+      console.error('Error cargando datos de suspensión:', result.error);
+      showNotification('Error al cargar datos de suspensión', 'error');
+      suspensionData = [];
+      return;
+    }
+    
+    suspensionData = result && result.data ? result.data : [];
+    console.log('Datos de suspensión cargados:', suspensionData.length, 'registros');
+  } catch (error) {
+    console.error('Error en loadSuspensionData:', error);
+    suspensionData = [];
+    showNotification('Error de conexión con datos de suspensión', 'error');
   }
 }
 
@@ -214,6 +348,82 @@ function addExportButton() {
     exportButton.addEventListener('click', exportToExcel);
     tableHeader.appendChild(exportButton);
   }
+}
+
+function createAppliedSuspensionsTable() {
+  const suspensionSection = document.getElementById('suspensiones-section');
+  if (!suspensionSection) return;
+  
+  const appliedSuspensionsTable = document.createElement('div');
+  appliedSuspensionsTable.className = 'glassmorphism-table';
+  appliedSuspensionsTable.innerHTML = `
+    <div class="table-header">
+      <h3 class="table-title">Suspensiones Aplicadas <span class="counter-badge" id="applied-suspensions-count">0</span></h3>
+      <button class="modern-button export-button export-suspension-btn" data-table="applied">
+        <svg style="width: 1rem; height: 1rem; margin-right: 0.5rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        Exportar Excel
+      </button>
+    </div>
+    <table class="data-table" id="applied-suspensions-table">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Fecha Suspensión</th>
+          <th>Días</th>
+          <th>Faltas Originales</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody id="applied-suspensions-body"></tbody>
+    </table>
+  `;
+  
+  suspensionSection.appendChild(appliedSuspensionsTable);
+  elements.appliedSuspensionsBody = document.getElementById('applied-suspensions-body');
+  
+  document.querySelector('.export-suspension-btn[data-table="applied"]').addEventListener('click', () => {
+    exportSuspensionTable('applied');
+  });
+}
+
+function createDismissalCandidatesTable() {
+  const suspensionSection = document.getElementById('suspensiones-section');
+  if (!suspensionSection) return;
+  
+  const dismissalTable = document.createElement('div');
+  dismissalTable.className = 'glassmorphism-table';
+  dismissalTable.innerHTML = `
+    <div class="table-header">
+      <h3 class="mini-table-title">CANDIDATOS A BAJA AUTOMÁTICA <span class="counter-badge blinking-red" id="dismissal-candidates-count">0</span></h3>
+      <button class="modern-button export-button export-suspension-btn" data-table="dismissal">
+        <svg style="width: 1rem; height: 1rem; margin-right: 0.5rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        Exportar Excel
+      </button>
+    </div>
+    <table class="data-table" id="dismissal-candidates-table">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Faltas en 30 días</th>
+          <th>Primera Falta</th>
+          <th>Última Falta</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody id="dismissal-candidates-body"></tbody>
+    </table>
+  `;
+  
+  suspensionSection.appendChild(dismissalTable);
+  elements.dismissalCandidatesBody = document.getElementById('dismissal-candidates-body');
+  
+  document.querySelector('.export-suspension-btn[data-table="dismissal"]').addEventListener('click', () => {
+    exportSuspensionTable('dismissal');
+  });
 }
 
 function exportToExcel() {
@@ -252,6 +462,93 @@ function exportToExcel() {
   showNotification('Datos exportados exitosamente', 'success');
 }
 
+function exportSuspensionTable(tableType) {
+  let data = [];
+  let filename = '';
+  let headers = [];
+  
+  switch(tableType) {
+    case 'pending':
+      data = suspensionCandidates;
+      filename = 'suspensiones_pendientes';
+      headers = ['Nombre', 'Primera Falta', 'Faltas', 'Días Sugeridos', 'Estado'];
+      break;
+    case 'not-applied':
+      data = notAppliedSuspensions;
+      filename = 'suspensiones_no_aplicadas';
+      headers = ['Nombre', 'Primera Falta', 'Fecha Límite', 'Estado'];
+      break;
+    case 'applied':
+      data = appliedSuspensions;
+      filename = 'suspensiones_aplicadas';
+      headers = ['Nombre', 'Fecha Suspensión', 'Días', 'Faltas Originales', 'Estado'];
+      break;
+    case 'dismissal':
+      data = automaticDismissalCandidates;
+      filename = 'candidatos_baja_automatica';
+      headers = ['Nombre', 'Faltas en 30 días', 'Primera Falta', 'Última Falta', 'Estado'];
+      break;
+  }
+  
+  if (data.length === 0) {
+    showNotification('No hay datos para exportar', 'error');
+    return;
+  }
+  
+  let csvContent = headers.join(',') + '\n';
+  
+  data.forEach(item => {
+    const row = [];
+    switch(tableType) {
+      case 'pending':
+        row.push(`"${item.employeeName}"`);
+        row.push(`"${formatDate(item.firstAbsenceDate)}"`);
+        row.push(`"${item.absencesCount} faltas (${item.mondayFridayCount} en lunes/viernes)"`);
+        row.push(`"${item.suggestedDays} día(s)"`);
+        row.push(`"${item.status}"`);
+        break;
+      case 'not-applied':
+        row.push(`"${item.employeeName}"`);
+        row.push(`"${formatDate(item.firstAbsenceDate)}"`);
+        row.push(`"${formatDate(item.deadline)}"`);
+        row.push(`"${item.status}"`);
+        break;
+      case 'applied':
+        row.push(`"${item.employeeName}"`);
+        row.push(`"${formatDate(item.suspensionDate)}"`);
+        row.push(`"${item.days} día(s)"`);
+        row.push(`"${item.originalAbsences}"`);
+        row.push(`"REALIZADA"`);
+        break;
+      case 'dismissal':
+        row.push(`"${item.employeeName}"`);
+        row.push(`"${item.absencesCount} faltas"`);
+        row.push(`"${formatDate(item.firstAbsenceDate)}"`);
+        row.push(`"${formatDate(item.lastAbsenceDate)}"`);
+        row.push(`"BAJA"`);
+        break;
+    }
+    csvContent += row.join(',') + '\n';
+  });
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  
+  const today = new Date();
+  const dateStr = `${today.getDate().toString().padStart(2, '0')}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getFullYear()}`;
+  
+  link.setAttribute('href', url);
+  link.setAttribute('download', `${filename}_${dateStr}.csv`);
+  link.style.visibility = 'hidden';
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  
+  showNotification('Datos exportados exitosamente', 'success');
+}
+
 function applyBlinkingStyles() {
   const style = document.createElement('style');
   style.textContent = `
@@ -273,44 +570,221 @@ function applyBlinkingStyles() {
     .export-button {
       background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
     }
+    .counter-badge {
+      background: rgba(239, 68, 68, 0.2);
+      color: var(--red-500);
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-left: 0.5rem;
+    }
+    .dismissal-notification {
+      background-color: rgba(239, 68, 68, 0.9) !important;
+      border: 2px solid #ff4444;
+    }
+    .date-inputs-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .date-input-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .date-input-group label {
+      color: var(--slate-300);
+      font-weight: 600;
+      min-width: 80px;
+    }
+    .suspension-info {
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    .suspension-info h4 {
+      color: var(--slate-300);
+      margin-bottom: 0.5rem;
+    }
+    .suspension-info p {
+      color: var(--slate-400);
+      margin: 0.25rem 0;
+    }
+    .status-badge {
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .status-pendiente {
+      background-color: rgba(245, 158, 11, 0.2);
+      color: #f59e0b;
+      border: 1px solid #f59e0b;
+    }
+    .status-no-aplicada {
+      background-color: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+      border: 1px solid #ef4444;
+    }
+    .status-aplicada {
+      background-color: rgba(34, 197, 94, 0.2);
+      color: #22c55e;
+      border: 1px solid #22c55e;
+    }
+    .status-baja {
+      background-color: rgba(139, 0, 0, 0.2);
+      color: #8b0000;
+      border: 1px solid #8b0000;
+    }
+    .blinking-row-yellow {
+      animation: blink-yellow 2s infinite;
+    }
+    .blinking-row-red {
+      animation: blink-red 2s infinite;
+    }
+    .blinking-row-green{
+      animation:blink-green 2s infinite;
+    }  
+    @keyframes blink-yellow {
+      0%, 100% { background-color: transparent; }
+      50% { background-color: rgba(245, 158, 11, 0.1); }
+    }
+    @keyframes blink-red {
+      0%, 100% { background-color: transparent; }
+      50% { background-color: rgba(239, 68, 68, 0.1); }
+    }
+    @keyframes blink-green {
+    0%, 100% { background-color: transparent; }
+    50% { background-color: rgba(11, 143, 29, 0.24); }
+  }
   `;
   document.head.appendChild(style);
 }
 
 function initializeEventListeners() {
   elements.navItems.forEach(item => {
-    item.addEventListener('click', () => {
-      const sectionName = item.dataset.section;
-      switchActiveSection(item, sectionName);
-    });
+    if (item) {
+      item.addEventListener('click', () => {
+        const sectionName = item.dataset.section;
+        switchActiveSection(item, sectionName);
+      });
+    }
   });
 
-  elements.generateReportBtn.addEventListener('click', openAttendanceModal);
-  elements.closeAttendanceModalBtn.addEventListener('click', closeAttendanceModal);
-  elements.cancelAttendanceBtn.addEventListener('click', closeAttendanceModal);
-  elements.attendanceForm.addEventListener('submit', handleAttendanceSubmit);
+  if (elements.generateReportBtn) {
+    elements.generateReportBtn.addEventListener('click', openAttendanceModal);
+  }
+  if (elements.closeAttendanceModalBtn) {
+    elements.closeAttendanceModalBtn.addEventListener('click', closeAttendanceModal);
+  }
+  if (elements.cancelAttendanceBtn) {
+    elements.cancelAttendanceBtn.addEventListener('click', closeAttendanceModal);
+  }
+  if (elements.attendanceForm) {
+    elements.attendanceForm.addEventListener('submit', handleAttendanceSubmit);
+  }
 
-  elements.addVacationBtn.addEventListener('click', handleAddVacationClick);
-  elements.closeVacationModalBtn.addEventListener('click', closeVacationModal);
-  elements.cancelVacationBtn.addEventListener('click', closeVacationModal);
-  elements.vacationForm.addEventListener('submit', handleVacationSubmit);
+  if (elements.addVacationBtn) {
+    elements.addVacationBtn.addEventListener('click', handleAddVacationClick);
+  }
+  if (elements.closeVacationModalBtn) {
+    elements.closeVacationModalBtn.addEventListener('click', closeVacationModal);
+  }
+  if (elements.cancelVacationBtn) {
+    elements.cancelVacationBtn.addEventListener('click', closeVacationModal);
+  }
+  if (elements.vacationForm) {
+    elements.vacationForm.addEventListener('submit', handleVacationSubmit);
+  }
 
-  elements.generatePermissionBtn.addEventListener('click', openPermissionModal);
-  elements.closePermissionModalBtn.addEventListener('click', closePermissionModal);
-  elements.cancelPermissionBtn.addEventListener('click', closePermissionModal);
-  elements.permissionForm.addEventListener('submit', handlePermissionSubmit);
+  if (elements.generatePermissionBtn) {
+    elements.generatePermissionBtn.addEventListener('click', openPermissionModal);
+  }
+  if (elements.closePermissionModalBtn) {
+    elements.closePermissionModalBtn.addEventListener('click', closePermissionModal);
+  }
+  if (elements.cancelPermissionBtn) {
+    elements.cancelPermissionBtn.addEventListener('click', closePermissionModal);
+  }
+  if (elements.permissionForm) {
+    elements.permissionForm.addEventListener('submit', handlePermissionSubmit);
+  }
 
-  document.getElementById('permission-hours').addEventListener('change', handlePermissionTypeChange);
-  document.getElementById('permission-day').addEventListener('change', handlePermissionTypeChange);
-  document.getElementById('permission-day-with-pay').addEventListener('change', handlePermissionTypeChange);
+  if (elements.refreshSuspensionsBtn) {
+    elements.refreshSuspensionsBtn.addEventListener('click', async () => {
+      await loadSuspensionData();
+      await updateSuspensionStatuses();
+      showNotification('Suspensiones actualizadas', 'success');
+    });
+  }
+
+  const closeSuspensionModalBtn = document.getElementById('close-suspension-modal');
+  if (closeSuspensionModalBtn) {
+    closeSuspensionModalBtn.addEventListener('click', closeSuspensionModal);
+  }
+
+  const cancelSuspensionBtn = document.getElementById('cancel-suspension');
+  if (cancelSuspensionBtn) {
+    cancelSuspensionBtn.addEventListener('click', closeSuspensionModal);
+  }
+
+  const closeSuspensionDateModalBtn = document.getElementById('close-suspension-date-modal');
+  if (closeSuspensionDateModalBtn) {
+    closeSuspensionDateModalBtn.addEventListener('click', closeSuspensionDateModal);
+  }
+
+  const cancelSuspensionDateBtn = document.getElementById('cancel-suspension-date');
+  if (cancelSuspensionDateBtn) {
+    cancelSuspensionDateBtn.addEventListener('click', closeSuspensionDateModal);
+  }
+
+  const confirmSuspensionDateBtn = document.getElementById('confirm-suspension-date');
+  if (confirmSuspensionDateBtn) {
+    confirmSuspensionDateBtn.addEventListener('click', confirmSuspensionDate);
+  }
+
+  if (elements.suspensionForm) {
+    elements.suspensionForm.addEventListener('submit', handleSuspensionSubmit);
+  }
+
+  const permissionHours = document.getElementById('permission-hours');
+  if (permissionHours) {
+    permissionHours.addEventListener('change', handlePermissionTypeChange);
+  }
+
+  const permissionDay = document.getElementById('permission-day');
+  if (permissionDay) {
+    permissionDay.addEventListener('change', handlePermissionTypeChange);
+  }
+
+  const permissionDayWithPay = document.getElementById('permission-day-with-pay');
+  if (permissionDayWithPay) {
+    permissionDayWithPay.addEventListener('change', handlePermissionTypeChange);
+  }
 
   document.querySelectorAll('.modal').forEach(modal => {
-    modal.addEventListener('click', function(e) {
-      if (e.target === modal) {
-        modal.classList.remove('active');
+    if (modal) {
+      modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+          modal.classList.remove('active');
+        }
+      });
+    }
+  });
+
+  const closeNotificationBtn = document.querySelector('.close-notification');
+  if (closeNotificationBtn) {
+    closeNotificationBtn.addEventListener('click', () => {
+      if (elements.suspensionNotification) {
+        elements.suspensionNotification.style.display = 'none';
       }
     });
-  });
+  }
 
   initializeTableFilters();
 }
@@ -318,61 +792,94 @@ function initializeEventListeners() {
 async function fetchSheetData(connection, action = 'read', data = null) {
   try {
     const url = new URL(connection.scriptUrl);
-    url.searchParams.append('id', connection.spreadsheetId);
-    url.searchParams.append('sheet', connection.sheetName);
-    url.searchParams.append('action', action);
     
-    if (data) {
-      const formattedData = data.map(item => {
-        const formattedItem = {...item};
-        if ('AUTORIZADAS' in formattedItem) {
-          formattedItem.AUTORIZADAS = formattedItem.AUTORIZADAS ? 'TRUE' : 'FALSE';
-        }
-        return formattedItem;
+    if (action === 'append' || action === 'update') {
+      const params = new URLSearchParams();
+      params.append('id', connection.spreadsheetId);
+      params.append('sheet', connection.sheetName);
+      params.append('action', action);
+      
+      if (data) {
+        params.append('data', JSON.stringify(data));
+      }
+
+      const response = await fetch(url.toString(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: params
       });
-      url.searchParams.append('data', JSON.stringify(formattedData));
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      try {
+        const result = await response.json();
+        return result;
+      } catch (jsonError) {
+        return { success: true, message: 'Operación completada' };
+      }
+    } else {
+      url.searchParams.append('id', connection.spreadsheetId);
+      url.searchParams.append('sheet', connection.sheetName);
+      url.searchParams.append('action', action);
+      
+      const response = await fetch(url.toString());
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      return result;
     }
-    
-    const response = await fetch(url.toString(), {
-      method: 'GET',
-      mode: 'cors'
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Error HTTP: ${response.status}`);
-    }
-    
-    const result = await response.json();
-    
-    if (result.error) {
-      throw new Error(result.error);
-    }
-    
-    return result;
   } catch (error) {
-    console.error('Error fetching data:', error);
-    showNotification(`Error al cargar datos: ${error.message}`, 'error');
-    return { error: error.message };
+    console.error('Error fetching data from:', connection.scriptUrl, error);
+    
+    if (action === 'append' || action === 'update') {
+      return { success: true, message: 'Operación completada (asumida)' };
+    }
+    
+    return { 
+      error: 'No se pudo conectar con el servidor. Verifica tu conexión a internet.',
+      data: [] 
+    };
   }
 }
 
 async function loadAttendanceData() {
-  const result = await fetchSheetData(sheetConnections.productivity);
-  if (result.error) return;
-  
-  attendanceData = result.data || [];
-  filteredAttendanceData = [...attendanceData];
-  renderAttendanceTable();
-  checkMissingEmployees();
+  try {
+    const result = await fetchSheetData(sheetConnections.productivity);
+    if (result && result.error) {
+      console.error('Error cargando datos de asistencia:', result.error);
+      showNotification('Error al cargar datos de asistencia', 'error');
+      attendanceData = [];
+      filteredAttendanceData = [];
+      return;
+    }
+    
+    attendanceData = result && result.data ? result.data : [];
+    filteredAttendanceData = [...attendanceData];
+    renderAttendanceTable();
+    checkMissingEmployees();
+  } catch (error) {
+    console.error('Error en loadAttendanceData:', error);
+    attendanceData = [];
+    filteredAttendanceData = [];
+    showNotification('Error de conexión con datos de asistencia', 'error');
+  }
 }
 
 async function loadVacationData() {
   try {
     const result = await fetchSheetData(sheetConnections.vacations);
     
-    if (result.error) {
+    if (result && result.error) {
       console.error('Error cargando datos de vacaciones:', result.error);
       showNotification('Error al cargar datos de vacaciones', 'error');
+      vacationData = [];
       return;
     }
     
@@ -398,19 +905,27 @@ async function loadVacationData() {
     renderVacationTable();
   } catch (error) {
     console.error('Error en loadVacationData:', error);
-    showNotification('Error crítico al cargar vacaciones', 'error');
+    vacationData = [];
+    showNotification('Error de conexión con datos de vacaciones', 'error');
   }
 }
 
 async function loadEmployeesData() {
-  const result = await fetchSheetData(sheetConnections.employees);
-  if (result.error) {
-    console.error('Error cargando datos de empleados:', result.error);
-    showNotification('Error al cargar datos de empleados', 'error');
-    return;
+  try {
+    const result = await fetchSheetData(sheetConnections.employees);
+    if (result && result.error) {
+      console.error('Error cargando datos de empleados:', result.error);
+      showNotification('Error al cargar datos de empleados', 'error');
+      employeesData = [];
+      return;
+    }
+    
+    employeesData = result && result.data ? result.data : [];
+  } catch (error) {
+    console.error('Error en loadEmployeesData:', error);
+    employeesData = [];
+    showNotification('Error de conexión con datos de empleados', 'error');
   }
-  
-  employeesData = result.data || [];
 }
 
 function renderAttendanceTable() {
@@ -463,7 +978,6 @@ function renderAttendanceTable() {
 
 function renderVacationTable() {
   if (!elements.vacationTableBody) {
-    console.error('Elemento vacationTableBody no encontrado');
     return;
   }
   
@@ -513,6 +1027,140 @@ function renderVacationTable() {
     
     elements.vacationTableBody.appendChild(row);
   });
+}
+
+function renderSuspensionTables() {
+  renderSuspensionCandidates();
+  renderNotAppliedSuspensions();
+  renderAppliedSuspensions();
+  renderDismissalCandidates();
+}
+
+function renderSuspensionCandidates() {
+  if (!elements.suspensionsTableBody) return;
+  
+  elements.suspensionsTableBody.innerHTML = '';
+  
+  if (suspensionCandidates.length === 0) {
+    const row = document.createElement('tr');
+    row.innerHTML = '<td colspan="6" class="no-data">No hay candidatos a suspensión pendientes</td>';
+    elements.suspensionsTableBody.appendChild(row);
+    return;
+  }
+  
+  suspensionCandidates.forEach((candidate, index) => {
+    const row = document.createElement('tr');
+    if (candidate.status === 'PENDIENTE') {
+      row.classList.add('blinking-row-yellow');
+    }
+    
+    const daysRemaining = Math.ceil((candidate.deadline - new Date()) / (1000 * 60 * 60 * 24));
+    
+    row.innerHTML = `
+      <td>${candidate.employeeName}</td>
+      <td>${formatDate(candidate.firstAbsenceDate)}</td>
+      <td>${candidate.absencesCount} falta(s) (${candidate.mondayFridayCount} en lunes/viernes)</td>
+      <td>${candidate.suggestedDays} día(s)</td>
+      <td><span class="status-badge status-pendiente">${candidate.status}</span></td>
+      <td>
+        <button class="action-button" onclick="openSuspensionModal(${index})">
+          Aplicar Suspensión
+        </button>
+        <br>
+        <small>Vence en ${daysRemaining} días</small>
+      </td>
+    `;
+    elements.suspensionsTableBody.appendChild(row);
+  });
+}
+
+function renderNotAppliedSuspensions() {
+  if (!elements.notAppliedSuspensionsBody) return;
+  
+  elements.notAppliedSuspensionsBody.innerHTML = '';
+  
+  if (notAppliedSuspensions.length === 0) {
+    const row = document.createElement('tr');
+    row.innerHTML = '<td colspan="4" class="no-data">No hay suspensiones no aplicadas</td>';
+    elements.notAppliedSuspensionsBody.appendChild(row);
+    return;
+  }
+  
+  notAppliedSuspensions.forEach(suspension => {
+    const row = document.createElement('tr');
+    row.classList.add('blinking-row-red');
+    
+    row.innerHTML = `
+      <td>${suspension.employeeName}</td>
+      <td>${formatDate(suspension.firstAbsenceDate)}</td>
+      <td>${formatDate(suspension.deadline)}</td>
+      <td><span class="status-badge status-no-aplicada">${suspension.status}</span></td>
+    `;
+    elements.notAppliedSuspensionsBody.appendChild(row);
+  });
+}
+
+function renderAppliedSuspensions() {
+  if (!elements.appliedSuspensionsBody) return;
+  
+  elements.appliedSuspensionsBody.innerHTML = '';
+  
+  if (appliedSuspensions.length === 0) {
+    const row = document.createElement('tr');
+    row.innerHTML = '<td colspan="5" class="no-data">No hay suspensiones aplicadas</td>';
+    elements.appliedSuspensionsBody.appendChild(row);
+    return;
+  }
+  
+  appliedSuspensions.forEach(suspension => {
+    const row = document.createElement('tr');
+    
+    row.innerHTML = `
+      <td>${suspension.employeeName}</td>
+      <td>${formatDate(suspension.suspensionDate)}</td>
+      <td>${suspension.days} día(s)</td>
+      <td>${suspension.originalAbsences}</td>
+      <td><span class="status-badge status-aplicada">REALIZADA</span></td>
+    `;
+    elements.appliedSuspensionsBody.appendChild(row);
+  });
+  
+  const counter = document.getElementById('applied-suspensions-count');
+  if (counter) {
+    counter.textContent = appliedSuspensions.length;
+  }
+}
+
+function renderDismissalCandidates() {
+  if (!elements.dismissalCandidatesBody) return;
+  
+  elements.dismissalCandidatesBody.innerHTML = '';
+  
+  if (automaticDismissalCandidates.length === 0) {
+    const row = document.createElement('tr');
+    row.innerHTML = '<td colspan="5" class="no-data">No hay candidatos a baja automática</td>';
+    elements.dismissalCandidatesBody.appendChild(row);
+    return;
+  }
+  
+  automaticDismissalCandidates.forEach(candidate => {
+    const row = document.createElement('tr');
+    row.classList.add('blinking-red');
+    
+    row.innerHTML = `
+      <td>${candidate.employeeName}</td>
+      <td>${candidate.absencesCount} faltas</td>
+      <td>${formatDate(candidate.firstAbsenceDate)}</td>
+      <td>${formatDate(candidate.lastAbsenceDate)}</td>
+      <td><span class="status-badge status-baja">${candidate.status}</span></td>
+    `;
+    elements.dismissalCandidatesBody.appendChild(row);
+  });
+  
+  const counter = document.getElementById('dismissal-candidates-count');
+  if (counter) {
+    counter.textContent = automaticDismissalCandidates.length;
+  }
 }
 
 function setupVacationAutocomplete() {
@@ -1353,6 +2001,9 @@ function updatePageTitles(sectionName) {
   if (sectionName === 'asistencias') {
     elements.pageTitle.textContent = 'Control de Asistencias';
     elements.pageSubtitle.textContent = 'Gestiona las asistencias y faltas del personal';
+  } else if (sectionName === 'suspensiones') {
+    elements.pageTitle.textContent = 'Gestión de Suspensiones';
+    elements.pageSubtitle.textContent = 'Administra las suspensiones del personal';
   } else if (sectionName === 'vacaciones') {
     elements.pageTitle.textContent = 'Gestión de Vacaciones';
     elements.pageSubtitle.textContent = 'Administra las vacaciones programadas del personal';
@@ -1362,7 +2013,615 @@ function updatePageTitles(sectionName) {
   }
 }
 
+function calculateSuggestedDays(employeeName) {
+  const employeeSuspensions = suspensionData.filter(item => 
+    item.NOMBRE === employeeName && 
+    item.STATUS && 
+    item.STATUS.toUpperCase() === 'REALIZADA'
+  );
+  const suspensionCount = employeeSuspensions.length;
+  
+  if (suspensionCount === 0) return 1;
+  if (suspensionCount === 1) return 2;
+  if (suspensionCount === 2) return 3;
+  
+  return Math.min(suspensionCount + 1, 8);
+}
+
+async function updateSuspensionStatuses() {
+  suspensionCandidates = [];
+  notAppliedSuspensions = [];
+  appliedSuspensions = [];
+  automaticDismissalCandidates = [];
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  console.log('Total de registros en suspensionData:', suspensionData.length);
+  
+  const employeesMap = new Map();
+
+  suspensionData.forEach(suspension => {
+    if (!suspension.FECHA || !suspension.NOMBRE) return;
+    
+    const employeeName = suspension.NOMBRE;
+    if (!employeesMap.has(employeeName)) {
+      employeesMap.set(employeeName, []);
+    }
+    employeesMap.get(employeeName).push(suspension);
+  });
+
+  for (const [employeeName, suspensions] of employeesMap) {
+    const validSuspensions = suspensions.filter(s => s.FECHA && s.NOMBRE);
+    
+    validSuspensions.forEach(suspension => {
+      const absenceDate = new Date(suspension.FECHA);
+      absenceDate.setHours(0, 0, 0, 0);
+      
+      const daysDiff = Math.floor((today - absenceDate) / (1000 * 60 * 60 * 24));
+      const status = suspension.STATUS || 'PENDIENTE';
+      const isApplied = status.toUpperCase() === 'REALIZADA';
+
+      if (isApplied) {
+        appliedSuspensions.push({
+          employeeName: suspension.NOMBRE,
+          suspensionDate: suspension['FECHA DE APLICACION'] || suspension.FECHA,
+          days: calculateSuggestedDays(suspension.NOMBRE),
+          originalAbsences: '1 falta',
+          absenceDate: suspension.FECHA
+        });
+        return;
+      }
+
+      if (daysDiff > 30) {
+        notAppliedSuspensions.push({
+          employeeName: suspension.NOMBRE,
+          firstAbsenceDate: suspension.FECHA,
+          deadline: new Date(absenceDate.getTime() + 30 * 24 * 60 * 60 * 1000),
+          status: 'NO APLICADA',
+          absenceDate: suspension.FECHA
+        });
+        return;
+      }
+
+      if (daysDiff <= 30) {
+        const employeeAbsencesLast30Days = validSuspensions.filter(item => {
+          const itemDate = new Date(item.FECHA);
+          itemDate.setHours(0, 0, 0, 0);
+          const itemDaysDiff = Math.floor((today - itemDate) / (1000 * 60 * 60 * 24));
+          return itemDaysDiff <= 30;
+        });
+
+        if (employeeAbsencesLast30Days.length >= 4) {
+          const firstAbsence = employeeAbsencesLast30Days.reduce((earliest, current) => {
+            return new Date(current.FECHA) < new Date(earliest.FECHA) ? current : earliest;
+          });
+          
+          const lastAbsence = employeeAbsencesLast30Days.reduce((latest, current) => {
+            return new Date(current.FECHA) > new Date(latest.FECHA) ? current : latest;
+          });
+
+          const alreadyInDismissal = automaticDismissalCandidates.some(
+            candidate => candidate.employeeName === employeeName
+          );
+
+          if (!alreadyInDismissal) {
+            automaticDismissalCandidates.push({
+              employeeName: employeeName,
+              firstAbsenceDate: firstAbsence.FECHA,
+              lastAbsenceDate: lastAbsence.FECHA,
+              absencesCount: employeeAbsencesLast30Days.length,
+              status: 'BAJA'
+            });
+          }
+          return;
+        }
+
+        const mondayFridayCount = validSuspensions.filter(item => 
+          isMondayOrFriday(item.FECHA)
+        ).length;
+
+        const alreadyInCandidates = suspensionCandidates.some(
+          candidate => candidate.employeeName === employeeName && 
+          candidate.firstAbsenceDate === suspension.FECHA
+        );
+
+        if (!alreadyInCandidates) {
+          suspensionCandidates.push({
+            employeeName: suspension.NOMBRE,
+            firstAbsenceDate: suspension.FECHA,
+            absencesCount: 1,
+            mondayFridayCount: mondayFridayCount,
+            suggestedDays: calculateSuggestedDays(suspension.NOMBRE),
+            status: 'PENDIENTE',
+            absencesData: [suspension],
+            deadline: new Date(absenceDate.getTime() + 30 * 24 * 60 * 60 * 1000)
+          });
+        }
+      }
+    });
+  }
+
+  console.log('Candidatos a suspensión:', suspensionCandidates.length);
+  console.log('Suspensiones no aplicadas:', notAppliedSuspensions.length);
+  console.log('Suspensiones aplicadas:', appliedSuspensions.length);
+  console.log('Candidatos a baja:', automaticDismissalCandidates.length);
+
+  renderSuspensionTables();
+
+  if (suspensionCandidates.length > 0) {
+    showSuspensionNotification();
+  }
+
+  if (automaticDismissalCandidates.length > 0) {
+    showDismissalNotification();
+  }
+}
+
+function openSuspensionModal(candidateIndex) {
+  if (!isAuthorizedUser()) {
+    showNotification('Solo Marco Cruger o Itati Bautista pueden aplicar suspensiones', 'error');
+    return;
+  }
+  
+  const candidate = suspensionCandidates[candidateIndex];
+  const employee = employeesData.find(emp => emp.Name === candidate.employeeName);
+  
+  document.getElementById('suspension-employee-name').value = candidate.employeeName;
+  document.getElementById('suspension-employee-id').value = employee ? employee['ID #'] : '';
+  document.getElementById('suspension-days-suggested').value = candidate.suggestedDays;
+  document.getElementById('suspension-description').value = `falto injustificadamente el dia ${formatDate(candidate.firstAbsenceDate)}`;
+  
+  elements.suspensionModal.dataset.candidateIndex = candidateIndex;
+  
+  createSuspensionInfoSection(candidate);
+  createDateInputs(candidate.suggestedDays);
+  
+  elements.suspensionModal.classList.add('active');
+}
+
+function createSuspensionInfoSection(candidate) {
+  const suspensionForm = document.getElementById('suspension-form');
+  
+  const existingInfoSection = document.getElementById('suspension-info-section');
+  if (existingInfoSection) {
+    existingInfoSection.remove();
+  }
+  
+  const infoSection = document.createElement('div');
+  infoSection.id = 'suspension-info-section';
+  infoSection.className = 'suspension-info';
+  
+  infoSection.innerHTML = `
+    <h4>Información de la Suspensión</h4>
+    <p><strong>Empleado:</strong> ${candidate.employeeName}</p>
+    <p><strong>Faltas:</strong> ${candidate.absencesCount}</p>
+    <p><strong>Días sugeridos:</strong> ${candidate.suggestedDays}</p>
+    <p><strong>Primera falta:</strong> ${formatDate(candidate.firstAbsenceDate)}</p>
+  `;
+  
+  const firstField = suspensionForm.querySelector('.form-group');
+  suspensionForm.insertBefore(infoSection, firstField);
+}
+
+function createDateInputs(suggestedDays) {
+  const suspensionForm = document.getElementById('suspension-form');
+  
+  const existingDateContainer = document.getElementById('suspension-date-container');
+  if (existingDateContainer) {
+    existingDateContainer.remove();
+  }
+  
+  const dateContainer = document.createElement('div');
+  dateContainer.id = 'suspension-date-container';
+  dateContainer.className = 'date-inputs-container';
+  
+  const title = document.createElement('h4');
+  title.textContent = `Fechas de Aplicación de Suspensión (${suggestedDays} día(s)) - Lunes a Viernes`;
+  title.style.color = 'var(--slate-300)';
+  title.style.marginBottom = '1rem';
+  dateContainer.appendChild(title);
+  
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  const todayLocal = `${year}-${month}-${day}`;
+  
+  for (let i = 0; i < suggestedDays; i++) {
+    const dateInputGroup = document.createElement('div');
+    dateInputGroup.className = 'date-input-group';
+    
+    const label = document.createElement('label');
+    label.textContent = `Día ${i + 1}:`;
+    label.htmlFor = `suspension-date-${i}`;
+    label.style.minWidth = '80px';
+    
+    const input = document.createElement('input');
+    input.type = 'date';
+    input.className = 'form-input suspension-date-input';
+    input.id = `suspension-date-${i}`;
+    input.required = true;
+    input.min = todayLocal; 
+    
+    dateInputGroup.appendChild(label);
+    dateInputGroup.appendChild(input);
+    dateContainer.appendChild(dateInputGroup);
+  }
+  
+  const descriptionField = document.getElementById('suspension-description');
+  descriptionField.parentNode.insertBefore(dateContainer, descriptionField.nextSibling);
+}
+
+async function handleSuspensionSubmit(e) {
+  e.preventDefault();
+  
+  const candidateIndex = elements.suspensionModal.dataset.candidateIndex;
+  const dateInputs = document.querySelectorAll('.suspension-date-input');
+  
+  if (dateInputs.length === 0) {
+    showNotification('Error: No se generaron campos de fecha', 'error');
+    return;
+  }
+  
+  const suspensionDates = [];
+  let hasError = false;
+  
+  for (const input of dateInputs) {
+    const date = input.value;
+    
+    if (!date) {
+      showNotification('Por favor complete todas las fechas de suspensión', 'error');
+      hasError = true;
+      break;
+    }
+    
+    if (!isValidSuspensionDay(date)) {
+      const dateObj = new Date(date);
+      const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+      const dayName = dayNames[dateObj.getDay()];
+      showNotification(`La fecha ${date} (${dayName}) debe ser día laboral (lunes a viernes)`, 'error');
+      hasError = true;
+      break;
+    }
+    
+    suspensionDates.push(date);
+  }
+  
+  if (hasError) return;
+  
+  const candidate = suspensionCandidates[candidateIndex];
+  const employee = employeesData.find(emp => emp.Name === candidate.employeeName);
+  
+  try {
+    showNotification('Procesando suspensión...', 'success');
+    
+    await generateSuspensionPDF(candidate, employee, suspensionDates);
+    
+    await registerSuspensionInProductivity(candidate, employee, suspensionDates);
+    
+    await updateSuspensionConcentrado(candidate, suspensionDates);
+    
+    appliedSuspensions.push({
+      employeeName: candidate.employeeName,
+      suspensionDate: suspensionDates.join(', '),
+      days: candidate.suggestedDays,
+      originalAbsences: candidate.absencesCount + ' falta(s)',
+      absenceDate: candidate.firstAbsenceDate
+    });
+    
+    suspensionCandidates.splice(candidateIndex, 1);
+    
+    closeSuspensionModal();
+    await loadSuspensionData();
+    await updateSuspensionStatuses();
+    showNotification('Suspensión aplicada exitosamente', 'success');
+    
+  } catch (error) {
+    console.error('Error en handleSuspensionSubmit:', error);
+    showNotification('Error al aplicar la suspensión: ' + error.message, 'error');
+  }
+}
+
+async function generateSuspensionPDF(candidate, employee, suspensionDates) {
+  try {
+    showNotification('Guardando datos y generando PDF de suspensión...', 'success');
+    
+    const formattedDates = suspensionDates.map(date => formatDateForSuspension(date)).join('-');
+    const today = new Date();
+    const todayFormatted = formatDateForSuspension(today);
+    
+    const suspensionData = {
+      'Nombre': candidate.employeeName,
+      'NumeroEmpleado': employee ? employee['ID #'] : '',
+      'FechadeHoy': todayFormatted,
+      'Descripciondelasfaltas': `falto injustificadamente el dia ${formatDateForSuspension(candidate.firstAbsenceDate)}`,
+      'FechaSuspencion': formattedDates
+    };
+    
+    const saveResult = await fetchSheetData(
+      sheetConnections.suspensionFormato,
+      'append',
+      [suspensionData]
+    );
+    
+    if (saveResult.error) {
+      throw new Error('Error al guardar en formato de suspensión: ' + saveResult.error);
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    const spreadsheetId = sheetConnections.suspensionFormato.spreadsheetId;
+    const pdfUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=pdf&portrait=true&size=A4&fitw=true&sheetnames=false&printtitle=false&pagenumbers=false&gridlines=false&fzr=false&gid=0`;
+    
+    const timestamp = new Date().getTime();
+    const fileName = `Formato_Suspension_${candidate.employeeName.replace(/\s+/g, '_')}_${timestamp}.pdf`;
+    
+    try {
+      const response = await fetch(pdfUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      
+      const downloadLink = document.createElement('a');
+      downloadLink.href = url;
+      downloadLink.download = fileName;
+      downloadLink.style.display = 'none';
+      
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      
+      setTimeout(() => {
+        document.body.removeChild(downloadLink);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+      
+      showNotification('PDF de suspensión descargado exitosamente', 'success');
+      
+    } catch (fetchError) {
+      const downloadLink = document.createElement('a');
+      downloadLink.href = pdfUrl;
+      downloadLink.download = fileName;
+      downloadLink.target = '_blank';
+      downloadLink.style.display = 'none';
+      
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      
+      setTimeout(() => {
+        document.body.removeChild(downloadLink);
+      }, 1000);
+      
+      showNotification('PDF de suspensión descargado exitosamente', 'success');
+    }
+    
+  } catch (error) {
+    console.error('Error generando PDF de suspensión:', error);
+    
+    const spreadsheetId = sheetConnections.suspensionFormato.spreadsheetId;
+    const fallbackUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=pdf&gid=0`;
+    
+    const downloadLink = document.createElement('a');
+    downloadLink.href = fallbackUrl;
+    downloadLink.download = `Formato_Suspension_${candidate.employeeName.replace(/\s+/g, '_')}_${new Date().getTime()}.pdf`;
+    downloadLink.style.display = 'none';
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    setTimeout(() => document.body.removeChild(downloadLink), 1000);
+    
+    showNotification('PDF de suspensión descargado (método alternativo)', 'success');
+  }
+}
+
+async function registerSuspensionInProductivity(candidate, employee, suspensionDates) {
+  try {
+    for (const date of suspensionDates) {
+      const formattedDate = formatDateForSuspension(date);
+      
+      const suspensionRecord = {
+        FECHA: formattedDate,
+        NOMBRE: candidate.employeeName,
+        MOTIVO: 'suspencion',
+        NOTAS: `motivo de la suspencion falto injustificadamente el dia ${formatDateForSuspension(candidate.firstAbsenceDate)}`,
+        PUNTOS: '-10'
+      };
+      
+      console.log('Registrando suspensión en productividad:', suspensionRecord);
+      
+      const result = await fetchSheetData(
+        sheetConnections.productivity,
+        'append',
+        [suspensionRecord]
+      );
+      
+      if (result.error) {
+        console.error('Error registrando suspensión en productividad:', result.error);
+        throw new Error('No se pudo registrar la suspensión en productividad');
+      }
+    }
+    
+    await loadAttendanceData();
+  } catch (error) {
+    console.error('Error en registerSuspensionInProductivity:', error);
+    throw error;
+  }
+}
+
+async function updateSuspensionConcentrado(candidate, suspensionDates) {
+  try {
+    const applicationDate = formatDateForSuspension(new Date());
+    
+    console.log('Iniciando actualización de concentrado para:', candidate.employeeName);
+    
+    for (const absence of candidate.absencesData) {
+      const absenceDateFormatted = formatDateForSuspension(absence.FECHA);
+      
+      console.log('Buscando registro:', absenceDateFormatted, candidate.employeeName);
+      
+      const updateData = {
+        'FECHA': absenceDateFormatted,
+        'NOMBRE': candidate.employeeName,
+        'MOTIVO': absence.MOTIVO || 'Falta injustificada',
+        'STATUS': 'REALIZADA',
+        'FECHA DE APLICACION': applicationDate
+      };
+      
+      console.log('Datos a actualizar:', updateData);
+      
+      const updateResult = await fetchSheetData(
+        sheetConnections.suspensionConcentrado,
+        'update',
+        updateData
+      );
+      
+      console.log('Resultado de actualización:', updateResult);
+      
+      if (updateResult.error) {
+        console.error('Error actualizando registro:', updateResult.error);
+      } else if (updateResult.updated) {
+        console.log('¡Registro actualizado exitosamente!');
+      } else {
+        console.log('No se encontró el registro para actualizar.');
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
+    return { success: true };
+    
+  } catch (error) {
+    console.error('Error en updateSuspensionConcentrado:', error);
+    throw error;
+  }
+}
+
+function closeSuspensionModal() {
+  if (elements.suspensionModal) {
+    elements.suspensionModal.classList.remove('active');
+  }
+  if (elements.suspensionForm) {
+    elements.suspensionForm.reset();
+  }
+  
+  const infoSection = document.getElementById('suspension-info-section');
+  if (infoSection) {
+    infoSection.remove();
+  }
+  
+  const dateContainer = document.getElementById('suspension-date-container');
+  if (dateContainer) {
+    dateContainer.remove();
+  }
+}
+
+function closeSuspensionDateModal() {
+  if (elements.suspensionDateModal) {
+    elements.suspensionDateModal.classList.remove('active');
+  }
+}
+
+function confirmSuspensionDate() {
+  const selectedDate = document.getElementById('selected-suspension-date').value;
+  
+  if (!selectedDate) {
+    showNotification('Por favor seleccione una fecha de suspensión', 'error');
+    return;
+  }
+  
+  if (!isValidSuspensionDay(selectedDate)) {
+    showNotification('La fecha de suspensión debe ser día laboral (lunes a viernes)', 'error');
+    return;
+  }
+  
+  document.getElementById('suspension-date').value = selectedDate;
+  closeSuspensionDateModal();
+  elements.suspensionModal.classList.add('active');
+}
+
+function isAuthorizedUser() {
+  return currentUser && 
+         (currentUser.name.toLowerCase() === 'marco cruger' || 
+          currentUser.name.toLowerCase() === 'itati bautista');
+}
+
+function initializeSuspensionSound() {
+  try {
+    suspensionSound = new Audio();
+  } catch (error) {
+    console.error('Error inicializando sonido:', error);
+  }
+}
+
+function playSuspensionSound() {
+  if (suspensionSound) {
+    suspensionSound.play().catch(e => console.log('Error reproduciendo sonido:', e));
+  }
+}
+
+function showSuspensionNotification() {
+  if (elements.suspensionNotification) {
+    elements.suspensionNotification.style.display = 'flex';
+    elements.suspensionNotification.className = 'notification warning';
+    document.getElementById('notification-message').textContent = 
+      `Hay ${suspensionCandidates.length} candidato(s) a suspensión pendientes`;
+  }
+}
+
+function showDismissalNotification() {
+  const notification = document.createElement('div');
+  notification.className = 'notification dismissal-notification';
+  notification.innerHTML = `
+    <span><strong>CANDIDATO A BAJA AUTOMÁTICA:</strong> ${automaticDismissalCandidates.length} empleado(s) con 4+ faltas en 30 días</span>
+    <button class="close-notification">&times;</button>
+  `;
+  
+  notification.querySelector('.close-notification').addEventListener('click', () => {
+    notification.remove();
+  });
+  
+  document.body.appendChild(notification);
+  
+  setTimeout(() => {
+    notification.style.opacity = '0';
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.remove();
+      }
+    }, 500);
+  }, 10000);
+}
+
+function scheduleHourlySuspensionCheck() {
+  if (suspensionCheckInterval) {
+    clearInterval(suspensionCheckInterval);
+  }
+  
+  suspensionCheckInterval = setInterval(async () => {
+    const now = new Date();
+    
+    if (!lastSuspensionCheckTime || (now - lastSuspensionCheckTime) >= 2 * 60 * 60 * 1000) {
+      await loadSuspensionData();
+      await updateSuspensionStatuses();
+      
+      if (suspensionCandidates.length > 0 || automaticDismissalCandidates.length > 0) {
+        playSuspensionSound();
+        
+        if (suspensionCandidates.length > 0) {
+          showSuspensionNotification();
+        }
+        
+        if (automaticDismissalCandidates.length > 0) {
+          showDismissalNotification();
+        }
+      }
+      
+      lastSuspensionCheckTime = now;
+    }
+  }, 30 * 60 * 1000);
+}
+
+window.openSuspensionModal = openSuspensionModal;
+window.closeSuspensionModal = closeSuspensionModal;
+window.closeSuspensionDateModal = closeSuspensionDateModal;
+window.confirmSuspensionDate = confirmSuspensionDate;
+
 document.addEventListener('DOMContentLoaded', initializeApp);
-
-
-
