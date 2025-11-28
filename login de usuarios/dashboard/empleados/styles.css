@@ -274,7 +274,7 @@ body {
     margin-top: 2rem;
 }
 
-/* MODALES CORREGIDOS - MÁS COMPACTOS Y SIN SCROLL */
+/* MODALES */
 .modal {
     display: none;
     position: fixed;
@@ -307,7 +307,6 @@ body {
     overflow-y: auto;
 }
 
-/* Modal compacto para mejor visualización */
 .compact-modal {
     max-height: 75vh;
     overflow-y: auto;
@@ -407,39 +406,24 @@ body {
     font-weight: 600;
 }
 
-.status-asistencia {
+.status-pendiente {
+    background: rgba(255, 191, 0, 0.959);
+    color: var(--yellow-500);
+}
+
+.status-aplicada {
     background: rgba(16, 185, 129, 0.2);
     color: var(--emerald-400);
+}
+
+.status-no-aplicada {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--red-500);
 }
 
 .status-falta {
     background: rgba(239, 68, 68, 0.2);
     color: var(--red-500);
-}
-
-.status-permiso {
-    background: rgba(234, 179, 8, 0.2);
-    color: var(--yellow-500);
-}
-
-.status-permiso-dia {
-    background: rgba(234, 179, 8, 0.2);
-    color: var(--yellow-500);
-}
-
-.status-no-registro {
-    background: rgba(71, 85, 105, 0.3);
-    color: var(--slate-400);
-}
-
-.status-5hrs-goce {
-    background: rgba(139, 92, 246, 0.2);
-    color: var(--purple-500);
-}
-
-.status-permiso-horas {
-    background: rgba(249, 115, 22, 0.2);
-    color: var(--orange-500);
 }
 
 .table-filters {
@@ -477,112 +461,8 @@ body {
     padding: 2rem;
 }
 
-/* === CORRECCIONES SOLICITADAS === */
-/* 1. Animaciones para filas que deben parpadear */
-@keyframes blinkRed {
-  0%, 100% { background-color: rgba(239, 68, 68, 0.1); }
-  50% { background-color: rgba(239, 68, 68, 0.4); }
-}
-
-@keyframes blinkYellow {
-  0%, 100% { background-color: rgba(234, 179, 8, 0.1); }
-  50% { background-color: rgba(234, 179, 8, 0.4); }
-}
-
-.blinking-row-red {
-  animation: blinkRed 1s infinite;
-}
-
-.blinking-row-yellow {
-  animation: blinkYellow 1.5s infinite;
-}
-
-/* 2. Asegurar que las animaciones no se sobrescriban */
-.data-table tr.blinking-row-red,
-.data-table tr.blinking-row-yellow {
-  animation-fill-mode: both !important;
-  animation-iteration-count: infinite !important;
-}
-
-/* Estilos para notificaciones */
-.notification {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    color: white;
-    padding: 1rem 1.5rem;
-    border-radius: 0.75rem;
-    font-weight: 600;
-    z-index: 9999;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    transition: opacity 0.3s;
-}
-
-.notification.success {
-    background-color: rgba(16, 185, 129, 0.9);
-}
-
-.notification.error {
-    background-color: rgba(239, 68, 68, 0.9);
-}
-
-.notification .close-notification {
-    background: none;
-    border: none;
-    color: white;
-    font-size: 1.2rem;
-    cursor: pointer;
-    padding: 0;
-    margin: 0;
-}
-
-/* Estilos para el modal de acceso denegado */
-.access-denied-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.8);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 2000;
-    transition: opacity 0.5s;
-}
-
-.neon-message {
-    background: rgba(15, 23, 42, 0.95);
-    border: 2px solid var(--emerald-400);
-    border-radius: 1rem;
-    padding: 2rem;
-    text-align: center;
-    box-shadow: 0 0 20px rgba(16, 185, 129, 0.5),
-                0 0 40px rgba(16, 185, 129, 0.3),
-                0 0 60px rgba(16, 185, 129, 0.1);
-}
-
-.access-denied-text {
-    color: white;
-    font-size: 1.5rem;
-    font-weight: bold;
-}
-
-.access-denied-subtext {
-    color: var(--slate-300);
-    margin-top: 1rem;
-}
-
-/* === NUEVOS ESTILOS PARA PERMISOS === */
-.form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    margin-bottom: 1rem;
+.permission-types {
+    padding: 0.75rem;
 }
 
 .section-title {
@@ -598,6 +478,35 @@ body {
     background: rgba(30, 41, 59, 0.6);
     border-radius: 0.75rem;
     border: 1px solid rgba(71, 85, 105, 0.3);
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-label {
+    display: block;
+    color: var(--slate-300);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.form-input, .form-select {
+    width: 100%;
+    background: rgba(30, 41, 59, 0.8);
+    border: 2px solid rgba(71, 85, 105, 0.5);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    color: white;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.form-input:focus, .form-select:focus {
+    border-color: var(--emerald-500);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
 }
 
 .toggle-group {
@@ -661,56 +570,78 @@ body {
 }
 
 .form-textarea {
-    min-height: 80px;
+    min-height: 1px;
     resize: vertical;
     font-family: 'Inter', sans-serif;
 }
 
-/* Efectos de parpadeo mejorados */
-@keyframes blinkYellow {
-  0% { background-color: rgba(255, 255, 0, 0.1); }
-  50% { background-color: rgba(255, 255, 0, 0.4); }
-  100% { background-color: rgba(255, 255, 0, 0.1); }
+.toggle-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
-@keyframes blinkRed {
-  0% { background-color: rgba(255, 0, 0, 0.1); }
-  50% { background-color: rgba(255, 0, 0, 0.4); }
-  100% { background-color: rgba(255, 0, 0, 0.1); }
+.toggle-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
-.blinking-row-yellow {
-  animation: blinkYellow 2s infinite;
+.toggle-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    cursor: pointer;
+    padding: 0.5rem 0;
 }
 
-.blinking-row-red {
-  animation: blinkRed 1.5s infinite;
+.toggle-text {
+    color: var(--slate-300);
+    font-weight: 500;
+    font-size: 0.9rem;
 }
 
-/* Estilos para los badges de estado */
-.status-badge {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+.toggle-input {
+    display: none;
 }
 
-.status-asistencia {
-  background-color: #d1fae5;
-  color: #065f46;
-  border: 1px solid #065f46;
+.toggle-slider {
+    position: relative;
+    width: 45px;
+    height: 22px;
+    background: rgba(71, 85, 105, 0.8);
+    border-radius: 12px;
+    transition: all 0.3s;
 }
 
-.status-no-registro {
-  background-color: #fee2e2;
-  color: #b91c1c;
-  border: 1px solid #b91c1c;
+.toggle-slider:before {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: white;
+    top: 2px;
+    left: 2px;
+    transition: all 0.3s;
 }
 
-/* Animaciones para filas */
+.toggle-input:checked + .toggle-slider {
+    background: var(--emerald-500);
+}
+
+.toggle-input:checked + .toggle-slider:before {
+    transform: translateX(23px);
+}
+
+.form-textarea {
+    min-height: 1px;
+    resize: vertical;
+    font-family: 'Inter', sans-serif;
+}
+
+/* Animaciones para suspensiones */
 @keyframes blinkRed {
   0%, 100% { background-color: rgba(239, 68, 68, 0.1); }
   50% { background-color: rgba(239, 68, 68, 0.4); }
@@ -721,68 +652,168 @@ body {
   50% { background-color: rgba(234, 179, 8, 0.4); }
 }
 
+@keyframes blinkGreen {
+    0%, 100% { background-color: rgba(234, 179, 8, 0.1); }
+    50% { background-color: rgba(10, 192, 56, 0.4); }
+  }
+
 .blinking-row-red {
   animation: blinkRed 1s infinite;
-  border-left: 4px solid #ef4444;
 }
 
 .blinking-row-yellow {
   animation: blinkYellow 1.5s infinite;
-  border-left: 4px solid #eab308;
 }
 
-/* Asegurar que las animaciones no se sobrescriban */
-.data-table tr.blinking-row-red,
-.data-table tr.blinking-row-yellow {
-  animation-fill-mode: both !important;
-  animation-iteration-count: infinite !important;
+.blinking-row-green {
+    animation: blinkGreen 1.5s infinite;
+  }
+
+/* Estilos para notificaciones */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    z-index: 9999;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: opacity 0.3s;
 }
 
-/* Responsive para permisos */
+.notification.success {
+    background-color: rgba(16, 185, 129, 0.9);
+}
+
+.notification.error {
+    background-color: rgba(239, 68, 68, 0.9);
+}
+
+.notification.warning {
+    background-color: rgba(255, 191, 0, 0.836);
+}
+
+
+
+.notification .close-notification {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+}
+
+/* Estilos para el calendario de suspensiones */
+.calendar-day {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    cursor: pointer;
+    margin: 2px;
+    font-size: 0.8rem;
+}
+
+.calendar-day.available {
+    background: rgba(16, 185, 129, 0.3);
+    color: white;
+}
+
+.calendar-day.unavailable {
+    background: rgba(239, 68, 68, 0.3);
+    color: var(--slate-400);
+    cursor: not-allowed;
+}
+
+.calendar-day.selected {
+    background: var(--emerald-500);
+    color: white;
+}
+
+.calendar-container {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    margin-top: 1rem;
+}
+
+.calendar-header {
+    text-align: center;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.action-button {
+    background: linear-gradient(135deg, var(--blue-600), var(--blue-500));
+    border: none;
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 0.8rem;
+}
+
+.action-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.export-button {
+    background: linear-gradient(135deg, var(--purple-600), var(--purple-500));
+}
+
+.attendance-table-container {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+/* Responsive */
 @media (max-width: 768px) {
     .dashboard-container {
         flex-direction: column;
     }
-    
+   
     .sidebar {
         width: 100%;
         padding: 1rem;
     }
-    
+   
     .nav-menu {
         flex-direction: row;
         overflow-x: auto;
     }
-    
+   
     .nav-item {
         min-width: 150px;
     }
-    
-    .form-row {
+   
+    .table-filters {
         grid-template-columns: 1fr;
     }
-    
-    .permission-types {
-        padding: 0.75rem;
-    }
-    
-    .toggle-label {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
-    }
-    
+   
     .modal-content {
         padding: 1rem;
         margin: 1rem;
     }
-    
+   
     .button-group {
         flex-direction: column;
     }
 }
 
-/* Scrollbar personalizado para modales */
+/* Scrollbar personalizado */
 .modal-content::-webkit-scrollbar {
     width: 6px;
 }
@@ -799,76 +830,6 @@ body {
 
 .modal-content::-webkit-scrollbar-thumb:hover {
     background: var(--emerald-600);
-}
-
-/* Estilos para el contenedor de tabla con scroll */
-.attendance-table-container {
-    max-height: 800px;
-    overflow-y: auto;
-    border-radius: 0 0 12px 12px;
-}
-
-.attendance-table-container table {
-    width: 100%;
-    margin-bottom: 0;
-}
-
-/* Estilos para parpadeos */
-@keyframes blink-red {
-    0%, 100% { background-color: transparent; }
-    50% { background-color: rgba(255, 0, 0, 0.3); }
-}
-
-@keyframes blink-red-border {
-    0%, 100% { border-left-color: transparent; }
-    50% { border-left-color: #ff4444; }
-}
-
-.blinking-red {
-    animation: blink-red 1s infinite;
-}
-
-.blinking-red-border {
-    animation: blink-red-border 1s infinite;
-    border-left: 3px solid transparent;
-    padding-left: 8px;
-}
-
-/* Estilos para campos de tiempo en formato 12hrs */
-.form-input[type="time"] {
-    font-family: 'Inter', sans-serif;
-}
-
-/* Mejoras para filtros múltiples */
-.table-filters {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 10px;
-    margin-bottom: 20px;
-}
-
-.filter-input {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 6px;
-    background: rgba(255, 255, 255, 0.05);
-    color: white;
-    font-size: 0.9rem;
-}
-
-.filter-input:focus {
-    outline: none;
-    border-color: #3b82f6;
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.filter-input::placeholder {
-    color: rgba(255, 255, 255, 0.6);
-}
-
-#hours-container {
-    transition: all 0.3s ease;
 }
 
 .attendance-table-container::-webkit-scrollbar {
@@ -888,3 +849,101 @@ body {
 .attendance-table-container::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.5);
 }
+
+.date-inputs-container {
+    background: rgba(30, 41, 59, 0.6);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(71, 85, 105, 0.3);
+    margin-bottom: 1rem;
+  }
+  
+  .date-input-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .date-input-group label {
+    color: var(--slate-300);
+    font-weight: 600;
+    min-width: 80px;
+    font-size: 0.9rem;
+  }
+  
+  .suspension-date-input {
+    flex: 1;
+    background: rgba(15, 23, 42, 0.8);
+    border: 2px solid rgba(71, 85, 105, 0.5);
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    color: white;
+    font-size: 0.9rem;
+  }
+  
+  .suspension-date-input:focus {
+    border-color: var(--emerald-500);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+  }
+
+  .status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-pendiente {
+  background-color: rgba(199, 181, 17, 0.233);
+  color: #f8d300;
+  border: 1px solid #f8d300;
+}
+
+.status-no-aplicada {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid #ef4444;
+}
+
+.status-aplicada {
+  background-color: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  border: 1px solid #22c55e;
+}
+
+.status-baja {
+  background-color: rgba(139, 0, 0, 0.2);
+  color: #8b0000;
+  border: 1px solid #8b0000;
+}
+
+.blinking-row-yellow {
+  animation: blink-yellow 2s infinite;
+}
+
+.blinking-row-red {
+  animation: blink-red 2s infinite;
+}
+
+.blinking-row-green{
+    animation: blink-green 2s infinite;
+}
+
+
+@keyframes blink-yellow {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: rgba(143, 95, 11, 0.24); }
+}
+
+@keyframes blink-red {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: rgba(239, 68, 68, 0.158); }
+}
+
+@keyframes blink-green {
+    0%, 100% { background-color: transparent; }
+    50% { background-color: rgba(11, 143, 29, 0.24); }
+  }
