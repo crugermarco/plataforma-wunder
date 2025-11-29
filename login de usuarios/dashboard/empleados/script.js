@@ -1,4 +1,4 @@
-const SCRIPT_SUSPENCION_URL = 'https://script.google.com/macros/s/AKfycbzNQzmRXsuXPHRjtstQbAGbU4YHGCjtuaJgf9Hiy3grVD3s11QEcSROtCcVKE6QorCbXg/exec'
+const SCRIPT_SUSPENCION_URL = 'https://script.google.com/macros/s/AKfycbxhCrsH4v93AZlx9YmNdBVDCTvD5yNzz4E7JalcfbrQEJG0YNrlL4lRjZ8qNlRVUeb0ug/exec'
 
 const sheetConnections = {
   productivity: {
@@ -792,94 +792,66 @@ function initializeEventListeners() {
 async function fetchSheetData(connection, action = 'read', data = null) {
   try {
     const url = new URL(connection.scriptUrl);
+    url.searchParams.append('id', connection.spreadsheetId);
+    url.searchParams.append('sheet', connection.sheetName);
+    url.searchParams.append('action', action);
     
-    if (action === 'append' || action === 'update') {
-      const params = new URLSearchParams();
-      params.append('id', connection.spreadsheetId);
-      params.append('sheet', connection.sheetName);
-      params.append('action', action);
-      
-      if (data) {
-        params.append('data', JSON.stringify(data));
+    if (data) {
+      if (action === 'update') {
+        url.searchParams.append('data', JSON.stringify(data));
+      } else {
+        const formattedData = Array.isArray(data) ? data : [data];
+        const finalData = formattedData.map(item => {
+          const formattedItem = {...item};
+          if ('AUTORIZADAS' in formattedItem) {
+            formattedItem.AUTORIZADAS = formattedItem.AUTORIZADAS ? 'TRUE' : 'FALSE';
+          }
+          return formattedItem;
+        });
+        url.searchParams.append('data', JSON.stringify(finalData));
       }
-
-      const response = await fetch(url.toString(), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: params
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      try {
-        const result = await response.json();
-        return result;
-      } catch (jsonError) {
-        return { success: true, message: 'Operación completada' };
-      }
-    } else {
-      url.searchParams.append('id', connection.spreadsheetId);
-      url.searchParams.append('sheet', connection.sheetName);
-      url.searchParams.append('action', action);
-      
-      const response = await fetch(url.toString());
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      return result;
     }
+    
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      mode: 'cors'
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Error HTTP: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    
+    if (result.error) {
+      throw new Error(result.error);
+    }
+    
+    return result;
   } catch (error) {
-    console.error('Error fetching data from:', connection.scriptUrl, error);
-    
-    if (action === 'append' || action === 'update') {
-      return { success: true, message: 'Operación completada (asumida)' };
-    }
-    
-    return { 
-      error: 'No se pudo conectar con el servidor. Verifica tu conexión a internet.',
-      data: [] 
-    };
+    console.error('Error fetching data:', error);
+    showNotification(`Error al cargar datos: ${error.message}`, 'error');
+    return { error: error.message };
   }
 }
 
 async function loadAttendanceData() {
-  try {
-    const result = await fetchSheetData(sheetConnections.productivity);
-    if (result && result.error) {
-      console.error('Error cargando datos de asistencia:', result.error);
-      showNotification('Error al cargar datos de asistencia', 'error');
-      attendanceData = [];
-      filteredAttendanceData = [];
-      return;
-    }
-    
-    attendanceData = result && result.data ? result.data : [];
-    filteredAttendanceData = [...attendanceData];
-    renderAttendanceTable();
-    checkMissingEmployees();
-  } catch (error) {
-    console.error('Error en loadAttendanceData:', error);
-    attendanceData = [];
-    filteredAttendanceData = [];
-    showNotification('Error de conexión con datos de asistencia', 'error');
-  }
+  const result = await fetchSheetData(sheetConnections.productivity);
+  if (result.error) return;
+  
+  attendanceData = result.data || [];
+  filteredAttendanceData = [...attendanceData];
+  renderAttendanceTable();
+  checkMissingEmployees();
 }
 
 async function loadVacationData() {
   try {
     const result = await fetchSheetData(sheetConnections.vacations);
     
-    if (result && result.error) {
+    if (result.error) {
       console.error('Error cargando datos de vacaciones:', result.error);
       showNotification('Error al cargar datos de vacaciones', 'error');
-      vacationData = [];
       return;
     }
     
@@ -905,27 +877,19 @@ async function loadVacationData() {
     renderVacationTable();
   } catch (error) {
     console.error('Error en loadVacationData:', error);
-    vacationData = [];
-    showNotification('Error de conexión con datos de vacaciones', 'error');
+    showNotification('Error crítico al cargar vacaciones', 'error');
   }
 }
 
 async function loadEmployeesData() {
-  try {
-    const result = await fetchSheetData(sheetConnections.employees);
-    if (result && result.error) {
-      console.error('Error cargando datos de empleados:', result.error);
-      showNotification('Error al cargar datos de empleados', 'error');
-      employeesData = [];
-      return;
-    }
-    
-    employeesData = result && result.data ? result.data : [];
-  } catch (error) {
-    console.error('Error en loadEmployeesData:', error);
-    employeesData = [];
-    showNotification('Error de conexión con datos de empleados', 'error');
+  const result = await fetchSheetData(sheetConnections.employees);
+  if (result.error) {
+    console.error('Error cargando datos de empleados:', result.error);
+    showNotification('Error al cargar datos de empleados', 'error');
+    return;
   }
+  
+  employeesData = result.data || [];
 }
 
 function renderAttendanceTable() {
@@ -978,6 +942,7 @@ function renderAttendanceTable() {
 
 function renderVacationTable() {
   if (!elements.vacationTableBody) {
+    console.error('Elemento vacationTableBody no encontrado');
     return;
   }
   
@@ -2296,11 +2261,19 @@ async function handleSuspensionSubmit(e) {
   try {
     showNotification('Procesando suspensión...', 'success');
     
+    const alreadyApplied = appliedSuspensions.some(applied => 
+      applied.employeeName === candidate.employeeName && 
+      applied.absenceDate === candidate.firstAbsenceDate
+    );
+    
+    if (alreadyApplied) {
+      showNotification('Esta suspensión ya fue aplicada anteriormente', 'error');
+      return;
+    }
+    
     await generateSuspensionPDF(candidate, employee, suspensionDates);
     
-    await registerSuspensionInProductivity(candidate, employee, suspensionDates);
-    
-    await updateSuspensionConcentrado(candidate, suspensionDates);
+    await updateSuspensionConcentradoCorrectly(candidate, suspensionDates);
     
     appliedSuspensions.push({
       employeeName: candidate.employeeName,
@@ -2323,9 +2296,79 @@ async function handleSuspensionSubmit(e) {
   }
 }
 
+async function updateSuspensionConcentradoCorrectly(candidate, suspensionDates) {
+  try {
+    const applicationDate = formatDateForSuspension(new Date());
+    
+    console.log('Actualizando concentrado correctamente para:', candidate.employeeName);
+    
+    let updatedCount = 0;
+    
+    for (const absence of candidate.absencesData) {
+      const absenceDateFormatted = formatDateForSuspension(absence.FECHA);
+      
+      console.log('Buscando registro específico en concentrado:', {
+        FECHA: absenceDateFormatted,
+        NOMBRE: candidate.employeeName
+      });
+      
+      const existingRecord = suspensionData.find(item => 
+        formatDateForSuspension(item.FECHA) === absenceDateFormatted && 
+        item.NOMBRE === candidate.employeeName
+      );
+      
+      if (!existingRecord) {
+        console.log('No se encontró el registro específico en concentrado');
+        continue;
+      }
+      
+      console.log('Registro encontrado en concentrado:', existingRecord);
+      
+      const updateData = {
+        'FECHA': absenceDateFormatted,
+        'NOMBRE': candidate.employeeName,
+        'MOTIVO': existingRecord.MOTIVO || 'Falta injustificada',
+        'STATUS': 'REALIZADA',
+        'FECHA DE APLICACION': applicationDate
+      };
+      
+      console.log('Actualizando registro en concentrado:', updateData);
+      
+      const updateResult = await fetchSheetData(
+        sheetConnections.suspensionConcentrado,
+        'update',
+        updateData
+      );
+      
+      console.log('Resultado de actualización:', updateResult);
+      
+      if (updateResult.error) {
+        console.error('Error actualizando registro:', updateResult.error);
+      } else if (updateResult.updated) {
+        console.log('Registro actualizado exitosamente en concentrado');
+        updatedCount++;
+      } else {
+        console.log('No se pudo actualizar el registro en concentrado.');
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
+    if (updatedCount === 0) {
+      throw new Error('No se pudo actualizar ningún registro en el concentrado');
+    }
+    
+    return { success: true, updatedCount };
+    
+  } catch (error) {
+    console.error('Error en updateSuspensionConcentradoCorrectly:', error);
+    throw error;
+  }
+}
+
 async function generateSuspensionPDF(candidate, employee, suspensionDates) {
   try {
-    showNotification('Guardando datos y generando PDF de suspensión...', 'success');
+    showNotification('Generando PDF de suspensión...', 'success');
     
     const formattedDates = suspensionDates.map(date => formatDateForSuspension(date)).join('-');
     const today = new Date();
@@ -2409,88 +2452,6 @@ async function generateSuspensionPDF(candidate, employee, suspensionDates) {
     setTimeout(() => document.body.removeChild(downloadLink), 1000);
     
     showNotification('PDF de suspensión descargado (método alternativo)', 'success');
-  }
-}
-
-async function registerSuspensionInProductivity(candidate, employee, suspensionDates) {
-  try {
-    for (const date of suspensionDates) {
-      const formattedDate = formatDateForSuspension(date);
-      
-      const suspensionRecord = {
-        FECHA: formattedDate,
-        NOMBRE: candidate.employeeName,
-        MOTIVO: 'suspencion',
-        NOTAS: `motivo de la suspencion falto injustificadamente el dia ${formatDateForSuspension(candidate.firstAbsenceDate)}`,
-        PUNTOS: '-10'
-      };
-      
-      console.log('Registrando suspensión en productividad:', suspensionRecord);
-      
-      const result = await fetchSheetData(
-        sheetConnections.productivity,
-        'append',
-        [suspensionRecord]
-      );
-      
-      if (result.error) {
-        console.error('Error registrando suspensión en productividad:', result.error);
-        throw new Error('No se pudo registrar la suspensión en productividad');
-      }
-    }
-    
-    await loadAttendanceData();
-  } catch (error) {
-    console.error('Error en registerSuspensionInProductivity:', error);
-    throw error;
-  }
-}
-
-async function updateSuspensionConcentrado(candidate, suspensionDates) {
-  try {
-    const applicationDate = formatDateForSuspension(new Date());
-    
-    console.log('Iniciando actualización de concentrado para:', candidate.employeeName);
-    
-    for (const absence of candidate.absencesData) {
-      const absenceDateFormatted = formatDateForSuspension(absence.FECHA);
-      
-      console.log('Buscando registro:', absenceDateFormatted, candidate.employeeName);
-      
-      const updateData = {
-        'FECHA': absenceDateFormatted,
-        'NOMBRE': candidate.employeeName,
-        'MOTIVO': absence.MOTIVO || 'Falta injustificada',
-        'STATUS': 'REALIZADA',
-        'FECHA DE APLICACION': applicationDate
-      };
-      
-      console.log('Datos a actualizar:', updateData);
-      
-      const updateResult = await fetchSheetData(
-        sheetConnections.suspensionConcentrado,
-        'update',
-        updateData
-      );
-      
-      console.log('Resultado de actualización:', updateResult);
-      
-      if (updateResult.error) {
-        console.error('Error actualizando registro:', updateResult.error);
-      } else if (updateResult.updated) {
-        console.log('¡Registro actualizado exitosamente!');
-      } else {
-        console.log('No se encontró el registro para actualizar.');
-      }
-      
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
-    
-    return { success: true };
-    
-  } catch (error) {
-    console.error('Error en updateSuspensionConcentrado:', error);
-    throw error;
   }
 }
 
