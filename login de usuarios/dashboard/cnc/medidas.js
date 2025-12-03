@@ -1,12 +1,12 @@
 const sheetConnections = {
     medidas: {
-      scriptUrl: 'https://script.google.com/macros/s/AKfycby-KfWmQvC5bEU5j6WUe1sOumZfzUN7uznRiUw9kskrmrflWJJJF13GGYrbLLaZYrTH/exec',
+      scriptUrl: 'https://script.google.com/macros/s/AKfycbw5kD8ELifAVKRefTYYimXC2cDCz1p6gL2vQBHKlELoJLaeM_uQ6xPTzhmpid832XmTIw/exec',
       spreadsheetId: '1YLFhIq_C3SUWXjjPLS8oXOyjuowX106u5X2ejSNCmUA',
       sheetName: 'CONCENTRADO DE MEDIDAS',
       headersRow: 1
     },
     data: {
-      scriptUrl: 'https://script.google.com/macros/s/AKfycby-KfWmQvC5bEU5j6WUe1sOumZfzUN7uznRiUw9kskrmrflWJJJF13GGYrbLLaZYrTH/exec',
+      scriptUrl: 'https://script.google.com/macros/s/AKfycbw5kD8ELifAVKRefTYYimXC2cDCz1p6gL2vQBHKlELoJLaeM_uQ6xPTzhmpid832XmTIw/exec',
       spreadsheetId: '1YLFhIq_C3SUWXjjPLS8oXOyjuowX106u5X2ejSNCmUA',
       sheetName: 'DATA',
       headersRow: 1
@@ -31,8 +31,8 @@ const sheetConnections = {
       { key: 'trackAzul2', label: 'TRACK AZUL', required: false, isInfo: false },
       { key: 'ballVerde2', label: 'BALL VERDE', required: false, isInfo: false },
       { key: 'ballAmarillo2', label: 'BALL AMARILLO', required: false, isInfo: false },
-      { key: 'ballAzulCielo12', label: 'BALL AZUL CIELO1', required: false, isInfo: false },
-      { key: 'ballAzulCielo22', label: 'BALL AZUL CIELO2', required: false, isInfo: false }
+      { key: 'ballAzulCielo2', label: 'BALL AZUL CIELO', required: false, isInfo: false },
+      { key: 'ballNaranja2', label: 'BALL NARANJA', required: false, isInfo: false }
     ],
     
     set3: [
@@ -40,8 +40,8 @@ const sheetConnections = {
       { key: 'trackAzul3', label: 'TRACK AZUL', required: false, isInfo: false },
       { key: 'ballVerde3', label: 'BALL VERDE', required: false, isInfo: false },
       { key: 'ballAmarillo3', label: 'BALL AMARILLO', required: false, isInfo: false },
-      { key: 'ballAzulCielo13', label: 'BALL AZUL CIELO1', required: false, isInfo: false },
-      { key: 'ballAzulCielo23', label: 'BALL AZUL CIELO2', required: false, isInfo: false }
+      { key: 'ballAzulCielo3', label: 'BALL AZUL CIELO', required: false, isInfo: false },
+      { key: 'ballNaranja3', label: 'BALL NARANJA', required: false, isInfo: false }
     ],
     
     set4: [
@@ -49,8 +49,8 @@ const sheetConnections = {
       { key: 'trackAzul4', label: 'TRACK AZUL', required: false, isInfo: false },
       { key: 'ballVerde4', label: 'BALL VERDE', required: false, isInfo: false },
       { key: 'ballAmarillo4', label: 'BALL AMARILLO', required: false, isInfo: false },
-      { key: 'ballAzulCielo14', label: 'BALL AZUL CIELO1', required: false, isInfo: false },
-      { key: 'ballAzulCielo24', label: 'BALL AZUL CIELO2', required: false, isInfo: false }
+      { key: 'ballAzulCielo4', label: 'BALL AZUL CIELO', required: false, isInfo: false },
+      { key: 'ballNaranja4', label: 'BALL NARANJA', required: false, isInfo: false }
     ]
   };
   
@@ -277,7 +277,6 @@ const sheetConnections = {
   
   async function callGoogleScript(connection, action, data = {}) {
       try {
-          console.log(`📡 Enviando ${action} a Google Apps Script...`);
           
           const url = new URL(connection.scriptUrl);
           const params = new URLSearchParams({
@@ -289,7 +288,6 @@ const sheetConnections = {
           });
   
           const fullUrl = `${url}?${params}`;
-          console.log('🔗 URL final:', fullUrl);
   
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 10000);
@@ -301,19 +299,15 @@ const sheetConnections = {
   
           clearTimeout(timeoutId);
   
-          console.log('📨 Estado de respuesta:', response.status, response.statusText);
-  
           if (!response.ok) {
               throw new Error(`Error HTTP ${response.status}: ${response.statusText}`);
           }
   
           const result = await response.json();
-          console.log('✅ Respuesta REAL del servidor:', result);
           
           return result;
   
       } catch (error) {
-          console.error('❌ Error en callGoogleScript:', error);
           
           if (error.name === 'AbortError') {
               throw new Error('Timeout: El servidor no respondió en 10 segundos');
@@ -441,15 +435,10 @@ const sheetConnections = {
               { program: program }
           );
           
-          console.log('Resultado de búsqueda:', result);
-          
           if (result.success && result.data && result.data.found) {
               currentRow.type = result.data.type;
               currentRow.referenceValues = result.data.measurements;
               currentRow.referenceImages = result.data.images || {};
-              
-              console.log('✅ Referencias encontradas. TYPE:', currentRow.type, 'Referencias:', currentRow.referenceValues);
-              console.log('🖼️ Imágenes de referencia:', currentRow.referenceImages);
               
               const allFields = getAllMeasurementFields();
               allFields.forEach(field => {
@@ -475,7 +464,6 @@ const sheetConnections = {
               showMessage('❌ ' + errorMsg, 'error');
           }
       } catch (error) {
-          console.error('Error buscando referencias:', error);
           showMessage('❌ Error de conexión: ' + error.message, 'error');
       }
   }
@@ -508,10 +496,10 @@ const sheetConnections = {
                       <strong>BALL AMARILLO:</strong> <span class="reference-value">${refValues.ballAmarillo1 || 'N/A'}</span>
                   </div>
                   <div class="reference-item">
-                      <strong>BALL AZUL CIELO1:</strong> <span class="reference-value">${refValues.ballAzulCielo11 || 'N/A'}</span>
+                      <strong>BALL AZUL CIELO:</strong> <span class="reference-value">${refValues.ballAzulCielo1 || 'N/A'}</span>
                   </div>
                   <div class="reference-item">
-                      <strong>BALL AZUL CIELO2:</strong> <span class="reference-value">${refValues.ballAzulCielo21 || 'N/A'}</span>
+                      <strong>BALL NARANJA:</strong> <span class="reference-value">${refValues.ballNaranja1 || 'N/A'}</span>
                   </div>
               </div>
               <p class="hint">Set 1 cargado automáticamente. Ahora captura las mediciones reales (Sets 2-4).</p>
@@ -559,28 +547,31 @@ const sheetConnections = {
           imageUrl = currentRow.referenceImages.ballVerdeImagen || '';
       } else if (field.label === 'BALL AMARILLO') {
           imageUrl = currentRow.referenceImages.ballAmarilloImagen || '';
-      } else if (field.label === 'BALL AZUL CIELO1') {
-          imageUrl = currentRow.referenceImages.ballAzulCielo1Imagen || '';
-      } else if (field.label === 'BALL AZUL CIELO2') {
-          imageUrl = currentRow.referenceImages.ballAzulCielo2Imagen || '';
+      } else if (field.label === 'BALL AZUL CIELO') {
+          imageUrl = currentRow.referenceImages.ballAzulCieloImagen || '';
+      } else if (field.label === 'BALL NARANJA') {
+          imageUrl = currentRow.referenceImages.ballNaranjaImagen || '';
       }
       
-      console.log(`🔍 Set ${currentSet} - Campo: ${field.label}, Valor ref: ${refValue}, Valor actual: ${currentValue}`);
-      console.log(`🖼️ Imagen para ${field.label}:`, imageUrl);
-      
-      if (currentValue !== null) {
-          console.log(`⏭️ Saltando ${field.label} (ya tiene valor: ${currentValue})`);
+      if (currentValue !== null && currentValue !== 'N/A') {
           currentStep++;
           setTimeout(() => showMeasurementForm(), 100);
           return;
       }
-  
+      
+      if (refValue === 'N/A' || refValue === null || refValue === undefined) {
+          currentRow.measurements[field.key] = 'N/A';
+          currentStep++;
+          setTimeout(() => showMeasurementForm(), 100);
+          return;
+      }
+
       if (imageUrl && imageUrl !== 'N/A' && imageUrl !== '') {
           setTimeout(() => {
               openImageModal(field.label, imageUrl);
           }, 300);
       }
-  
+
       const content = `
           <div class="form-group">
               <label>Set ${currentSet} - ${field.label} ${field.required ? '*' : ''}</label>
@@ -624,8 +615,6 @@ const sheetConnections = {
           const difference = Math.abs(value - numRefValue);
           if (difference > 0.006) {
               currentRow.hasError = true;
-              console.log(`⚠️ Diferencia detectada en ${field.label}: ${difference.toFixed(4)} (máximo permitido: 0.006)`);
-              showMessage(`⚠️ Diferencia de ${difference.toFixed(4)} detectada. Máximo permitido: 0.006`, 'error');
           }
       }
   
@@ -638,8 +627,6 @@ const sheetConnections = {
   }
   
   function checkIfNoteRequired() {
-      console.log('🔍 Verificando si se requieren notas. hasError:', currentRow.hasError);
-      
       if (currentRow.hasError) {
           showNoteForm(true);
       } else {
@@ -691,7 +678,6 @@ const sheetConnections = {
       }
       
       rows.push({...currentRow});
-      console.log('💾 Fila guardada:', currentRow);
       renderRows();
       closeModal();
       document.getElementById('sendBtn').disabled = false;
@@ -850,51 +836,40 @@ const sheetConnections = {
       try {
           const values = rows.map(row => {
               return [
-                  row.date,                    // A: DATE
-                  row.machine,                 // B: MACHINE
-                  row.program,                 // C: PROGRAM
-                  row.shift,                   // D: SHIFT
-                  row.type || '',              // E: TYPE
-                  
-                  row.referenceValues.plateThickness1 || 'N/A',  // F: PLATE THICKNESS (referencia)
-                  row.referenceValues.trackRojo1 || 'N/A',       // G: TRACK ROJO (referencia)
-                  row.referenceValues.trackAzul1 || 'N/A',       // H: TRACK AZUL (referencia)
-                  row.referenceValues.ballVerde1 || 'N/A',       // I: BALL VERDE (referencia)
-                  row.referenceValues.ballAmarillo1 || 'N/A',    // J: BALL AMARILLO (referencia)
-                  row.referenceValues.ballAzulCielo11 || 'N/A',  // K: BALL AZUL CIELO1 (referencia)
-                  row.referenceValues.ballAzulCielo21 || 'N/A',  // L: BALL AZUL CIELO2 (referencia)
-                  
-                  // COLUMNAS M-S: SET 2 (Mediciones del usuario CON PLATE THICKNESS)
-                  row.measurements.plateThickness2 || 'N/A',     // M: PLATE THICKNESS
-                  row.measurements.trackRojo2 || 'N/A',          // N: TRACK ROJO
-                  row.measurements.trackAzul2 || 'N/A',          // O: TRACK AZUL
-                  row.measurements.ballVerde2 || 'N/A',          // P: BALL VERDE
-                  row.measurements.ballAmarillo2 || 'N/A',       // Q: BALL AMARILLO
-                  row.measurements.ballAzulCielo12 || 'N/A',     // R: BALL AZUL CIELO1
-                  row.measurements.ballAzulCielo22 || 'N/A',     // S: BALL AZUL CIELO2
-                  
-                  // COLUMNAS T-Y: SET 3 (Mediciones del usuario SIN PLATE THICKNESS)
-                  row.measurements.trackRojo3 || 'N/A',          // T: TRACK ROJO
-                  row.measurements.trackAzul3 || 'N/A',          // U: TRACK AZUL
-                  row.measurements.ballVerde3 || 'N/A',          // V: BALL VERDE
-                  row.measurements.ballAmarillo3 || 'N/A',       // W: BALL AMARILLO
-                  row.measurements.ballAzulCielo13 || 'N/A',     // X: BALL AZUL CIELO1
-                  row.measurements.ballAzulCielo23 || 'N/A',     // Y: BALL AZUL CIELO2
-                  
-                  // COLUMNAS Z-AE: SET 4 (Mediciones del usuario SIN PLATE THICKNESS)
-                  row.measurements.trackRojo4 || 'N/A',          // Z: TRACK ROJO
-                  row.measurements.trackAzul4 || 'N/A',          // AA: TRACK AZUL
-                  row.measurements.ballVerde4 || 'N/A',          // AB: BALL VERDE
-                  row.measurements.ballAmarillo4 || 'N/A',       // AC: BALL AMARILLO
-                  row.measurements.ballAzulCielo14 || 'N/A',     // AD: BALL AZUL CIELO1
-                  row.measurements.ballAzulCielo24 || 'N/A',     // AE: BALL AZUL CIELO2
-                  
-                  // COLUMNA AF: NOTAS
+                  row.date,
+                  row.machine,
+                  row.program,
+                  row.shift,
+                  row.type || '',
+                  row.referenceValues.plateThickness1 || 'N/A',
+                  row.referenceValues.trackRojo1 || 'N/A',
+                  row.referenceValues.trackAzul1 || 'N/A',
+                  row.referenceValues.ballVerde1 || 'N/A',
+                  row.referenceValues.ballAmarillo1 || 'N/A',
+                  row.referenceValues.ballAzulCielo1 || 'N/A',
+                  row.referenceValues.ballNaranja1 || 'N/A',
+                  row.measurements.plateThickness2 || 'N/A',
+                  row.measurements.trackRojo2 || 'N/A',
+                  row.measurements.trackAzul2 || 'N/A',
+                  row.measurements.ballVerde2 || 'N/A',
+                  row.measurements.ballAmarillo2 || 'N/A',
+                  row.measurements.ballAzulCielo2 || 'N/A',
+                  row.measurements.ballNaranja2 || 'N/A',
+                  row.measurements.trackRojo3 || 'N/A',
+                  row.measurements.trackAzul3 || 'N/A',
+                  row.measurements.ballVerde3 || 'N/A',
+                  row.measurements.ballAmarillo3 || 'N/A',
+                  row.measurements.ballAzulCielo3 || 'N/A',
+                  row.measurements.ballNaranja3 || 'N/A',
+                  row.measurements.trackRojo4 || 'N/A',
+                  row.measurements.trackAzul4 || 'N/A',
+                  row.measurements.ballVerde4 || 'N/A',
+                  row.measurements.ballAmarillo4 || 'N/A',
+                  row.measurements.ballAzulCielo4 || 'N/A',
+                  row.measurements.ballNaranja4 || 'N/A',
                   row.notes || ''
               ];
           });
-  
-          console.log('📤 Enviando datos a CONCENTRADO DE MEDIDAS. Filas:', rows.length);
   
           const result = await callGoogleScript(
               sheetConnections.medidas,
@@ -903,7 +878,7 @@ const sheetConnections = {
           );
   
           if (result.success) {
-              alert(`✅ ${result.message || `${rows.length} fila(s) enviadas exitosamente a CONCENTRADO DE MEDIDAS`}`);
+              alert(`${result.message || `${rows.length} fila(s) enviadas exitosamente a CONCENTRADO DE MEDIDAS`}`);
               rows = [];
               renderRows();
               document.getElementById('sendBtn').disabled = true;
@@ -912,7 +887,6 @@ const sheetConnections = {
           }
           
       } catch (error) {
-          console.error('Error completo:', error);
           alert('❌ Error al enviar a Google Sheets: ' + error.message);
       } finally {
           sendBtn.textContent = '📤 Enviar Reporte';
@@ -921,16 +895,11 @@ const sheetConnections = {
   }
   
   function initApp() {
-      console.log('🚀 Inicializando aplicación...');
-      console.log('🔗 URLs configuradas:', sheetConnections);
-      
       if (!document.getElementById('rowsContainer')) {
-          console.error('❌ No se encontró el elemento rowsContainer');
           return;
       }
       
       if (!document.getElementById('sendBtn')) {
-          console.error('❌ No se encontró el elemento sendBtn');
           return;
       }
       
@@ -961,4 +930,3 @@ const sheetConnections = {
   window.closeImageModal = closeImageModal;
   window.validateMachineOnInput = validateMachineOnInput;
   window.deleteRow = deleteRow;
-
