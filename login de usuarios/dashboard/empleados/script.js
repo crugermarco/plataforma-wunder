@@ -12,9 +12,9 @@ const sheetConnections = {
     sheetName: 'SOLICITUD DE VACACIONES'
   },
   employees: {
-    scriptUrl: 'https://script.google.com/macros/s/AKfycbxsHymuWZi4_hY5RjvSAoQ8QnfBs0EFIa0-sGI6FlROYdhBo9Kl__H33Y_7Gp8ev1Tl/exec',
-    spreadsheetId: '1ZDpnn0axnQ80USHsTbGbx92cTq7LI1g-ZOBuadoT0hY',
-    sheetName: 'BASE DE DATOS'
+    scriptUrl: 'https://script.google.com/macros/s/AKfycbxn3SzwPkDh4ErM6e0EeXyKw3q8d1lxlvEmkpEtFuvfeoVs3nwg41fTT6rNrYrd7n0c/exec',
+    spreadsheetId: '1jO4KTH6X7NVslzTXQqMcrSa5XzFifBOMBTYduSMtJQE',
+    sheetName: 'DATA'
   },
   permissions: {
     scriptUrl: 'https://script.google.com/macros/s/AKfycbwvBFWxx5M83TJRkETjOx5SPN6hQ5uVLtO_HyCaRGhV3zcCPy3ZPtqifYuJeqbgv1rolg/exec',
@@ -87,7 +87,9 @@ const elements = {
   permissionsTableBody: null,
   userNameDisplay: null,
   suspensionNotification: null,
-  dismissalNotification: null
+  dismissalNotification: null,
+  exportDataBtn: null,
+  dataTableBody: null
 };
 
 function initializeDOMElements() {
@@ -125,6 +127,8 @@ function initializeDOMElements() {
   elements.userNameDisplay = document.getElementById('userNameDisplay');
   elements.suspensionNotification = document.getElementById('suspension-notification');
   elements.dismissalNotification = document.getElementById('dismissal-notification');
+  elements.exportDataBtn = document.getElementById('export-data-btn');
+  elements.dataTableBody = document.getElementById('data-table-body');
 }
 
 function formatDate(dateString) {
@@ -554,7 +558,7 @@ function applyBlinkingStyles() {
   style.textContent = `
     @keyframes blink-red {
       0%, 100% { background-color: transparent; }
-      50% { background-color: rgba(255, 0, 0, 0.3); }
+      50% { background-color: rgba(236, 10, 10, 0.603); }
     }
     @keyframes blink-red-border {
       0%, 100% { border-left-color: transparent; }
@@ -656,11 +660,46 @@ function applyBlinkingStyles() {
     }
     @keyframes blink-red {
       0%, 100% { background-color: transparent; }
-      50% { background-color: rgba(239, 68, 68, 0.1); }
+      50% { background-color: rgba(236, 10, 10, 0.603); }
     }
     @keyframes blink-green {
     0%, 100% { background-color: transparent; }
     50% { background-color: rgba(11, 143, 29, 0.24); }
+  }
+  .gafete-image {
+    max-width: 50px;
+    max-height: 50px;
+    border-radius: 4px;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .action-buttons {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .action-button.small {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  .action-button.small.delete {
+    background: linear-gradient(135deg, var(--red-600), var(--red-500));
+  }
+  .action-button.small.delete:hover {
+    background: linear-gradient(135deg, var(--red-700), var(--red-600));
+  }
+  .action-button.small.view {
+    background: linear-gradient(135deg, var(--purple-600), var(--purple-500));
+  }
+  .action-button.small.view:hover {
+    background: linear-gradient(135deg, var(--purple-700), var(--purple-600));
+  }
+  .no-permission {
+    color: var(--slate-400);
+    font-size: 0.75rem;
+    font-style: italic;
   }
   `;
   document.head.appendChild(style);
@@ -721,6 +760,10 @@ function initializeEventListeners() {
       await updateSuspensionStatuses();
       showNotification('Suspensiones actualizadas', 'success');
     });
+  }
+
+  if (elements.exportDataBtn) {
+    elements.exportDataBtn.addEventListener('click', exportDataTable);
   }
 
   const closeSuspensionModalBtn = document.getElementById('close-suspension-modal');
@@ -797,7 +840,7 @@ async function fetchSheetData(connection, action = 'read', data = null) {
     url.searchParams.append('action', action);
     
     if (data) {
-      if (action === 'update') {
+      if (action === 'update' || action === 'delete') {
         url.searchParams.append('data', JSON.stringify(data));
       } else {
         const formattedData = Array.isArray(data) ? data : [data];
@@ -890,6 +933,10 @@ async function loadEmployeesData() {
   }
   
   employeesData = result.data || [];
+  
+  if (currentUser && currentUser.name.toLowerCase() === 'marco cruger') {
+    renderDataTable();
+  }
 }
 
 function renderAttendanceTable() {
@@ -992,6 +1039,788 @@ function renderVacationTable() {
     
     elements.vacationTableBody.appendChild(row);
   });
+}
+
+function renderDataTable() {
+  if (!elements.dataTableBody) return;
+  
+  elements.dataTableBody.innerHTML = '';
+  
+  if (employeesData.length === 0) {
+    const row = document.createElement('tr');
+    row.innerHTML = '<td colspan="8" class="no-data">No hay datos disponibles</td>';
+    elements.dataTableBody.appendChild(row);
+    return;
+  }
+  
+  employeesData.forEach((item, index) => {
+    const row = document.createElement('tr');
+    
+    const gafeteValue = item.GAFETE || '';
+    const isImageUrl = gafeteValue.includes('http') || 
+                      gafeteValue.includes('https') || 
+                      gafeteValue.includes('.jpg') || 
+                      gafeteValue.includes('.jpeg') || 
+                      gafeteValue.includes('.png') || 
+                      gafeteValue.includes('.gif') ||
+                      gafeteValue.includes('drive.google.com') ||
+                      gafeteValue.includes('docs.google.com');
+    
+    row.innerHTML = `
+      <td>${item.NOMBRE || ''}</td>
+      <td>
+        ${isImageUrl ? `
+          <img src="${gafeteValue}" alt="Gafete" class="gafete-image">
+        ` : gafeteValue}
+      </td>
+      <td>${formatDate(item['FECHA DE INGRESO']) || ''}</td>
+      <td>${item['NUMERO DE EMPLEADO'] || ''}</td>
+      <td>${item.AREA || ''}</td>
+      <td>${item.AÑOS || ''}</td>
+      <td>${item['DIAS DE VACACIONES'] || '0'}</td>
+      <td>
+        ${currentUser && currentUser.name.toLowerCase() === 'marco cruger' ? `
+          <div class="action-buttons">
+            <button class="action-button small view" onclick="showEmployeeCard(${index})">
+              <svg style="width: 0.75rem; height: 0.75rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+              Ver
+            </button>
+            <button class="action-button small" onclick="editEmployeeData(${index})">
+              <svg style="width: 0.75rem; height: 0.75rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+              </svg>
+              Editar
+            </button>
+            <button class="action-button small delete" onclick="deleteEmployeeData(${index})">
+              <svg style="width: 0.75rem; height: 0.75rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+              Eliminar
+            </button>
+          </div>
+        ` : '<span class="no-permission">Solo lectura</span>'}
+      </td>
+    `;
+    
+    elements.dataTableBody.appendChild(row);
+  });
+}
+
+function showEmployeeCard(index) {
+  const employee = employeesData[index];
+  showEmployeeCardModal(employee);
+}
+
+function showEmployeeCardFromFilter(index) {
+  const employee = employeesData[index];
+  showEmployeeCardModal(employee);
+}
+
+function showEmployeeCardModal(employee) {
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.id = 'employee-card-modal';
+    
+    const isImageUrl = employee.GAFETE && (
+      employee.GAFETE.includes('http') || 
+      employee.GAFETE.includes('https') || 
+      employee.GAFETE.includes('.jpg') || 
+      employee.GAFETE.includes('.jpeg') || 
+      employee.GAFETE.includes('.png') || 
+      employee.GAFETE.includes('.gif') ||
+      employee.GAFETE.includes('drive.google.com') ||
+      employee.GAFETE.includes('docs.google.com')
+    );
+    
+    modal.innerHTML = `
+      <div class="modal-content employee-card-modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">Gafete del Empleado</h3>
+          <button class="close-button" onclick="closeEmployeeCardModal()">&times;</button>
+        </div>
+        <div class="employee-card-container">
+          <div class="employee-card-left">
+            <div class="gafete-large-container">
+              ${isImageUrl ? `
+                <img src="${employee.GAFETE}" alt="Gafete" class="gafete-large-image">
+              ` : `
+                <div class="no-image-message">
+                  No hay imagen de gafete disponible
+                </div>
+              `}
+            </div>
+          </div>
+          <div class="employee-card-right">
+            <div class="employee-info-section">
+              <h4 class="info-section-title">INFORMACIÓN DEL EMPLEADO</h4>
+              <div class="info-grid">
+                <div class="info-item">
+                  <span class="info-label">NOMBRE:</span>
+                  <span class="info-value">${employee.NOMBRE || 'No disponible'}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">NÚMERO DE EMPLEADO:</span>
+                  <span class="info-value">${employee['NUMERO DE EMPLEADO'] || 'No disponible'}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">FECHA DE INGRESO:</span>
+                  <span class="info-value">${formatDate(employee['FECHA DE INGRESO']) || 'No disponible'}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">AREA:</span>
+                  <span class="info-value">${employee.AREA || 'No disponible'}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">AÑOS DE SERVICIO:</span>
+                  <span class="info-value">${employee.AÑOS || '0'}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">DÍAS DE VACACIONES:</span>
+                  <span class="info-value">${employee['DIAS DE VACACIONES'] || '0'}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="employee-actions">
+              ${currentUser && currentUser.name.toLowerCase() === 'marco cruger' ? `
+                <button class="action-button full-width" onclick="editEmployeeData(${employeesData.indexOf(employee)})">
+                  <svg style="width: 1rem; height: 1rem; margin-right: 0.5rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                  </svg>
+                  Editar Información
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+        <div class="button-group">
+          <button type="button" class="modern-button" onclick="closeEmployeeCardModal()">Cerrar</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    const style = document.createElement('style');
+    style.textContent = `
+      .employee-card-modal-content {
+        max-width: 1000px;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+      
+      .employee-card-container {
+        display: flex;
+        gap: 2rem;
+        margin-bottom: 1.5rem;
+      }
+      
+      .employee-card-left {
+        flex: 1;
+        min-width: 400px;
+      }
+      
+      .employee-card-right {
+        flex: 1;
+        min-width: 400px;
+      }
+      
+      .gafete-large-container {
+        background: rgba(30, 41, 59, 0.6);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        border: 2px solid rgba(71, 85, 105, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 450px;
+        width: 100%;
+        height: 450px;
+      }
+      
+      .gafete-large-image {
+        max-width: 100%;
+        max-height: 400px;
+        width: auto;
+        height: auto;
+        border-radius: 0.5rem;
+        object-fit: contain;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+      }
+      
+      .no-image-message {
+        color: var(--slate-400);
+        font-size: 1.1rem;
+        text-align: center;
+        padding: 2rem;
+        background: rgba(71, 85, 105, 0.2);
+        border-radius: 0.5rem;
+        border: 2px dashed rgba(71, 85, 105, 0.5);
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .employee-info-section {
+        background: rgba(30, 41, 59, 0.6);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        border: 1px solid rgba(71, 85, 105, 0.3);
+        margin-bottom: 1.5rem;
+        width: 100%;
+        height: calc(100% - 60px);
+        display: flex;
+        flex-direction: column;
+      }
+      
+      .info-section-title {
+        color: var(--emerald-400);
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid rgba(16, 185, 129, 0.3);
+      }
+      
+      .info-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        flex: 1;
+      }
+      
+      .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+      
+      .info-label {
+        font-weight: 700;
+        color: var(--slate-300);
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      
+      .info-value {
+        color: white;
+        font-weight: 500;
+        font-size: 1rem;
+        padding: 0.5rem;
+        background: rgba(15, 23, 42, 0.4);
+        border-radius: 0.5rem;
+        border: 1px solid rgba(71, 85, 105, 0.3);
+      }
+      
+      .employee-actions {
+        margin-top: auto;
+        width: 100%;
+      }
+      
+      .action-button.full-width {
+        width: 100%;
+        padding: 0.75rem;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .gafete-image {
+        cursor: pointer;
+        transition: transform 0.2s;
+      }
+      
+      .gafete-image:hover {
+        transform: scale(1.05);
+      }
+      
+      .action-button.small.view {
+        background: linear-gradient(135deg, var(--purple-600), var(--purple-500));
+      }
+      
+      .action-button.small.view:hover {
+        background: linear-gradient(135deg, var(--purple-700), var(--purple-600));
+      }
+      
+      @media (max-width: 768px) {
+        .employee-card-container {
+          flex-direction: column;
+        }
+        
+        .employee-card-left,
+        .employee-card-right {
+          min-width: 100%;
+        }
+        
+        .employee-card-modal-content {
+          max-width: 95%;
+        }
+        
+        .gafete-large-container {
+          min-height: 350px;
+          height: 350px;
+        }
+        
+        .gafete-large-image {
+          max-height: 300px;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    
+    if (isImageUrl) {
+      const img = modal.querySelector('.gafete-large-image');
+      if (img) {
+        img.onerror = function() {
+          const container = this.parentNode;
+          container.innerHTML = '<div class="no-image-message">No hay imagen de gafete disponible</div>';
+        };
+      }
+    }
+  }
+
+function closeEmployeeCardModal() {
+  const modal = document.getElementById('employee-card-modal');
+  if (modal) {
+    modal.remove();
+  }
+}
+
+function filterDataTable() {
+  const nameFilter = document.getElementById('filter-nombre').value.toLowerCase();
+  const numeroFilter = document.getElementById('filter-numero').value.toLowerCase();
+  const areaFilter = document.getElementById('filter-area').value.toLowerCase();
+  
+  if (!elements.dataTableBody) return;
+  
+  elements.dataTableBody.innerHTML = '';
+  
+  let filteredEmployees = employeesData;
+  
+  if (nameFilter) {
+    filteredEmployees = filteredEmployees.filter(emp => 
+      emp.NOMBRE && emp.NOMBRE.toLowerCase().includes(nameFilter)
+    );
+  }
+  
+  if (numeroFilter) {
+    filteredEmployees = filteredEmployees.filter(emp => 
+      emp['NUMERO DE EMPLEADO'] && emp['NUMERO DE EMPLEADO'].toString().toLowerCase().includes(numeroFilter)
+    );
+  }
+  
+  if (areaFilter) {
+    filteredEmployees = filteredEmployees.filter(emp => 
+      emp.AREA && emp.AREA.toLowerCase().includes(areaFilter)
+    );
+  }
+  
+  if (filteredEmployees.length === 0) {
+    const row = document.createElement('tr');
+    row.innerHTML = '<td colspan="8" class="no-data">No se encontraron empleados con esos filtros</td>';
+    elements.dataTableBody.appendChild(row);
+    return;
+  }
+  
+  filteredEmployees.forEach((item, index) => {
+    const row = document.createElement('tr');
+    
+    const gafeteValue = item.GAFETE || '';
+    const isImageUrl = gafeteValue.includes('http') || 
+                      gafeteValue.includes('https') || 
+                      gafeteValue.includes('.jpg') || 
+                      gafeteValue.includes('.jpeg') || 
+                      gafeteValue.includes('.png') || 
+                      gafeteValue.includes('.gif') ||
+                      gafeteValue.includes('drive.google.com') ||
+                      gafeteValue.includes('docs.google.com');
+    
+    row.innerHTML = `
+      <td>${item.NOMBRE || ''}</td>
+      <td>
+        ${isImageUrl ? `
+          <img src="${gafeteValue}" alt="Gafete" class="gafete-image">
+        ` : gafeteValue}
+      </td>
+      <td>${formatDate(item['FECHA DE INGRESO']) || ''}</td>
+      <td>${item['NUMERO DE EMPLEADO'] || ''}</td>
+      <td>${item.AREA || ''}</td>
+      <td>${item.AÑOS || ''}</td>
+      <td>${item['DIAS DE VACACIONES'] || '0'}</td>
+      <td>
+        ${currentUser && currentUser.name.toLowerCase() === 'marco cruger' ? `
+          <div class="action-buttons">
+            <button class="action-button small view" onclick="showEmployeeCardFromFilter(${employeesData.indexOf(item)})">
+              <svg style="width: 0.75rem; height: 0.75rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+              Ver
+            </button>
+            <button class="action-button small" onclick="editEmployeeData(${employeesData.indexOf(item)})">
+              <svg style="width: 0.75rem; height: 0.75rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+              </svg>
+              Editar
+            </button>
+            <button class="action-button small delete" onclick="deleteEmployeeData(${employeesData.indexOf(item)})">
+              <svg style="width: 0.75rem; height: 0.75rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+              Eliminar
+            </button>
+          </div>
+        ` : '<span class="no-permission">Solo lectura</span>'}
+      </td>
+    `;
+    
+    elements.dataTableBody.appendChild(row);
+  });
+}
+
+function editEmployeeData(index) {
+  if (!currentUser || currentUser.name.toLowerCase() !== 'marco cruger') {
+    showNotification('Solo Marco Cruger puede editar datos', 'error');
+    return;
+  }
+  
+  const employee = employeesData[index];
+  openEditEmployeeModal(employee, index);
+}
+
+function deleteEmployeeData(index) {
+  if (!currentUser || currentUser.name.toLowerCase() !== 'marco cruger') {
+    showNotification('Solo Marco Cruger puede eliminar datos', 'error');
+    return;
+  }
+  
+  const employee = employeesData[index];
+  
+  if (confirm(`¿Estás seguro de eliminar a ${employee.NOMBRE} (${employee['NUMERO DE EMPLEADO']})?`)) {
+    deleteEmployeeFromSheet(employee, index);
+  }
+}
+
+async function deleteEmployeeFromSheet(employee, index) {
+  try {
+    showNotification('Eliminando empleado...', 'success');
+    
+    const deleteData = {
+      action: 'delete',
+      NOMBRE: employee.NOMBRE,
+      'NUMERO DE EMPLEADO': employee['NUMERO DE EMPLEADO']
+    };
+    
+    const result = await fetchSheetData(sheetConnections.employees, 'delete', deleteData);
+    
+    if (result.error) {
+      showNotification('Error al eliminar: ' + result.error, 'error');
+      return;
+    }
+    
+    employeesData.splice(index, 1);
+    renderDataTable();
+    showNotification('Empleado eliminado exitosamente', 'success');
+    
+  } catch (error) {
+    console.error('Error eliminando empleado:', error);
+    showNotification('Error al eliminar empleado', 'error');
+  }
+}
+
+function openEditEmployeeModal(employee, index) {
+  const modal = document.createElement('div');
+  modal.className = 'modal active';
+  modal.id = 'edit-employee-modal';
+  
+  modal.innerHTML = `
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Editar Empleado</h3>
+        <button class="close-button" onclick="closeEditEmployeeModal()">&times;</button>
+      </div>
+      <form id="edit-employee-form">
+        <div class="form-group">
+          <label class="form-label">NOMBRE</label>
+          <input type="text" class="form-input" id="edit-nombre" value="${employee.NOMBRE || ''}" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">GAFETE (URL de imagen)</label>
+          <input type="text" class="form-input" id="edit-gafete" value="${employee.GAFETE || ''}" placeholder="https://ejemplo.com/imagen.jpg">
+        </div>
+        <div class="form-group">
+          <label class="form-label">FECHA DE INGRESO</label>
+          <input type="date" class="form-input" id="edit-fecha-ingreso" value="${formatDateForInput(employee['FECHA DE INGRESO']) || ''}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">NUMERO DE EMPLEADO</label>
+          <input type="text" class="form-input" id="edit-numero-empleado" value="${employee['NUMERO DE EMPLEADO'] || ''}" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">AREA</label>
+          <input type="text" class="form-input" id="edit-area" value="${employee.AREA || ''}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">AÑOS</label>
+          <input type="number" class="form-input" id="edit-anos" value="${employee.AÑOS || ''}" step="0.1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">DIAS DE VACACIONES</label>
+          <input type="number" class="form-input" id="edit-dias-vacaciones" value="${employee['DIAS DE VACACIONES'] || '0'}" step="0.5">
+        </div>
+        <div class="button-group">
+          <button type="button" class="cancel-button" onclick="closeEditEmployeeModal()">Cancelar</button>
+          <button type="submit" class="modern-button">Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  const form = document.getElementById('edit-employee-form');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await handleEditEmployeeSubmit(employee, index);
+  });
+}
+
+function formatDateForInput(dateString) {
+  if (!dateString) return '';
+  
+  try {
+    if (typeof dateString === 'string' && dateString.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+      const [month, day, year] = dateString.split('/');
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+    
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+    
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}`;
+  } catch (e) {
+    return '';
+  }
+}
+
+function closeEditEmployeeModal() {
+  const modal = document.getElementById('edit-employee-modal');
+  if (modal) {
+    modal.remove();
+  }
+}
+
+async function handleEditEmployeeSubmit(originalEmployee, index) {
+    if (!currentUser || currentUser.name.toLowerCase() !== 'marco cruger') {
+      showNotification('Solo Marco Cruger puede editar datos', 'error');
+      return;
+    }
+    
+    const fechaIngresoInput = document.getElementById('edit-fecha-ingreso').value;
+    
+    let fechaFormateada = '';
+    if (fechaIngresoInput) {
+      const [year, month, day] = fechaIngresoInput.split('-');
+      fechaFormateada = `${month}/${day}/${year}`;
+    }
+    
+    const updatedData = {
+      NOMBRE: document.getElementById('edit-nombre').value,
+      GAFETE: document.getElementById('edit-gafete').value,
+      'FECHA DE INGRESO': fechaFormateada,
+      'NUMERO DE EMPLEADO': document.getElementById('edit-numero-empleado').value,
+      AREA: document.getElementById('edit-area').value,
+      AÑOS: document.getElementById('edit-anos').value,
+      'DIAS DE VACACIONES': document.getElementById('edit-dias-vacaciones').value
+    };
+    
+    try {
+      showNotification('Actualizando datos...', 'success');
+      
+      const updateData = {
+        action: 'update',
+        original: {
+          NOMBRE: originalEmployee.NOMBRE,
+          'NUMERO DE EMPLEADO': originalEmployee['NUMERO DE EMPLEADO']
+        },
+        updated: updatedData
+      };
+      
+      const result = await fetchSheetData(sheetConnections.employees, 'update', updateData);
+      
+      if (result.error) {
+        showNotification('Error al actualizar: ' + result.error, 'error');
+        return;
+      }
+      
+      employeesData[index] = updatedData;
+      renderDataTable();
+      closeEditEmployeeModal();
+      showNotification('Datos actualizados exitosamente', 'success');
+      
+    } catch (error) {
+      console.error('Error actualizando empleado:', error);
+      showNotification('Error al actualizar datos', 'error');
+    }
+}
+
+function openAddEmployeeModal() {
+  if (!currentUser || currentUser.name.toLowerCase() !== 'marco cruger') {
+    showNotification('Solo Marco Cruger puede agregar empleados', 'error');
+    return;
+  }
+
+  const modal = document.createElement('div');
+  modal.className = 'modal active';
+  modal.id = 'add-employee-modal';
+  
+  modal.innerHTML = `
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Agregar Nuevo Empleado</h3>
+        <button class="close-button" onclick="closeAddEmployeeModal()">&times;</button>
+      </div>
+      <form id="add-employee-form">
+        <div class="form-group">
+          <label class="form-label">NOMBRE *</label>
+          <input type="text" class="form-input" id="add-nombre" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">GAFETE (URL de imagen)</label>
+          <input type="text" class="form-input" id="add-gafete" placeholder="https://ejemplo.com/imagen.jpg">
+        </div>
+        <div class="form-group">
+          <label class="form-label">FECHA DE INGRESO</label>
+          <input type="date" class="form-input" id="add-fecha-ingreso">
+        </div>
+        <div class="form-group">
+          <label class="form-label">NUMERO DE EMPLEADO *</label>
+          <input type="text" class="form-input" id="add-numero-empleado" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">AREA</label>
+          <input type="text" class="form-input" id="add-area">
+        </div>
+        <div class="form-group">
+          <label class="form-label">AÑOS</label>
+          <input type="number" class="form-input" id="add-anos" step="0.1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">DIAS DE VACACIONES</label>
+          <input type="number" class="form-input" id="add-dias-vacaciones" value="0" step="0.5">
+        </div>
+        <div class="button-group">
+          <button type="button" class="cancel-button" onclick="closeAddEmployeeModal()">Cancelar</button>
+          <button type="submit" class="modern-button">Agregar Empleado</button>
+        </div>
+      </form>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  const form = document.getElementById('add-employee-form');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await handleAddEmployeeSubmit();
+  });
+}
+
+function closeAddEmployeeModal() {
+  const modal = document.getElementById('add-employee-modal');
+  if (modal) {
+    modal.remove();
+  }
+}
+
+async function handleAddEmployeeSubmit() {
+    if (!currentUser || currentUser.name.toLowerCase() !== 'marco cruger') {
+      showNotification('Solo Marco Cruger puede agregar empleados', 'error');
+      return;
+    }
+    
+    const fechaIngresoInput = document.getElementById('add-fecha-ingreso').value;
+    
+    let fechaFormateada = '';
+    if (fechaIngresoInput) {
+      const [year, month, day] = fechaIngresoInput.split('-');
+      fechaFormateada = `${month}/${day}/${year}`;
+    }
+    
+    const newEmployee = {
+      NOMBRE: document.getElementById('add-nombre').value,
+      GAFETE: document.getElementById('add-gafete').value,
+      'FECHA DE INGRESO': fechaFormateada,
+      'NUMERO DE EMPLEADO': document.getElementById('add-numero-empleado').value,
+      AREA: document.getElementById('add-area').value,
+      AÑOS: document.getElementById('add-anos').value,
+      'DIAS DE VACACIONES': document.getElementById('add-dias-vacaciones').value
+    };
+    
+    try {
+      showNotification('Agregando empleado...', 'success');
+      
+      const result = await fetchSheetData(sheetConnections.employees, 'append', [newEmployee]);
+      
+      if (result.error) {
+        showNotification('Error al agregar: ' + result.error, 'error');
+        return;
+      }
+      
+      await loadEmployeesData();
+      closeAddEmployeeModal();
+      showNotification('Empleado agregado exitosamente', 'success');
+      
+    } catch (error) {
+      console.error('Error agregando empleado:', error);
+      showNotification('Error al agregar empleado', 'error');
+    }
+}
+
+function initializeDataTableFilters() {
+  const dataSection = document.getElementById('data-section');
+  if (!dataSection) return;
+  
+  const tableHeader = dataSection.querySelector('.glassmorphism-table .table-header');
+  if (!tableHeader) return;
+  
+  const addButton = document.createElement('button');
+  addButton.className = 'modern-button';
+  addButton.id = 'add-employee-btn';
+  addButton.style.marginRight = '0.5rem';
+  addButton.innerHTML = `
+    <svg style="width: 1rem; height: 1rem; margin-right: 0.5rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+    </svg>
+    Agregar Empleado
+  `;
+  addButton.addEventListener('click', openAddEmployeeModal);
+  
+  tableHeader.insertBefore(addButton, elements.exportDataBtn);
+  
+  const tableFilters = dataSection.querySelector('.table-filters');
+  if (tableFilters) {
+    tableFilters.innerHTML = `
+      <input type="text" class="filter-input" id="filter-nombre" placeholder="Filtrar por nombre..." data-column="0" data-table="data">
+      <input type="text" class="filter-input" id="filter-numero" placeholder="Filtrar por número..." data-column="1" data-table="data">
+      <input type="text" class="filter-input" id="filter-area" placeholder="Filtrar por área..." data-column="2" data-table="data">
+    `;
+    
+    document.getElementById('filter-nombre').addEventListener('input', filterDataTable);
+    document.getElementById('filter-numero').addEventListener('input', filterDataTable);
+    document.getElementById('filter-area').addEventListener('input', filterDataTable);
+  }
 }
 
 function renderSuspensionTables() {
@@ -1139,16 +1968,16 @@ function setupVacationAutocomplete() {
     
     if (value.length > 1) {
       const matches = employeesData.filter(emp => 
-        emp.Name && emp.Name.toLowerCase().includes(value)
+        emp.NOMBRE && emp.NOMBRE.toLowerCase().includes(value)
       ).slice(0, 10);
       
       matches.forEach(emp => {
         const option = document.createElement('option');
-        option.value = emp.Name;
-        option.dataset.id = emp['ID #'];
-        option.dataset.position = emp.Position;
-        option.dataset.days = emp['Days Vacations'];
-        option.dataset.entryDate = emp['Entry Date'];
+        option.value = emp.NOMBRE;
+        option.dataset.id = emp['NUMERO DE EMPLEADO'];
+        option.dataset.area = emp.AREA;
+        option.dataset.days = emp['DIAS DE VACACIONES'];
+        option.dataset.entryDate = emp['FECHA DE INGRESO'];
         datalist.appendChild(option);
       });
     }
@@ -1168,7 +1997,7 @@ function setupVacationAutocomplete() {
     const selectedOption = document.querySelector(`#employee-names-list option[value="${this.value}"]`);
     if (selectedOption) {
       document.getElementById('vacation-employee-id').value = selectedOption.dataset.id || '';
-      document.getElementById('vacation-position').value = selectedOption.dataset.position || '';
+      document.getElementById('vacation-position').value = selectedOption.dataset.area || '';
       document.getElementById('vacation-days').value = selectedOption.dataset.days || '0';
     }
   });
@@ -1185,14 +2014,14 @@ function setupPermissionAutocomplete() {
     
     if (value.length > 1) {
       const matches = employeesData.filter(emp => 
-        emp.Name && emp.Name.toLowerCase().includes(value)
+        emp.NOMBRE && emp.NOMBRE.toLowerCase().includes(value)
       ).slice(0, 10);
       
       matches.forEach(emp => {
         const option = document.createElement('option');
-        option.value = emp.Name;
-        option.dataset.id = emp['ID #'];
-        option.dataset.area = emp.Position || 'General';
+        option.value = emp.NOMBRE;
+        option.dataset.id = emp['NUMERO DE EMPLEADO'];
+        option.dataset.area = emp.AREA;
         datalist.appendChild(option);
       });
     }
@@ -1465,7 +2294,7 @@ function updateAttendanceTypeOptions() {
 }
 
 function setupAutocomplete(inputElement) {
-  const uniqueNames = [...new Set(attendanceData.map(item => item.NOMBRE).filter(Boolean))];
+  const uniqueNames = [...new Set(employeesData.map(item => item.NOMBRE).filter(Boolean))];
   
   inputElement.addEventListener('input', function() {
     const value = this.value.toLowerCase();
@@ -1975,6 +2804,9 @@ function updatePageTitles(sectionName) {
   } else if (sectionName === 'permisos') {
     elements.pageTitle.textContent = 'Solicitud de Permisos';
     elements.pageSubtitle.textContent = 'Gestiona los permisos del personal';
+  } else if (sectionName === 'data') {
+    elements.pageTitle.textContent = 'Base de Datos';
+    elements.pageSubtitle.textContent = 'Gestiona la información de los empleados';
   }
 }
 
@@ -2130,10 +2962,10 @@ function openSuspensionModal(candidateIndex) {
   }
   
   const candidate = suspensionCandidates[candidateIndex];
-  const employee = employeesData.find(emp => emp.Name === candidate.employeeName);
+  const employee = employeesData.find(emp => emp.NOMBRE === candidate.employeeName);
   
   document.getElementById('suspension-employee-name').value = candidate.employeeName;
-  document.getElementById('suspension-employee-id').value = employee ? employee['ID #'] : '';
+  document.getElementById('suspension-employee-id').value = employee ? employee['NUMERO DE EMPLEADO'] : '';
   document.getElementById('suspension-days-suggested').value = candidate.suggestedDays;
   document.getElementById('suspension-description').value = `falto injustificadamente el dia ${formatDate(candidate.firstAbsenceDate)}`;
   
@@ -2256,7 +3088,7 @@ async function handleSuspensionSubmit(e) {
   if (hasError) return;
   
   const candidate = suspensionCandidates[candidateIndex];
-  const employee = employeesData.find(emp => emp.Name === candidate.employeeName);
+  const employee = employeesData.find(emp => emp.NOMBRE === candidate.employeeName);
   
   try {
     showNotification('Procesando suspensión...', 'success');
@@ -2376,7 +3208,7 @@ async function generateSuspensionPDF(candidate, employee, suspensionDates) {
     
     const suspensionData = {
       'Nombre': candidate.employeeName,
-      'NumeroEmpleado': employee ? employee['ID #'] : '',
+      'NumeroEmpleado': employee ? employee['NUMERO DE EMPLEADO'] : '',
       'FechadeHoy': todayFormatted,
       'Descripciondelasfaltas': `falto injustificadamente el dia ${formatDateForSuspension(candidate.firstAbsenceDate)}`,
       'FechaSuspencion': formattedDates
@@ -2580,9 +3412,66 @@ function scheduleHourlySuspensionCheck() {
   }, 30 * 60 * 1000);
 }
 
+function exportDataTable() {
+  if (!currentUser || currentUser.name.toLowerCase() !== 'marco cruger') {
+    showNotification('Solo Marco Cruger puede exportar la base de datos', 'error');
+    return;
+  }
+
+  if (employeesData.length === 0) {
+    showNotification('No hay datos para exportar', 'error');
+    return;
+  }
+
+  let csvContent = "NOMBRE,GAFETE,FECHA DE INGRESO,NUMERO DE EMPLEADO,AREA,AÑOS,DIAS DE VACACIONES\n";
+  
+  employeesData.forEach(item => {
+    const row = [
+      `"${item.NOMBRE || ''}"`,
+      `"${item.GAFETE || ''}"`,
+      `"${formatDate(item['FECHA DE INGRESO']) || ''}"`,
+      `"${item['NUMERO DE EMPLEADO'] || ''}"`,
+      `"${item.AREA || ''}"`,
+      `"${item.AÑOS || ''}"`,
+      `"${item['DIAS DE VACACIONES'] || '0'}"`
+    ].join(',');
+    csvContent += row + '\n';
+  });
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  
+  const today = new Date();
+  const dateStr = `${today.getDate().toString().padStart(2, '0')}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getFullYear()}`;
+  
+  link.setAttribute('href', url);
+  link.setAttribute('download', `base_datos_empleados_${dateStr}.csv`);
+  link.style.visibility = 'hidden';
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  
+  showNotification('Datos exportados exitosamente', 'success');
+}
+
 window.openSuspensionModal = openSuspensionModal;
 window.closeSuspensionModal = closeSuspensionModal;
 window.closeSuspensionDateModal = closeSuspensionDateModal;
 window.confirmSuspensionDate = confirmSuspensionDate;
+window.editEmployeeData = editEmployeeData;
+window.deleteEmployeeData = deleteEmployeeData;
+window.closeEditEmployeeModal = closeEditEmployeeModal;
+window.openAddEmployeeModal = openAddEmployeeModal;
+window.closeAddEmployeeModal = closeAddEmployeeModal;
+window.closeEmployeeCardModal = closeEmployeeCardModal;
+window.showEmployeeCard = showEmployeeCard;
+window.showEmployeeCardFromFilter = showEmployeeCardFromFilter;
+window.filterDataTable = filterDataTable;
 
-document.addEventListener('DOMContentLoaded', initializeApp);
+document.addEventListener('DOMContentLoaded', function() {
+  initializeApp().then(() => {
+    initializeDataTableFilters();
+  });
+});
