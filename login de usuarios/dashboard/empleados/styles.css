@@ -940,10 +940,47 @@ body {
 
 @keyframes blink-red {
   0%, 100% { background-color: transparent; }
-  50% { background-color: rgba(239, 68, 68, 0.158); }
+  50% { background-color: rgba(236, 10, 10, 0.603); }
 }
 
 @keyframes blink-green {
     0%, 100% { background-color: transparent; }
     50% { background-color: rgba(11, 143, 29, 0.24); }
-  }
+ }
+
+/*estilos para gafetes*/
+
+.gafete-image {
+  max-width: 50px;
+  max-height: 50px;
+  border-radius: 4px;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.action-button.small {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.action-button.small.delete {
+  background: linear-gradient(135deg, var(--red-600), var(--red-500));
+}
+
+.action-button.small.delete:hover {
+  background: linear-gradient(135deg, var(--red-700), var(--red-600));
+}
+
+.no-permission {
+  color: var(--slate-400);
+  font-size: 0.75rem;
+  font-style: italic;
+}
