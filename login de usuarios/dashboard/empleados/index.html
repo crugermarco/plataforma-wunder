@@ -19,7 +19,7 @@
         <div class="sidebar">
             <div class="sidebar-header">
                 <h1 class="sidebar-title">GESTIÓN DE EMPLEADOS</h1>
-                <p class="sidebar-subtitle">Panel de Control Sistema CRUGER 2.1</p>
+                <p class="sidebar-subtitle">Panel de Control Sistema CRUGER 3.1</p>
                 <div id="userNameDisplay" class="user-name-display"></div>
             </div>
            
@@ -41,6 +41,12 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                     </svg>
                     PERMISOS
+                </div>
+                <div class="nav-item" data-section="data">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    DATA
                 </div>
             </nav>
         </div>
@@ -188,11 +194,43 @@
                     </table>
                 </div>
             </div>
+
+            <div class="section-content" id="data-section">
+                <div class="glassmorphism-table">
+                    <div class="table-header">
+                        <h3 class="table-title">Base de Datos de Empleados</h3>
+                        <button class="modern-button" id="export-data-btn">
+                            <svg style="width: 1rem; height: 1rem; margin-right: 0.5rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                            Exportar Excel
+                        </button>
+                    </div>
+                    <div class="table-filters">
+                        <input type="text" class="filter-input" placeholder="Filtrar por nombre..." data-column="0" data-table="data">
+                        <input type="text" class="filter-input" placeholder="Filtrar por número..." data-column="1" data-table="data">
+                        <input type="text" class="filter-input" placeholder="Filtrar por área..." data-column="2" data-table="data">
+                    </div>
+                    <table class="data-table" id="data-table">
+                        <thead>
+                            <tr>
+                                <th>NOMBRE</th>
+                                <th>GAFETE</th>
+                                <th>FECHA DE INGRESO</th>
+                                <th>NUMERO DE EMPLEADO</th>
+                                <th>AREA</th>
+                                <th>AÑOS</th>
+                                <th>DIAS DE VACACIONES</th>
+                            </tr>
+                        </thead>
+                        <tbody id="data-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
-     <!-- Modal de Asistencias -->
-     <div class="modal" id="attendance-modal">
+    <div class="modal" id="attendance-modal">
         <div class="modal-content compact-modal">
             <div class="modal-header">
                 <h3 class="modal-title">Generar Reporte de Asistencia</h3>
@@ -405,7 +443,6 @@
             </form>
         </div>
     </div>
-   
 
     <div id="suspension-notification" class="notification" style="display: none;">
         <span id="notification-message"></span>
