@@ -1,4 +1,5 @@
 const SCRIPT_SUSPENCION_URL = 'https://script.google.com/macros/s/AKfycbxhCrsH4v93AZlx9YmNdBVDCTvD5yNzz4E7JalcfbrQEJG0YNrlL4lRjZ8qNlRVUeb0ug/exec'
+const SCRIPT_VACACIONES_URL = 'https://script.google.com/macros/s/AKfycbxBmNzLb2a2D0x52w6EA-e534VCTreo1uxRIW4_fq67aLbjQR0uX1uDjchuBLdY-iSQ/exec'
 
 const sheetConnections = {
   productivity: {
@@ -7,9 +8,14 @@ const sheetConnections = {
     sheetName: 'Productivity Bonus 2025'
   },
   vacations: {
-    scriptUrl: 'https://script.google.com/macros/s/AKfycbw8YvlasGkFEoIN0f9xaYUMaVBfIzCK3LsRDH6TzV0_93d0HVsXqYLiIW4mh3yysvqi/exec',
+    scriptUrl: SCRIPT_VACACIONES_URL,
     spreadsheetId: '1ZDpnn0axnQ80USHsTbGbx92cTq7LI1g-ZOBuadoT0hY',
-    sheetName: 'SOLICITUD DE VACACIONES'
+    sheetName: 'CONCENTRADO DE VACACIONES'
+  },
+  nonWorkingDays: {
+    scriptUrl: SCRIPT_VACACIONES_URL,
+    spreadsheetId: '1ZDpnn0axnQ80USHsTbGbx92cTq7LI1g-ZOBuadoT0hY',
+    sheetName: 'DIAS NO LABORABLES'
   },
   employees: {
     scriptUrl: 'https://script.google.com/macros/s/AKfycbxn3SzwPkDh4ErM6e0EeXyKw3q8d1lxlvEmkpEtFuvfeoVs3nwg41fTT6rNrYrd7n0c/exec',
@@ -33,9 +39,24 @@ const sheetConnections = {
   }
 };
 
+const columnMappingVacation = {
+  'NOMBRE': 'A',
+  'FECHA DE INGRESO': 'B',
+  'NUMERO DE EMPLEADO': 'C',
+  'ÁREA': 'D',
+  'DÍAS VACACIONES': 'E',
+  'FECHA DE PAGO': 'F',
+  'FECHA SALIDA': 'G',
+  'FECHA REGRESO': 'H',
+  'AUTORIZADAS': 'I',
+  'DÍAS TOMADOS': 'J',
+  'GUARDAR DICIEMBRE': 'K'
+};
+
 let attendanceData = [];
 let vacationData = [];
 let employeesData = [];
+let nonWorkingDaysData = [];
 let suspensionData = [];
 let suspensionCandidates = [];
 let notAppliedSuspensions = [];
@@ -89,7 +110,11 @@ const elements = {
   suspensionNotification: null,
   dismissalNotification: null,
   exportDataBtn: null,
-  dataTableBody: null
+  dataTableBody: null,
+  addEmployeeBtn: null,
+  exportVacationExcelBtn: null,
+  addVacationScheduleBtn: null,
+  vacationConcentradoBody: null
 };
 
 function initializeDOMElements() {
@@ -102,11 +127,6 @@ function initializeDOMElements() {
   elements.closeAttendanceModalBtn = document.getElementById('close-attendance-modal');
   elements.cancelAttendanceBtn = document.getElementById('cancel-attendance');
   elements.attendanceForm = document.getElementById('attendance-form');
-  elements.vacationModal = document.getElementById('vacation-modal');
-  elements.addVacationBtn = document.getElementById('add-vacation-btn');
-  elements.closeVacationModalBtn = document.getElementById('close-vacation-modal');
-  elements.cancelVacationBtn = document.getElementById('cancel-vacation');
-  elements.vacationForm = document.getElementById('vacation-form');
   elements.permissionModal = document.getElementById('permission-modal');
   elements.generatePermissionBtn = document.getElementById('generate-permission-btn');
   elements.closePermissionModalBtn = document.getElementById('close-permission-modal');
@@ -122,13 +142,15 @@ function initializeDOMElements() {
   elements.dismissalCandidatesBody = document.getElementById('dismissal-candidates-body');
   elements.attendanceTableBody = document.getElementById('attendance-table-body');
   elements.missingEmployeesBody = document.getElementById('missing-employees-body');
-  elements.vacationTableBody = document.getElementById('vacation-table-body');
   elements.permissionsTableBody = document.getElementById('permissions-table-body');
   elements.userNameDisplay = document.getElementById('userNameDisplay');
   elements.suspensionNotification = document.getElementById('suspension-notification');
-  elements.dismissalNotification = document.getElementById('dismissal-notification');
   elements.exportDataBtn = document.getElementById('export-data-btn');
   elements.dataTableBody = document.getElementById('data-table-body');
+  elements.addEmployeeBtn = document.getElementById('add-employee-btn');
+  elements.exportVacationExcelBtn = document.getElementById('export-vacation-excel-btn');
+  elements.addVacationScheduleBtn = document.getElementById('add-vacation-schedule-btn');
+  elements.vacationConcentradoBody = document.getElementById('vacation-concentrado-body');
 }
 
 function formatDate(dateString) {
@@ -146,6 +168,28 @@ function formatDate(dateString) {
       }
     }
     
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const year = date.getFullYear();
+    
+    return `${month}/${day}/${year}`;
+  } catch (e) {
+    return dateString;
+  }
+}
+
+function formatDateForVacation(dateString) {
+  if (!dateString) return '';
+  
+  if (typeof dateString === 'string' && dateString.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+    const [part1, part2, year] = dateString.split('/');
+    return `${part1.padStart(2, '0')}/${part2.padStart(2, '0')}/${year}`;
+  }
+  
+  try {
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return dateString;
     
@@ -181,8 +225,61 @@ function formatDateForSuspension(dateString) {
     
     return `${month}/${day}/${year}`;
   } catch (e) {
-    console.error('Error formateando fecha:', dateString, e);
     return dateString;
+  }
+}
+
+function formatDateForSheet(dateString) {
+  if (!dateString) return '';
+  
+  try {
+    if (typeof dateString === 'string' && dateString.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)) {
+      const [part1, part2, year] = dateString.split('/').map(Number);
+      
+      if (part1 > 12 && part2 <= 12) {
+        return `${part2.toString().padStart(2, '0')}/${part1.toString().padStart(2, '0')}/${year}`;
+      }
+      
+      if (part1 <= 12 && part2 <= 12) {
+        return `${part1.toString().padStart(2, '0')}/${part2.toString().padStart(2, '0')}/${year}`;
+      }
+    }
+    
+    if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = dateString.split('-');
+      return `${month}/${day}/${year}`;
+    }
+    
+    return dateString;
+    
+  } catch (e) {
+    return dateString;
+  }
+}
+
+function formatDateForInput(dateString) {
+  if (!dateString) return '';
+  
+  try {
+    if (typeof dateString === 'string' && dateString.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)) {
+      const [month, day, year] = dateString.split('/').map(Number);
+      return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+    }
+    
+    if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      return dateString;
+    }
+    
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+    
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}`;
+  } catch (e) {
+    return '';
   }
 }
 
@@ -293,10 +390,10 @@ async function initializeApp() {
     showNotification('Cargando datos...', 'success');
     
     await loadEmployeesData();
+    await loadNonWorkingDaysData();
     await loadSuspensionData();
     initializeEventListeners();
     await loadAttendanceData();
-    await loadVacationData();
     
     setupVacationAutocomplete();
     setupPermissionAutocomplete();
@@ -308,8 +405,14 @@ async function initializeApp() {
     
     applyBlinkingStyles();
     addExportButton();
-    createAppliedSuspensionsTable();
-    createDismissalCandidatesTable();
+    
+    if (elements.exportVacationExcelBtn) {
+      elements.exportVacationExcelBtn.addEventListener('click', exportVacationToExcel);
+    }
+    
+    if (elements.addVacationScheduleBtn) {
+      elements.addVacationScheduleBtn.addEventListener('click', openVacationScheduleModal);
+    }
     
     showNotification('Aplicación cargada correctamente', 'success');
   } catch (error) {
@@ -318,22 +421,732 @@ async function initializeApp() {
   }
 }
 
+async function loadNonWorkingDaysData() {
+  try {
+    const result = await fetchSheetData(sheetConnections.nonWorkingDays);
+    if (result && result.error) {
+      nonWorkingDaysData = [];
+      return;
+    }
+    
+    nonWorkingDaysData = result && result.data ? result.data : [];
+  } catch (error) {
+    nonWorkingDaysData = [];
+  }
+}
+
+function isNonWorkingDay(date) {
+  if (!date) return false;
+  
+  try {
+    const dateObj = new Date(date);
+    if (isNaN(dateObj.getTime())) return false;
+    
+    const dayOfWeek = dateObj.getDay();
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      return true;
+    }
+    
+    const dateStr = formatDate(dateObj);
+    
+    const specificNonWorkingDays = [
+      '03/02/2025',
+      '17/03/2025',
+      '18/04/2025',
+      '01/05/2025',
+      '15/09/2025',
+      '17/11/2025',
+      '24/12/2025',
+      '25/12/2025',
+      '01/01/2026'
+    ];
+    
+    if (specificNonWorkingDays.includes(dateStr)) {
+      return true;
+    }
+    
+    if (nonWorkingDaysData && nonWorkingDaysData.length > 0) {
+      return nonWorkingDaysData.some(day => {
+        if (!day.FECHA && !day.Date) return false;
+        try {
+          const nonWorkingDate = new Date(day.FECHA || day.Date);
+          const nonWorkingDateStr = formatDate(nonWorkingDate);
+          return nonWorkingDateStr === dateStr;
+        } catch (e) {
+          return false;
+        }
+      });
+    }
+    
+    return false;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function loadVacationConcentradoData() {
+  try {
+    const result = await fetchSheetData(sheetConnections.vacations);
+    
+    if (result.error) {
+      showNotification('Error al cargar datos de vacaciones', 'error');
+      return;
+    }
+    
+    vacationData = result.data || [];
+    renderVacationConcentradoTable();
+    
+    checkUpcomingVacations();
+    
+  } catch (error) {
+    showNotification('Error crítico al cargar vacaciones', 'error');
+  }
+}
+
+function renderVacationConcentradoTable() {
+  const tableBody = elements.vacationConcentradoBody;
+  if (!tableBody) return;
+  
+  tableBody.innerHTML = '';
+  
+  if (vacationData.length === 0) {
+    const row = document.createElement('tr');
+    row.innerHTML = '<td colspan="12" class="no-data">No hay datos de vacaciones disponibles</td>';
+    tableBody.appendChild(row);
+    return;
+  }
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  vacationData.forEach((item, index) => {
+    const row = document.createElement('tr');
+    
+    const authorized = item['AUTORIZADAS'] === true || item['AUTORIZADAS'] === 'TRUE' || item['AUTORIZADAS'] === 'true';
+    
+    if (authorized) {
+      row.classList.add('blinking-row-green');
+    }
+    
+    let hasStartDateClass = false;
+    const startDateStr = item['FECHA SALIDA'];
+    
+    if (startDateStr) {
+      try {
+        const [month, day, year] = startDateStr.split('/').map(Number);
+        const startDate = new Date(year, month - 1, day);
+        
+        const diffTime = startDate - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays >= 0 && diffDays <= 15) {
+          row.classList.add('blinking-row-red');
+          hasStartDateClass = true;
+        } else if (diffDays > 15 && diffDays <= 30) {
+          row.classList.add('blinking-row-yellow');
+          hasStartDateClass = true;
+        }
+        
+      } catch (e) {
+        console.error('Error al procesar fecha:', startDateStr, e);
+      }
+    }
+    
+    const showActions = currentUser && currentUser.name.toLowerCase() === 'marco cruger';
+    
+    row.innerHTML = `
+      <td>${item.NOMBRE || ''}</td>
+      <td>${item['FECHA DE INGRESO'] || ''}</td>
+      <td>${item['NUMERO DE EMPLEADO'] || ''}</td>
+      <td>${item['ÁREA'] || ''}</td>
+      <td>${item['DÍAS VACACIONES'] || '0'}</td>
+      <td>${item['FECHA DE PAGO'] || ''}</td>
+      <td>${item['FECHA SALIDA'] || ''}</td>
+      <td>${item['FECHA REGRESO'] || ''}</td>
+      <td>
+        <label class="toggle-label">
+          <input type="checkbox" class="toggle-input" ${authorized ? 'checked' : ''} 
+            onchange="toggleVacationAuthorization(${index}, this.checked)"
+            ${!showActions ? 'disabled' : ''}>
+          <span class="toggle-slider"></span>
+        </label>
+      </td>
+      <td>${item['DÍAS TOMADOS'] || '0'}</td>
+      <td>${item['GUARDAR DICIEMBRE'] || '0'}</td>
+      <td>
+        ${showActions ? `
+          <div class="action-buttons">
+            <button class="action-button small delete" onclick="deleteVacationRecord(${index})">
+              Eliminar
+            </button>
+          </div>
+        ` : '<span class="no-permission">Solo lectura</span>'}
+      </td>
+    `;
+    
+    tableBody.appendChild(row);
+  });
+}
+
+async function toggleVacationAuthorization(index, isAuthorized) {
+  try {
+    const record = vacationData[index];
+    
+    const updateData = {
+      action: 'update',
+      original: {
+        NOMBRE: record.NOMBRE,
+        'NUMERO DE EMPLEADO': record['NUMERO DE EMPLEADO'],
+        'FECHA SALIDA': record['FECHA SALIDA']
+      },
+      updated: {
+        'AUTORIZADAS': isAuthorized ? 'TRUE' : 'FALSE'
+      }
+    };
+    
+    const result = await fetchSheetData(sheetConnections.vacations, 'update', updateData);
+    
+    if (result.error) {
+      showNotification('Error al actualizar autorización: ' + result.error, 'error');
+      return;
+    }
+    
+    vacationData[index]['AUTORIZADAS'] = isAuthorized;
+    renderVacationConcentradoTable();
+    showNotification(`Vacación ${isAuthorized ? 'autorizada' : 'desautorizada'} exitosamente`, 'success');
+    
+  } catch (error) {
+    console.error('Error en toggleVacationAuthorization:', error);
+    showNotification('Error al actualizar autorización', 'error');
+  }
+}
+
+function checkUpcomingVacations() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  employeesData.forEach(employee => {
+    if (employee['FECHA DE INGRESO']) {
+      const entryDate = new Date(employee['FECHA DE INGRESO']);
+      const monthsWorked = (today.getFullYear() - entryDate.getFullYear()) * 12 + 
+                           (today.getMonth() - entryDate.getMonth());
+      
+      if (monthsWorked >= 11 && monthsWorked < 12) {
+        const hasVacations = vacationData.some(vacation => 
+          vacation.NOMBRE === employee.NOMBRE && 
+          (vacation['AUTORIZADAS'] === true || vacation['AUTORIZADAS'] === 'TRUE')
+        );
+        
+        if (!hasVacations) {
+          showNotification(`⚠️ ${employee.NOMBRE} necesita agendar sus vacaciones. Le quedan ${12 - monthsWorked} mes(es) para cumplir un año.`, 'warning');
+        }
+      }
+    }
+  });
+}
+
+function openVacationScheduleModal() {
+  const modal = document.createElement('div');
+  modal.className = 'modal active';
+  modal.id = 'vacation-schedule-modal';
+  
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  const formattedToday = `${year}-${month}-${day}`;
+  
+  modal.innerHTML = `
+    <div class="modal-content compact-modal">
+      <div class="modal-header">
+        <h3 class="modal-title">AGENDAR VACACIONES</h3>
+        <button class="close-button" onclick="closeVacationScheduleModal()">&times;</button>
+      </div>
+      <form id="vacation-schedule-form">
+        <div class="form-group">
+          <label class="form-label">Nombre del Empleado *</label>
+          <input type="text" class="form-input" id="schedule-employee-name" placeholder="Buscar empleado..." required>
+          <div id="employee-suggestions" class="suggestions-dropdown"></div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Fecha de Ingreso</label>
+            <input type="text" class="form-input" id="schedule-entry-date" readonly>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Número de Empleado</label>
+            <input type="text" class="form-input" id="schedule-employee-id" readonly>
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Área</label>
+            <input type="text" class="form-input" id="schedule-area" readonly>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Días de Vacaciones Disponibles</label>
+            <input type="text" class="form-input" id="schedule-vacation-days" readonly>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Fecha de Pago</label>
+          <select class="form-select" id="schedule-pay-date" onchange="handlePayDateChange(this.value)">
+            <option value="">Seleccionar fecha de pago</option>
+            <option value="fecha">Seleccionar fecha de pago</option>
+            <option value="semanal">PAGO POR SEMANA</option>
+          </select>
+          <input type="date" class="form-input" id="schedule-custom-pay-date" style="display: none; margin-top: 0.5rem;">
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Fecha de Salida *</label>
+            <input type="date" class="form-input" id="schedule-start-date" required 
+              min="${formattedToday}" onchange="calculateVacationDates()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fecha de Regreso</label>
+            <input type="text" class="form-input" id="schedule-return-date" readonly>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Días de Vacaciones a Tomar *</label>
+          <input type="number" class="form-input" id="schedule-days-to-take" min="1.2" step="1.2" required 
+            oninput="calculateVacationDates()">
+          <small style="color: var(--slate-400);">Cada día de vacaciones equivale a 1.2 días laborales</small>
+          <div id="days-calculation-info" style="margin-top: 0.5rem; font-size: 0.9rem; color: var(--slate-300);"></div>
+        </div>
+        
+        <div class="form-group">
+          <label class="toggle-label">
+            <span class="toggle-text">Autorizadas</span>
+            <input type="checkbox" class="toggle-input" id="schedule-authorized">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Días que se Descontarán</label>
+          <input type="text" class="form-input" id="schedule-days-taken" readonly>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Guardar Días de Vacaciones para Diciembre</label>
+          <input type="number" class="form-input" id="schedule-december-save" min="0" step="1.2" value="0" 
+            oninput="calculateVacationDates()">
+          <small style="color: var(--slate-400);">Días de vacaciones que se guardarán para diciembre</small>
+        </div>
+        
+        <div class="button-group">
+          <button type="button" class="cancel-button" onclick="closeVacationScheduleModal()">Cancelar</button>
+          <button type="submit" class="modern-button">Guardar Vacaciones</button>
+        </div>
+      </form>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  setupEmployeeAutocomplete();
+  setupVacationScheduleEvents();
+  
+  modal.classList.add('active');
+}
+
+function handlePayDateChange(value) {
+  const customPayDateInput = document.getElementById('schedule-custom-pay-date');
+  
+  if (value === 'semanal') {
+    customPayDateInput.style.display = 'none';
+    customPayDateInput.value = '';
+  } else if (value === 'fecha') {
+    customPayDateInput.style.display = 'block';
+    generateFridayOptions();
+  } else {
+    customPayDateInput.style.display = 'none';
+    customPayDateInput.value = '';
+  }
+}
+
+function generateFridayOptions() {
+  const customPayDateInput = document.getElementById('schedule-custom-pay-date');
+  if (!customPayDateInput) return;
+  
+  const today = new Date();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+  
+  const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
+  const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0);
+  
+  let fridays = [];
+  let currentDate = new Date(firstDayOfMonth);
+  
+  while (currentDate <= lastDayOfMonth) {
+    if (currentDate.getDay() === 5) {
+      fridays.push(new Date(currentDate));
+    }
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  if (fridays.length > 0) {
+    const fridayFormatted = fridays.map(date => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    });
+    
+    customPayDateInput.min = fridayFormatted[0];
+    customPayDateInput.max = fridayFormatted[fridayFormatted.length - 1];
+    customPayDateInput.value = fridayFormatted[0];
+  } else {
+    customPayDateInput.min = today.toISOString().split('T')[0];
+    customPayDateInput.max = lastDayOfMonth.toISOString().split('T')[0];
+    customPayDateInput.value = today.toISOString().split('T')[0];
+  }
+}
+
+function setupEmployeeAutocomplete() {
+  const nameInput = document.getElementById('schedule-employee-name');
+  const suggestionsDiv = document.getElementById('employee-suggestions');
+  
+  if (!nameInput || !suggestionsDiv) return;
+  
+  nameInput.addEventListener('input', function() {
+    const value = this.value.toLowerCase().trim();
+    suggestionsDiv.innerHTML = '';
+    
+    if (value.length < 2) return;
+    
+    const matches = employeesData.filter(emp => 
+      emp.NOMBRE && emp.NOMBRE.toLowerCase().includes(value)
+    ).slice(0, 10);
+    
+    matches.forEach(emp => {
+      const div = document.createElement('div');
+      div.className = 'suggestion-item';
+      div.textContent = emp.NOMBRE;
+      div.dataset.id = emp['NUMERO DE EMPLEADO'];
+      div.dataset.area = emp.AREA;
+      div.dataset.days = emp['DIAS DE VACACIONES'];
+      div.dataset.entryDate = emp['FECHA DE INGRESO'];
+      
+      div.addEventListener('click', () => {
+        nameInput.value = emp.NOMBRE;
+        document.getElementById('schedule-entry-date').value = formatDate(emp['FECHA DE INGRESO']);
+        document.getElementById('schedule-employee-id').value = emp['NUMERO DE EMPLEADO'];
+        document.getElementById('schedule-area').value = emp.AREA;
+        document.getElementById('schedule-vacation-days').value = emp['DIAS DE VACACIONES'] || '0';
+        suggestionsDiv.innerHTML = '';
+        
+        const today = new Date();
+        const todayFormatted = today.toISOString().split('T')[0];
+        document.getElementById('schedule-start-date').min = todayFormatted;
+        
+        calculateVacationDates();
+      });
+      
+      suggestionsDiv.appendChild(div);
+    });
+  });
+  
+  document.addEventListener('click', (e) => {
+    if (!nameInput.contains(e.target) && !suggestionsDiv.contains(e.target)) {
+      suggestionsDiv.innerHTML = '';
+    }
+  });
+}
+
+function setupVacationScheduleEvents() {
+  const form = document.getElementById('vacation-schedule-form');
+  if (form) {
+    form.addEventListener('submit', handleVacationScheduleSubmit);
+  }
+  
+  const daysToTakeInput = document.getElementById('schedule-days-to-take');
+  const decemberSaveInput = document.getElementById('schedule-december-save');
+  const startDateInput = document.getElementById('schedule-start-date');
+  
+  if (daysToTakeInput) {
+    daysToTakeInput.addEventListener('input', calculateVacationDates);
+  }
+  
+  if (decemberSaveInput) {
+    decemberSaveInput.addEventListener('input', calculateVacationDates);
+  }
+  
+  if (startDateInput) {
+    startDateInput.addEventListener('change', calculateVacationDates);
+  }
+}
+
+function calculateVacationDates() {
+  const startDateInput = document.getElementById('schedule-start-date');
+  const daysToTakeInput = document.getElementById('schedule-days-to-take');
+  const decemberSaveInput = document.getElementById('schedule-december-save');
+  const returnDateInput = document.getElementById('schedule-return-date');
+  const infoDiv = document.getElementById('days-calculation-info');
+  const vacationDaysInput = document.getElementById('schedule-vacation-days');
+  const daysTakenInput = document.getElementById('schedule-days-taken');
+  
+  if (!startDateInput.value || !daysToTakeInput.value) {
+    return;
+  }
+  
+  const startDateStr = startDateInput.value;
+  const [year, month, day] = startDateStr.split('-').map(Number);
+  const startDate = new Date(year, month - 1, day, 12, 0, 0);
+  
+  let daysToTake = parseFloat(daysToTakeInput.value) || 0;
+  let decemberSave = parseFloat(decemberSaveInput.value) || 0;
+  const availableDays = parseFloat(vacationDaysInput.value) || 0;
+  
+  const daysTaken = daysToTake;
+  
+  if (daysTakenInput) {
+    daysTakenInput.value = daysTaken.toFixed(1);
+  }
+  
+  const formattedStartDate = `${month.toString().padStart(2, '0')}/${day.toString().padStart(2, '0')}/${year}`;
+  
+  const WORK_DAYS_PER_VACATION_DAY = 1.2;
+  const workDaysNeeded = Math.ceil(daysToTake / WORK_DAYS_PER_VACATION_DAY);
+  
+  let returnDate = new Date(startDate);
+  let workDaysCounted = 0;
+  
+  while (workDaysCounted < workDaysNeeded) {
+    returnDate.setDate(returnDate.getDate() + 1);
+    
+    if (!isNonWorkingDay(returnDate)) {
+      workDaysCounted++;
+    }
+    
+    if (workDaysCounted > 365) break;
+  }
+  
+  const returnYear = returnDate.getFullYear();
+  const returnMonth = (returnDate.getMonth() + 1).toString().padStart(2, '0');
+  const returnDay = returnDate.getDate().toString().padStart(2, '0');
+  const returnDateFormatted = `${returnMonth}/${returnDay}/${returnYear}`;
+  
+  returnDateInput.value = returnDateFormatted;
+  
+  const totalUsed = daysToTake + decemberSave;
+  const remainingBalance = availableDays - totalUsed;
+  
+  if (infoDiv) {
+    infoDiv.innerHTML = `
+      <strong>Saldo disponible:</strong> ${availableDays.toFixed(1)} días de vacaciones<br>
+      <strong>Días de vacaciones a tomar:</strong> ${daysToTake.toFixed(1)} días<br>
+      <strong>Días de vacaciones a guardar:</strong> ${decemberSave.toFixed(1)} días<br>
+      <strong>Días que se descontarán del saldo:</strong> ${daysTaken.toFixed(1)} días<br>
+      <strong>Días laborales requeridos:</strong> ${workDaysCounted} días (${daysToTake.toFixed(1)} ÷ 1.2)<br>
+      <strong>Fecha de salida:</strong> ${formattedStartDate}<br>
+      <strong>Fecha de regreso:</strong> ${returnDateFormatted}<br>
+      <strong>Total días utilizados:</strong> ${totalUsed.toFixed(1)} días<br>
+      <strong>Saldo restante:</strong> ${remainingBalance.toFixed(1)} días<br>
+      <strong>Nota:</strong> Los días guardados para diciembre NO afectan la fecha de regreso
+    `;
+  }
+}
+
+function validateVacationScheduleForm() {
+  const name = document.getElementById('schedule-employee-name');
+  const startDate = document.getElementById('schedule-start-date');
+  const daysToTake = document.getElementById('schedule-days-to-take');
+  const decemberSave = document.getElementById('schedule-december-save');
+  const vacationDays = document.getElementById('schedule-vacation-days');
+  const payDateSelect = document.getElementById('schedule-pay-date');
+  const customPayDateInput = document.getElementById('schedule-custom-pay-date');
+  const returnDate = document.getElementById('schedule-return-date');
+  
+  if (!name.value.trim()) {
+    showNotification('El nombre del empleado es obligatorio', 'error');
+    return false;
+  }
+  
+  if (!startDate.value) {
+    showNotification('La fecha de salida es obligatoria', 'error');
+    return false;
+  }
+  
+  if (!returnDate.value) {
+    showNotification('Por favor, calcule la fecha de regreso primero', 'error');
+    calculateVacationDates();
+    return false;
+  }
+  
+  const daysValue = parseFloat(daysToTake.value);
+  if (isNaN(daysValue) || daysValue < 1.2) {
+    showNotification('Los días a tomar deben ser al menos 1.2 días', 'error');
+    return false;
+  }
+  
+  const decemberValue = parseFloat(decemberSave.value) || 0;
+  const availableDays = parseFloat(vacationDays.value) || 0;
+  
+  if (daysValue > availableDays) {
+    showNotification(`Los días a tomar (${daysValue}) superan los días disponibles (${availableDays})`, 'error');
+    return false;
+  }
+  
+  if (decemberValue > availableDays) {
+    showNotification(`Los días a guardar (${decemberValue}) superan los días disponibles (${availableDays})`, 'error');
+    return false;
+  }
+  
+  if (daysValue + decemberValue > availableDays) {
+    showNotification(`La suma de días a tomar (${daysValue}) y guardar (${decemberValue}) = ${(daysValue + decemberValue).toFixed(1)} supera los días disponibles (${availableDays})`, 'error');
+    return false;
+  }
+  
+  if (payDateSelect.value === '') {
+    showNotification('Seleccione una opción de fecha de pago', 'error');
+    return false;
+  }
+  
+  if (payDateSelect.value === 'fecha' && !customPayDateInput.value) {
+    showNotification('Seleccione una fecha de pago válida', 'error');
+    return false;
+  }
+  
+  return true;
+}
+
+function closeVacationScheduleModal() {
+  const modal = document.getElementById('vacation-schedule-modal');
+  if (modal) {
+    modal.remove();
+  }
+}
+
+function deleteVacationRecord(index) {
+  if (!currentUser || currentUser.name.toLowerCase() !== 'marco cruger') {
+    showNotification('Solo Marco Cruger puede eliminar registros de vacaciones', 'error');
+    return;
+  }
+  
+  const record = vacationData[index];
+  
+  if (confirm(`¿Estás seguro de eliminar las vacaciones de ${record.NOMBRE} (${record['FECHA SALIDA']} - ${record['FECHA REGRESO']})?`)) {
+    deleteVacationFromSheet(record, index);
+  }
+}
+
+async function deleteVacationFromSheet(record, index) {
+  try {
+    showNotification('Eliminando registro de vacaciones...', 'success');
+    
+    const deleteData = {
+      action: 'delete',
+      NOMBRE: record.NOMBRE,
+      'FECHA SALIDA': record['FECHA SALIDA'],
+      'NUMERO DE EMPLEADO': record['NUMERO DE EMPLEADO']
+    };
+    
+    const result = await fetchSheetData(sheetConnections.vacations, 'delete', deleteData);
+    
+    if (result.error) {
+      showNotification('Error al eliminar: ' + result.error, 'error');
+      return;
+    }
+    
+    vacationData.splice(index, 1);
+    renderVacationConcentradoTable();
+    showNotification('Registro de vacaciones eliminado exitosamente', 'success');
+    
+  } catch (error) {
+    showNotification('Error al eliminar registro de vacaciones', 'error');
+  }
+}
+
+function handleVacationScheduleSubmit(e) {
+  e.preventDefault();
+  
+  if (!validateVacationScheduleForm()) {
+    return;
+  }
+  
+  const name = document.getElementById('schedule-employee-name').value;
+  const startDate = document.getElementById('schedule-start-date').value;
+  const returnDate = document.getElementById('schedule-return-date').value;
+  const daysToTake = parseFloat(document.getElementById('schedule-days-to-take').value) || 0;
+  const decemberSave = parseFloat(document.getElementById('schedule-december-save').value) || 0;
+  
+  const daysTaken = daysToTake;
+  
+  const [year, month, day] = startDate.split('-').map(Number);
+  const formattedStartDate = `${month.toString().padStart(2, '0')}/${day.toString().padStart(2, '0')}/${year}`;
+  
+  const formData = {
+    'NOMBRE': name,
+    'FECHA DE INGRESO': document.getElementById('schedule-entry-date').value,
+    'NUMERO DE EMPLEADO': document.getElementById('schedule-employee-id').value,
+    'ÁREA': document.getElementById('schedule-area').value,
+    'DÍAS VACACIONES': document.getElementById('schedule-vacation-days').value,
+    'FECHA DE PAGO': getPayDateValue(),
+    'FECHA SALIDA': formattedStartDate,
+    'FECHA REGRESO': returnDate,
+    'AUTORIZADAS': document.getElementById('schedule-authorized').checked ? 'TRUE' : 'FALSE',
+    'DÍAS TOMADOS': daysTaken.toFixed(1),
+    'GUARDAR DICIEMBRE': decemberSave.toFixed(1)
+  };
+  
+  try {
+    showNotification('Guardando vacaciones...', 'success');
+    
+    const result = fetchSheetData(
+      sheetConnections.vacations, 
+      'append', 
+      [formData]
+    );
+    
+    if (result.error) {
+      showNotification('Error al guardar vacaciones: ' + result.error, 'error');
+      return;
+    }
+    
+    showNotification('Vacaciones guardadas exitosamente', 'success');
+    closeVacationScheduleModal();
+    
+    loadVacationConcentradoData();
+    
+  } catch (error) {
+    showNotification('Error al guardar vacaciones', 'error');
+  }
+}
+
+function getPayDateValue() {
+  const payDateSelect = document.getElementById('schedule-pay-date');
+  const customPayDateInput = document.getElementById('schedule-custom-pay-date');
+  
+  if (payDateSelect.value === 'semanal') {
+    return 'PAGO POR SEMANA';
+  } else if (payDateSelect.value === 'fecha' && customPayDateInput.value) {
+    const date = new Date(customPayDateInput.value);
+    return formatDate(date.toISOString().split('T')[0]);
+  }
+  
+  return '';
+}
+
 async function loadSuspensionData() {
   try {
     const result = await fetchSheetData(sheetConnections.suspensionConcentrado);
     if (result && result.error) {
-      console.error('Error cargando datos de suspensión:', result.error);
-      showNotification('Error al cargar datos de suspensión', 'error');
       suspensionData = [];
       return;
     }
     
     suspensionData = result && result.data ? result.data : [];
-    console.log('Datos de suspensión cargados:', suspensionData.length, 'registros');
   } catch (error) {
-    console.error('Error en loadSuspensionData:', error);
     suspensionData = [];
-    showNotification('Error de conexión con datos de suspensión', 'error');
   }
 }
 
@@ -645,62 +1458,41 @@ function applyBlinkingStyles() {
       color: #8b0000;
       border: 1px solid #8b0000;
     }
-    .blinking-row-yellow {
-      animation: blink-yellow 2s infinite;
+    .gafete-image {
+      max-width: 50px;
+      max-height: 50px;
+      border-radius: 4px;
+      object-fit: cover;
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
-    .blinking-row-red {
-      animation: blink-red 2s infinite;
+    .action-buttons {
+      display: flex;
+      gap: 0.5rem;
     }
-    .blinking-row-green{
-      animation:blink-green 2s infinite;
-    }  
-    @keyframes blink-yellow {
-      0%, 100% { background-color: transparent; }
-      50% { background-color: rgba(245, 158, 11, 0.1); }
+    .action-button.small {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
     }
-    @keyframes blink-red {
-      0%, 100% { background-color: transparent; }
-      50% { background-color: rgba(236, 10, 10, 0.603); }
+    .action-button.small.delete {
+      background: linear-gradient(135deg, var(--red-600), var(--red-500));
     }
-    @keyframes blink-green {
-    0%, 100% { background-color: transparent; }
-    50% { background-color: rgba(11, 143, 29, 0.24); }
-  }
-  .gafete-image {
-    max-width: 50px;
-    max-height: 50px;
-    border-radius: 4px;
-    object-fit: cover;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-  .action-buttons {
-    display: flex;
-    gap: 0.5rem;
-  }
-  .action-button.small {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-  }
-  .action-button.small.delete {
-    background: linear-gradient(135deg, var(--red-600), var(--red-500));
-  }
-  .action-button.small.delete:hover {
-    background: linear-gradient(135deg, var(--red-700), var(--red-600));
-  }
-  .action-button.small.view {
-    background: linear-gradient(135deg, var(--purple-600), var(--purple-500));
-  }
-  .action-button.small.view:hover {
-    background: linear-gradient(135deg, var(--purple-700), var(--purple-600));
-  }
-  .no-permission {
-    color: var(--slate-400);
-    font-size: 0.75rem;
-    font-style: italic;
-  }
+    .action-button.small.delete:hover {
+      background: linear-gradient(135deg, var(--red-700), var(--red-600));
+    }
+    .action-button.small.view {
+      background: linear-gradient(135deg, var(--purple-600), var(--purple-500));
+    }
+    .action-button.small.view:hover {
+      background: linear-gradient(135deg, var(--purple-700), var(--purple-600));
+    }
+    .no-permission {
+      color: var(--slate-400);
+      font-size: 0.75rem;
+      font-style: italic;
+    }
   `;
   document.head.appendChild(style);
 }
@@ -728,19 +1520,6 @@ function initializeEventListeners() {
     elements.attendanceForm.addEventListener('submit', handleAttendanceSubmit);
   }
 
-  if (elements.addVacationBtn) {
-    elements.addVacationBtn.addEventListener('click', handleAddVacationClick);
-  }
-  if (elements.closeVacationModalBtn) {
-    elements.closeVacationModalBtn.addEventListener('click', closeVacationModal);
-  }
-  if (elements.cancelVacationBtn) {
-    elements.cancelVacationBtn.addEventListener('click', closeVacationModal);
-  }
-  if (elements.vacationForm) {
-    elements.vacationForm.addEventListener('submit', handleVacationSubmit);
-  }
-
   if (elements.generatePermissionBtn) {
     elements.generatePermissionBtn.addEventListener('click', openPermissionModal);
   }
@@ -764,6 +1543,10 @@ function initializeEventListeners() {
 
   if (elements.exportDataBtn) {
     elements.exportDataBtn.addEventListener('click', exportDataTable);
+  }
+
+  if (elements.addEmployeeBtn) {
+    elements.addEmployeeBtn.addEventListener('click', openAddEmployeeModal);
   }
 
   const closeSuspensionModalBtn = document.getElementById('close-suspension-modal');
@@ -830,6 +1613,10 @@ function initializeEventListeners() {
   }
 
   initializeTableFilters();
+  
+  document.getElementById('filter-nombre').addEventListener('input', filterDataTable);
+  document.getElementById('filter-numero').addEventListener('input', filterDataTable);
+  document.getElementById('filter-area').addEventListener('input', filterDataTable);
 }
 
 async function fetchSheetData(connection, action = 'read', data = null) {
@@ -872,7 +1659,6 @@ async function fetchSheetData(connection, action = 'read', data = null) {
     
     return result;
   } catch (error) {
-    console.error('Error fetching data:', error);
     showNotification(`Error al cargar datos: ${error.message}`, 'error');
     return { error: error.message };
   }
@@ -888,46 +1674,9 @@ async function loadAttendanceData() {
   checkMissingEmployees();
 }
 
-async function loadVacationData() {
-  try {
-    const result = await fetchSheetData(sheetConnections.vacations);
-    
-    if (result.error) {
-      console.error('Error cargando datos de vacaciones:', result.error);
-      showNotification('Error al cargar datos de vacaciones', 'error');
-      return;
-    }
-    
-    vacationData = (result.data || []).map(item => {
-      const isAuthorized = item['Autorizadas'] === true || 
-                         item['Autorizadas'] === 'TRUE' || 
-                         item['Autorizadas'] === 'true' ||
-                         item['AUTORIZADAS'] === true || 
-                         item['AUTORIZADAS'] === 'TRUE' || 
-                         item['AUTORIZADAS'] === 'true';
-      
-      return {
-        'Name': item['Name'] || '',
-        'Entry Date': item['Entry Date'] || '',
-        'ID #': item['ID #'] || '',
-        'Days Vacations': item['Days Vacations'] || '0',
-        'Fecha de Salida': item['Fecha de salida'] || '',
-        'Fecha de Regreso': item['Fecha de Regreso'] || '',
-        'AUTORIZADAS': isAuthorized
-      };
-    });
-    
-    renderVacationTable();
-  } catch (error) {
-    console.error('Error en loadVacationData:', error);
-    showNotification('Error crítico al cargar vacaciones', 'error');
-  }
-}
-
 async function loadEmployeesData() {
   const result = await fetchSheetData(sheetConnections.employees);
   if (result.error) {
-    console.error('Error cargando datos de empleados:', result.error);
     showNotification('Error al cargar datos de empleados', 'error');
     return;
   }
@@ -985,60 +1734,6 @@ function renderAttendanceTable() {
     row.innerHTML = `<td colspan="4" class="no-data">Mostrando las últimas 20 de ${filteredAttendanceData.length} registros. Usa filtros para ver más registros.</td>`;
     elements.attendanceTableBody.appendChild(row);
   }
-}
-
-function renderVacationTable() {
-  if (!elements.vacationTableBody) {
-    console.error('Elemento vacationTableBody no encontrado');
-    return;
-  }
-  
-  elements.vacationTableBody.innerHTML = '';
-  
-  if (vacationData.length === 0) {
-    const row = document.createElement('tr');
-    row.innerHTML = '<td colspan="7" class="no-data">No hay datos de vacaciones disponibles</td>';
-    elements.vacationTableBody.appendChild(row);
-    return;
-  }
-  
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  vacationData.forEach(item => {
-    const row = document.createElement('tr');
-    
-    if (!item.AUTORIZADAS && item['Fecha de Salida']) {
-      const departureDate = new Date(item['Fecha de Salida']);
-      if (!isNaN(departureDate.getTime())) {
-        const daysToDeparture = Math.floor((departureDate - today) / (1000 * 60 * 60 * 24));
-        
-        if (daysToDeparture <= 7 && daysToDeparture >= 0) {
-          row.classList.add('blinking-row-red');
-        } else if (daysToDeparture <= 15 && daysToDeparture > 7) {
-          row.classList.add('blinking-row-yellow');
-        }
-      }
-    }
-    
-    const formattedEntryDate = formatDate(item['Entry Date']);
-    const formattedStartDate = formatDate(item['Fecha de Salida']);
-    const formattedEndDate = formatDate(item['Fecha de Regreso']);
-    
-    row.innerHTML = `
-      <td>${item.Name || ''}</td>
-      <td>${formattedEntryDate || ''}</td>
-      <td>${item['ID #'] || ''}</td>
-      <td>${item['Days Vacations'] || '0'}</td>
-      <td>${formattedStartDate || ''}</td>
-      <td>${formattedEndDate || ''}</td>
-      <td><span class="status-badge ${item.AUTORIZADAS ? 'status-asistencia' : 'status-no-registro'}">
-        ${item.AUTORIZADAS ? 'Sí' : 'No'}
-      </span></td>
-    `;
-    
-    elements.vacationTableBody.appendChild(row);
-  });
 }
 
 function renderDataTable() {
@@ -1530,7 +2225,6 @@ async function deleteEmployeeFromSheet(employee, index) {
     showNotification('Empleado eliminado exitosamente', 'success');
     
   } catch (error) {
-    console.error('Error eliminando empleado:', error);
     showNotification('Error al eliminar empleado', 'error');
   }
 }
@@ -1588,30 +2282,8 @@ function openEditEmployeeModal(employee, index) {
   const form = document.getElementById('edit-employee-form');
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    await handleEditEmployeeSubmit(employee, index);
+    await handleEditEmployeeSubmit(originalEmployee, index);
   });
-}
-
-function formatDateForInput(dateString) {
-  if (!dateString) return '';
-  
-  try {
-    if (typeof dateString === 'string' && dateString.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
-      const [month, day, year] = dateString.split('/');
-      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-    }
-    
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return '';
-    
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    
-    return `${year}-${month}-${day}`;
-  } catch (e) {
-    return '';
-  }
 }
 
 function closeEditEmployeeModal() {
@@ -1670,7 +2342,6 @@ async function handleEditEmployeeSubmit(originalEmployee, index) {
       showNotification('Datos actualizados exitosamente', 'success');
       
     } catch (error) {
-      console.error('Error actualizando empleado:', error);
       showNotification('Error al actualizar datos', 'error');
     }
 }
@@ -1783,44 +2454,8 @@ async function handleAddEmployeeSubmit() {
       showNotification('Empleado agregado exitosamente', 'success');
       
     } catch (error) {
-      console.error('Error agregando empleado:', error);
       showNotification('Error al agregar empleado', 'error');
     }
-}
-
-function initializeDataTableFilters() {
-  const dataSection = document.getElementById('data-section');
-  if (!dataSection) return;
-  
-  const tableHeader = dataSection.querySelector('.glassmorphism-table .table-header');
-  if (!tableHeader) return;
-  
-  const addButton = document.createElement('button');
-  addButton.className = 'modern-button';
-  addButton.id = 'add-employee-btn';
-  addButton.style.marginRight = '0.5rem';
-  addButton.innerHTML = `
-    <svg style="width: 1rem; height: 1rem; margin-right: 0.5rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-    </svg>
-    Agregar Empleado
-  `;
-  addButton.addEventListener('click', openAddEmployeeModal);
-  
-  tableHeader.insertBefore(addButton, elements.exportDataBtn);
-  
-  const tableFilters = dataSection.querySelector('.table-filters');
-  if (tableFilters) {
-    tableFilters.innerHTML = `
-      <input type="text" class="filter-input" id="filter-nombre" placeholder="Filtrar por nombre..." data-column="0" data-table="data">
-      <input type="text" class="filter-input" id="filter-numero" placeholder="Filtrar por número..." data-column="1" data-table="data">
-      <input type="text" class="filter-input" id="filter-area" placeholder="Filtrar por área..." data-column="2" data-table="data">
-    `;
-    
-    document.getElementById('filter-nombre').addEventListener('input', filterDataTable);
-    document.getElementById('filter-numero').addEventListener('input', filterDataTable);
-    document.getElementById('filter-area').addEventListener('input', filterDataTable);
-  }
 }
 
 function renderSuspensionTables() {
@@ -2347,54 +2982,6 @@ function closeAttendanceModal() {
   }
 }
 
-async function handleAddVacationClick() {
-  if (!currentUser || currentUser.name.toLowerCase() !== 'marco cruger') {
-    showAccessDeniedMessage();
-    return;
-  }
-  
-  openVacationModal();
-}
-
-function openVacationModal() {
-  if (!elements.vacationModal) return;
-  elements.vacationModal.classList.add('active');
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('vacation-start-date').value = today;
-  document.getElementById('vacation-start-date').setAttribute('min', today);
-}
-
-function closeVacationModal() {
-  if (!elements.vacationModal) return;
-  elements.vacationModal.classList.remove('active');
-  if (elements.vacationForm) elements.vacationForm.reset();
-  
-  const datalist = document.getElementById('employee-names-list');
-  if (datalist) {
-    document.body.removeChild(datalist);
-  }
-}
-
-function showAccessDeniedMessage() {
-  const accessDeniedModal = document.createElement('div');
-  accessDeniedModal.className = 'access-denied-modal';
-  accessDeniedModal.innerHTML = `
-    <div class="neon-message">
-      <span class="access-denied-text">Solo Marco Cruger puede agregar vacaciones</span>
-      <p class="access-denied-subtext">Tus credenciales solo te permiten visualizar el contenido</p>
-    </div>
-  `;
-  
-  document.body.appendChild(accessDeniedModal);
-  
-  setTimeout(() => {
-    accessDeniedModal.style.opacity = '0';
-    setTimeout(() => {
-      document.body.removeChild(accessDeniedModal);
-    }, 500);
-  }, 3000);
-}
-
 function openPermissionModal() {
   if (!elements.permissionModal) return;
   
@@ -2502,7 +3089,6 @@ async function handlePermissionSubmit(e) {
     closePermissionModal();
     
   } catch (error) {
-    console.error('Error en handlePermissionSubmit:', error);
     showNotification('Error al procesar la solicitud: ' + error.message, 'error');
   }
 }
@@ -2514,8 +3100,6 @@ async function generatePermissionPDF(formData) {
     const spreadsheetId = sheetConnections.permissions.spreadsheetId;
     
     const pdfUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=pdf&portrait=true&size=A4&fitw=true&sheetnames=false&printtitle=false&pagenumbers=false&gridlines=false&fzr=false&gid=0`;
-    
-    console.log('Descargando PDF desde:', pdfUrl);
     
     const downloadLink = document.createElement('a');
     downloadLink.href = pdfUrl;
@@ -2531,8 +3115,6 @@ async function generatePermissionPDF(formData) {
     showNotification('PDF descargado exitosamente', 'success');
     
   } catch (error) {
-    console.error('Error descargando PDF:', error);
-    
     const spreadsheetId = sheetConnections.permissions.spreadsheetId;
     const fallbackUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=pdf&gid=0`;
     
@@ -2557,7 +3139,7 @@ function validatePermissionForm() {
   const permissionTypes = [
     'permission-day',
     'permission-day-with-pay',
-    'permission-paternity',
+    'permission-paternity', 
     'permission-bereavement',
     'permission-marriage',
     'permission-hours'
@@ -2616,53 +3198,6 @@ async function handleAttendanceSubmit(e) {
   }
 }
 
-async function handleVacationSubmit(e) {
-  if (!e) return;
-  e.preventDefault();
-  
-  if (!validateVacationForm()) {
-    return;
-  }
-  
-  if (!currentUser || currentUser.name.toLowerCase() !== 'marco cruger') {
-    showAccessDeniedMessage();
-    return;
-  }
-  
-  const startDate = document.getElementById('vacation-start-date').value;
-  const days = parseFloat(document.getElementById('vacation-days').value);
-  
-  const selectedEmployee = document.querySelector(`#employee-names-list option[value="${document.getElementById('vacation-employee-name').value}"]`);
-  
-  const formData = {
-    'Name': document.getElementById('vacation-employee-name').value,
-    'Entry Date': selectedEmployee?.dataset.entryDate || '',
-    'ID #': document.getElementById('vacation-employee-id').value,
-    'Days Vacations': days,
-    'Fecha de salida': startDate,
-    'Fecha de Regreso': calculateReturnDate(startDate, days),
-    'Autorizadas': false
-  };
-  
-  const result = await fetchSheetData(
-    sheetConnections.vacations, 
-    'append', 
-    [formData]
-  );
-  
-  if (!result.error) {
-    showNotification('Solicitud de vacaciones enviada', 'success');
-    closeVacationModal();
-    await loadVacationData();
-  }
-}
-
-function calculateReturnDate(startDate, days) {
-  const date = new Date(startDate);
-  date.setDate(date.getDate() + Math.ceil(days));
-  return date.toISOString().split('T')[0];
-}
-
 function getPoints(type) {
   const pointsMap = {
     'Asistencia': 'parametro de prueba',
@@ -2691,44 +3226,6 @@ function validateAttendanceForm() {
 
   if (name.value.trim().length < 3) {
     showNotification('El nombre debe tener al menos 3 caracteres', 'error');
-    return false;
-  }
-
-  return true;
-}
-
-function validateVacationForm() {
-  const name = document.getElementById('vacation-employee-name');
-  const startDate = document.getElementById('vacation-start-date');
-  const employeeId = document.getElementById('vacation-employee-id');
-  const position = document.getElementById('vacation-position');
-  const days = document.getElementById('vacation-days');
-
-  if (!name || !startDate || !employeeId || !position || !days || 
-      !name.value.trim() || !startDate.value || !employeeId.value.trim() || 
-      !position.value.trim() || !days.value) {
-    showNotification('Por favor, complete todos los campos', 'error');
-    return false;
-  }
-
-  if (name.value.trim().length < 3) {
-    showNotification('El nombre debe tener al menos 3 caracteres', 'error');
-    return false;
-  }
-
-  const daysValue = parseFloat(days.value);
-  if (isNaN(daysValue) || daysValue < 0.1 || daysValue > 30) {
-    showNotification('Los días de vacaciones deben estar entre 0.1 y 30', 'error');
-    return false;
-  }
-
-  const today = new Date();
-  const start = new Date(startDate.value);
-  today.setHours(0, 0, 0, 0);
-  start.setHours(0, 0, 0, 0);
-
-  if (start < today) {
-    showNotification('La fecha de inicio no puede ser anterior a hoy', 'error');
     return false;
   }
 
@@ -2787,6 +3284,10 @@ function switchActiveSection(clickedItem, sectionName) {
   if (section) section.classList.add('active');
   
   updatePageTitles(sectionName);
+  
+  if (sectionName === 'vacaciones') {
+    loadVacationConcentradoData();
+  }
 }
 
 function updatePageTitles(sectionName) {
@@ -2834,8 +3335,6 @@ async function updateSuspensionStatuses() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  console.log('Total de registros en suspensionData:', suspensionData.length);
-  
   const employeesMap = new Map();
 
   suspensionData.forEach(suspension => {
@@ -2939,11 +3438,6 @@ async function updateSuspensionStatuses() {
     });
   }
 
-  console.log('Candidatos a suspensión:', suspensionCandidates.length);
-  console.log('Suspensiones no aplicadas:', notAppliedSuspensions.length);
-  console.log('Suspensiones aplicadas:', appliedSuspensions.length);
-  console.log('Candidatos a baja:', automaticDismissalCandidates.length);
-
   renderSuspensionTables();
 
   if (suspensionCandidates.length > 0) {
@@ -2971,47 +3465,16 @@ function openSuspensionModal(candidateIndex) {
   
   elements.suspensionModal.dataset.candidateIndex = candidateIndex;
   
-  createSuspensionInfoSection(candidate);
   createDateInputs(candidate.suggestedDays);
   
   elements.suspensionModal.classList.add('active');
 }
 
-function createSuspensionInfoSection(candidate) {
-  const suspensionForm = document.getElementById('suspension-form');
-  
-  const existingInfoSection = document.getElementById('suspension-info-section');
-  if (existingInfoSection) {
-    existingInfoSection.remove();
-  }
-  
-  const infoSection = document.createElement('div');
-  infoSection.id = 'suspension-info-section';
-  infoSection.className = 'suspension-info';
-  
-  infoSection.innerHTML = `
-    <h4>Información de la Suspensión</h4>
-    <p><strong>Empleado:</strong> ${candidate.employeeName}</p>
-    <p><strong>Faltas:</strong> ${candidate.absencesCount}</p>
-    <p><strong>Días sugeridos:</strong> ${candidate.suggestedDays}</p>
-    <p><strong>Primera falta:</strong> ${formatDate(candidate.firstAbsenceDate)}</p>
-  `;
-  
-  const firstField = suspensionForm.querySelector('.form-group');
-  suspensionForm.insertBefore(infoSection, firstField);
-}
-
 function createDateInputs(suggestedDays) {
-  const suspensionForm = document.getElementById('suspension-form');
+  const dateContainer = document.getElementById('suspension-date-container');
+  if (!dateContainer) return;
   
-  const existingDateContainer = document.getElementById('suspension-date-container');
-  if (existingDateContainer) {
-    existingDateContainer.remove();
-  }
-  
-  const dateContainer = document.createElement('div');
-  dateContainer.id = 'suspension-date-container';
-  dateContainer.className = 'date-inputs-container';
+  dateContainer.innerHTML = '';
   
   const title = document.createElement('h4');
   title.textContent = `Fechas de Aplicación de Suspensión (${suggestedDays} día(s)) - Lunes a Viernes`;
@@ -3039,15 +3502,12 @@ function createDateInputs(suggestedDays) {
     input.className = 'form-input suspension-date-input';
     input.id = `suspension-date-${i}`;
     input.required = true;
-    input.min = todayLocal; 
+    input.min = todayLocal;
     
     dateInputGroup.appendChild(label);
     dateInputGroup.appendChild(input);
     dateContainer.appendChild(dateInputGroup);
   }
-  
-  const descriptionField = document.getElementById('suspension-description');
-  descriptionField.parentNode.insertBefore(dateContainer, descriptionField.nextSibling);
 }
 
 async function handleSuspensionSubmit(e) {
@@ -3123,7 +3583,6 @@ async function handleSuspensionSubmit(e) {
     showNotification('Suspensión aplicada exitosamente', 'success');
     
   } catch (error) {
-    console.error('Error en handleSuspensionSubmit:', error);
     showNotification('Error al aplicar la suspensión: ' + error.message, 'error');
   }
 }
@@ -3132,17 +3591,10 @@ async function updateSuspensionConcentradoCorrectly(candidate, suspensionDates) 
   try {
     const applicationDate = formatDateForSuspension(new Date());
     
-    console.log('Actualizando concentrado correctamente para:', candidate.employeeName);
-    
     let updatedCount = 0;
     
     for (const absence of candidate.absencesData) {
       const absenceDateFormatted = formatDateForSuspension(absence.FECHA);
-      
-      console.log('Buscando registro específico en concentrado:', {
-        FECHA: absenceDateFormatted,
-        NOMBRE: candidate.employeeName
-      });
       
       const existingRecord = suspensionData.find(item => 
         formatDateForSuspension(item.FECHA) === absenceDateFormatted && 
@@ -3150,11 +3602,8 @@ async function updateSuspensionConcentradoCorrectly(candidate, suspensionDates) 
       );
       
       if (!existingRecord) {
-        console.log('No se encontró el registro específico en concentrado');
         continue;
       }
-      
-      console.log('Registro encontrado en concentrado:', existingRecord);
       
       const updateData = {
         'FECHA': absenceDateFormatted,
@@ -3164,23 +3613,15 @@ async function updateSuspensionConcentradoCorrectly(candidate, suspensionDates) 
         'FECHA DE APLICACION': applicationDate
       };
       
-      console.log('Actualizando registro en concentrado:', updateData);
-      
       const updateResult = await fetchSheetData(
         sheetConnections.suspensionConcentrado,
         'update',
         updateData
       );
       
-      console.log('Resultado de actualización:', updateResult);
-      
       if (updateResult.error) {
-        console.error('Error actualizando registro:', updateResult.error);
       } else if (updateResult.updated) {
-        console.log('Registro actualizado exitosamente en concentrado');
         updatedCount++;
-      } else {
-        console.log('No se pudo actualizar el registro en concentrado.');
       }
       
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -3193,7 +3634,6 @@ async function updateSuspensionConcentradoCorrectly(candidate, suspensionDates) 
     return { success: true, updatedCount };
     
   } catch (error) {
-    console.error('Error en updateSuspensionConcentradoCorrectly:', error);
     throw error;
   }
 }
@@ -3270,8 +3710,6 @@ async function generateSuspensionPDF(candidate, employee, suspensionDates) {
     }
     
   } catch (error) {
-    console.error('Error generando PDF de suspensión:', error);
-    
     const spreadsheetId = sheetConnections.suspensionFormato.spreadsheetId;
     const fallbackUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=pdf&gid=0`;
     
@@ -3293,16 +3731,6 @@ function closeSuspensionModal() {
   }
   if (elements.suspensionForm) {
     elements.suspensionForm.reset();
-  }
-  
-  const infoSection = document.getElementById('suspension-info-section');
-  if (infoSection) {
-    infoSection.remove();
-  }
-  
-  const dateContainer = document.getElementById('suspension-date-container');
-  if (dateContainer) {
-    dateContainer.remove();
   }
 }
 
@@ -3340,13 +3768,12 @@ function initializeSuspensionSound() {
   try {
     suspensionSound = new Audio();
   } catch (error) {
-    console.error('Error inicializando sonido:', error);
   }
 }
 
 function playSuspensionSound() {
   if (suspensionSound) {
-    suspensionSound.play().catch(e => console.log('Error reproduciendo sonido:', e));
+    suspensionSound.play().catch(e => {});
   }
 }
 
@@ -3456,6 +3883,49 @@ function exportDataTable() {
   showNotification('Datos exportados exitosamente', 'success');
 }
 
+function exportVacationToExcel() {
+  if (vacationData.length === 0) {
+    showNotification('No hay datos de vacaciones para exportar', 'error');
+    return;
+  }
+
+  let csvContent = "NOMBRE,FECHA DE INGRESO,NUMERO DE EMPLEADO,ÁREA,DÍAS VACACIONES,FECHA DE PAGO,FECHA SALIDA,FECHA REGRESO,AUTORIZADAS,DÍAS TOMADOS,GUARDAR DICIEMBRE\n";
+  
+  vacationData.forEach(item => {
+    const row = [
+      `"${item.NOMBRE || ''}"`,
+      `"${formatDate(item['FECHA DE INGRESO']) || ''}"`,
+      `"${item['NUMERO DE EMPLEADO'] || ''}"`,
+      `"${item['ÁREA'] || ''}"`,
+      `"${item['DÍAS VACACIONES'] || '0'}"`,
+      `"${item['FECHA DE PAGO'] || ''}"`,
+      `"${formatDate(item['FECHA SALIDA']) || ''}"`,
+      `"${formatDate(item['FECHA REGRESO']) || ''}"`,
+      `"${item['AUTORIZADAS'] ? 'TRUE' : 'FALSE'}"`,
+      `"${item['DÍAS TOMADOS'] || '0'}"`,
+      `"${item['GUARDAR DICIEMBRE'] || '0'}"`
+    ].join(',');
+    csvContent += row + '\n';
+  });
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  
+  const today = new Date();
+  const dateStr = `${today.getDate().toString().padStart(2, '0')}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getFullYear()}`;
+  
+  link.setAttribute('href', url);
+  link.setAttribute('download', `vacaciones_${dateStr}.csv`);
+  link.style.visibility = 'hidden';
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  
+  showNotification('Datos de vacaciones exportados exitosamente', 'success');
+}
+
 window.openSuspensionModal = openSuspensionModal;
 window.closeSuspensionModal = closeSuspensionModal;
 window.closeSuspensionDateModal = closeSuspensionDateModal;
@@ -3469,9 +3939,12 @@ window.closeEmployeeCardModal = closeEmployeeCardModal;
 window.showEmployeeCard = showEmployeeCard;
 window.showEmployeeCardFromFilter = showEmployeeCardFromFilter;
 window.filterDataTable = filterDataTable;
+window.deleteVacationRecord = deleteVacationRecord;
+window.closeVacationScheduleModal = closeVacationScheduleModal;
+window.toggleVacationAuthorization = toggleVacationAuthorization;
+window.handlePayDateChange = handlePayDateChange;
+window.calculateVacationDates = calculateVacationDates;
 
 document.addEventListener('DOMContentLoaded', function() {
-  initializeApp().then(() => {
-    initializeDataTableFilters();
-  });
+  initializeApp();
 });
