@@ -3,9 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Empleados - Suspensiones</title>
+    <title>Gestión de Empleados - Suspensiones - Vacaciones</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <style>
+        .suggestions-dropdown {
+            position: absolute;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            border-radius: 0.5rem;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            width: calc(100% - 2rem);
+            margin-top: 0.25rem;
+        }
+        
+        .suggestion-item {
+            padding: 0.75rem;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(71, 85, 105, 0.3);
+            transition: background 0.2s;
+        }
+        
+        .suggestion-item:hover {
+            background: rgba(59, 130, 246, 0.3);
+        }
+        
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+        
+        .vacation-calculation {
+            background: rgba(30, 41, 59, 0.6);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+            border: 1px solid rgba(71, 85, 105, 0.3);
+        }
+        
+        .vacation-calculation h4 {
+            color: var(--emerald-400);
+            margin-bottom: 0.5rem;
+        }
+        
+        .vacation-calculation p {
+            color: var(--slate-300);
+            margin: 0.25rem 0;
+        }
+        
+        .blinking-row-yellow {
+            animation: blink-yellow 2s infinite;
+        }
+        
+        .blinking-row-red {
+            animation: blink-red 2s infinite;
+        }
+        
+        .blinking-row-green {
+            animation: blink-green 2s infinite;
+        }
+        
+        @keyframes blink-yellow {
+            0%, 100% { background-color: transparent; }
+            50% { background-color: rgba(241, 154, 3, 0.397); }
+        }
+        
+        @keyframes blink-red {
+            0%, 100% { background-color: transparent; }
+            50% { background-color: rgba(236, 10, 10, 0.603); }
+        }
+        
+        @keyframes blink-green {
+            0%, 100% { background-color: transparent; }
+            50% { background-color: rgba(0, 253, 34, 0.356); }
+        }
+    </style>
 </head>
 <body>
     <div class="background-animation">
@@ -19,7 +92,7 @@
         <div class="sidebar">
             <div class="sidebar-header">
                 <h1 class="sidebar-title">GESTIÓN DE EMPLEADOS</h1>
-                <p class="sidebar-subtitle">Panel de Control Sistema CRUGER 3.1</p>
+                <p class="sidebar-subtitle">Panel de Control Sistema CRUGER 4.1</p>
                 <div id="userNameDisplay" class="user-name-display"></div>
             </div>
            
@@ -35,6 +108,12 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                     </svg>
                     SUSPENSIONES
+                </div>
+                <div class="nav-item" data-section="vacaciones">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    VACACIONES
                 </div>
                 <div class="nav-item" data-section="permisos">
                     <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -163,6 +242,95 @@
                         </table>
                     </div>
                 </div>
+
+                <div class="glassmorphism-table" id="applied-suspensions-container">
+                    <div class="table-header">
+                        <h3 class="table-title">Suspensiones Aplicadas <span class="counter-badge" id="applied-suspensions-count">0</span></h3>
+                        <button class="modern-button export-button export-suspension-btn" data-table="applied">
+                            <svg style="width: 1rem; height: 1rem; margin-right: 0.5rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                            Exportar Excel
+                        </button>
+                    </div>
+                    <table class="data-table" id="applied-suspensions-table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Fecha Suspensión</th>
+                                <th>Días</th>
+                                <th>Faltas Originales</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="applied-suspensions-body"></tbody>
+                    </table>
+                </div>
+
+                <div class="glassmorphism-table" id="dismissal-candidates-container">
+                    <div class="table-header">
+                        <h3 class="mini-table-title">CANDIDATOS A BAJA AUTOMÁTICA <span class="counter-badge blinking-red" id="dismissal-candidates-count">0</span></h3>
+                        <button class="modern-button export-button export-suspension-btn" data-table="dismissal">
+                            <svg style="width: 1rem; height: 1rem; margin-right: 0.5rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                            Exportar Excel
+                        </button>
+                    </div>
+                    <table class="data-table" id="dismissal-candidates-table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Faltas en 30 días</th>
+                                <th>Primera Falta</th>
+                                <th>Última Falta</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dismissal-candidates-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="section-content" id="vacaciones-section">
+                <div class="glassmorphism-table">
+                    <div class="table-header">
+                        <h3 class="table-title">CONCENTRADO DE VACACIONES</h3>
+                        <button class="modern-button" id="export-vacation-excel-btn">
+                            <svg style="width: 1rem; height: 1rem; margin-right: 0.5rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                            Exportar Excel
+                        </button>
+                        <button class="modern-button" id="add-vacation-schedule-btn">
+                            <svg style="width: 1rem; height: 1rem; margin-right: 0.5rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            + AGENDAR VACACIONES
+                        </button>
+                    </div>
+                    <div class="attendance-table-container">
+                        <table class="data-table" id="vacation-concentrado-table">
+                            <thead>
+                                <tr>
+                                    <th>NOMBRE</th>
+                                    <th>FECHA DE INGRESO</th>
+                                    <th>NUMERO DE EMPLEADO</th>
+                                    <th>ÁREA</th>
+                                    <th>DÍAS VACACIONES</th>
+                                    <th>FECHA DE PAGO</th>
+                                    <th>FECHA SALIDA</th>
+                                    <th>FECHA REGRESO</th>
+                                    <th>AUTORIZADAS</th>
+                                    <th>DÍAS TOMADOS</th>
+                                    <th>GUARDAR DICIEMBRE</th>
+                                    <th>ACCIONES</th>
+                                </tr>
+                            </thead>
+                            <tbody id="vacation-concentrado-body"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
             <div class="section-content" id="permisos-section">
@@ -199,6 +367,12 @@
                 <div class="glassmorphism-table">
                     <div class="table-header">
                         <h3 class="table-title">Base de Datos de Empleados</h3>
+                        <button class="modern-button" id="add-employee-btn" style="margin-right: 0.5rem;">
+                            <svg style="width: 1rem; height: 1rem; margin-right: 0.5rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            Agregar Empleado
+                        </button>
                         <button class="modern-button" id="export-data-btn">
                             <svg style="width: 1rem; height: 1rem; margin-right: 0.5rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -207,9 +381,9 @@
                         </button>
                     </div>
                     <div class="table-filters">
-                        <input type="text" class="filter-input" placeholder="Filtrar por nombre..." data-column="0" data-table="data">
-                        <input type="text" class="filter-input" placeholder="Filtrar por número..." data-column="1" data-table="data">
-                        <input type="text" class="filter-input" placeholder="Filtrar por área..." data-column="2" data-table="data">
+                        <input type="text" class="filter-input" id="filter-nombre" placeholder="Filtrar por nombre..." data-column="0" data-table="data">
+                        <input type="text" class="filter-input" id="filter-numero" placeholder="Filtrar por número..." data-column="1" data-table="data">
+                        <input type="text" class="filter-input" id="filter-area" placeholder="Filtrar por área..." data-column="2" data-table="data">
                     </div>
                     <table class="data-table" id="data-table">
                         <thead>
@@ -221,6 +395,7 @@
                                 <th>AREA</th>
                                 <th>AÑOS</th>
                                 <th>DIAS DE VACACIONES</th>
+                                <th>ACCIONES</th>
                             </tr>
                         </thead>
                         <tbody id="data-table-body"></tbody>
@@ -290,11 +465,7 @@
                     <label class="form-label">Días de Suspensión Sugeridos</label>
                     <input type="text" class="form-input" id="suspension-days-suggested" readonly>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Fecha de Suspensión *</label>
-                    <input type="date" class="form-input" id="suspension-date" required>
-                    <small style="color: var(--slate-400);">Esta es la fecha del llenado del formato</small>
-                </div>
+                <div id="suspension-date-container"></div>
                 <div class="form-group">
                     <label class="form-label">Descripción de Faltas</label>
                     <textarea class="form-input" id="suspension-description" rows="3" readonly></textarea>
