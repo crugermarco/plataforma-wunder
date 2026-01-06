@@ -1,27 +1,29 @@
+const MAQUINADO_LOGICA = 'https://script.google.com/macros/s/AKfycbznebB8KZs0Y1o3Kmg7gnll9iZyM1Odu81QfyA_-KSgroI66Pj72mXwvchF2fHF5yk9/exec'
+const LIBRERIA_ID = '1q-p22_txknS8P1_d-VdRkopUDm9_lQY5i5PwKGJAUeU'
 const sheetConnections = {
   produccion: {
-    scriptUrl: 'https://script.google.com/macros/s/AKfycbzwBWe6vj5qewHOwD_XY05zZ9a0Sk1MSi5wKhW7MaEjoj_jykEMQFSKHenNjuiDPVhX/exec',
-    spreadsheetId: '1Mk8xFzapTzXl2QUaY8G8tS413W3dVKKOt2OF_Xf4FTY',
+    scriptUrl: MAQUINADO_LOGICA,
+    spreadsheetId: LIBRERIA_ID,
     sheetName: 'Inventario de Placas'
   },
   scrap: {
-    scriptUrl: 'https://script.google.com/macros/s/AKfycbzwBWe6vj5qewHOwD_XY05zZ9a0Sk1MSi5wKhW7MaEjoj_jykEMQFSKHenNjuiDPVhX/exec',
-    spreadsheetId: '1Mk8xFzapTzXl2QUaY8G8tS413W3dVKKOt2OF_Xf4FTY',
+    scriptUrl: MAQUINADO_LOGICA,
+    spreadsheetId: LIBRERIA_ID,
     sheetName: 'Inventario de Placas'
   },
   bonding: {
-    scriptUrl: 'https://script.google.com/macros/s/AKfycbzwBWe6vj5qewHOwD_XY05zZ9a0Sk1MSi5wKhW7MaEjoj_jykEMQFSKHenNjuiDPVhX/exec',
-    spreadsheetId: '1Mk8xFzapTzXl2QUaY8G8tS413W3dVKKOt2OF_Xf4FTY',
+    scriptUrl: MAQUINADO_LOGICA,
+    spreadsheetId: LIBRERIA_ID,
     sheetName: 'Inventario de Placas'
   },
   flycut: {
-    scriptUrl: 'https://script.google.com/macros/s/AKfycbzwBWe6vj5qewHOwD_XY05zZ9a0Sk1MSi5wKhW7MaEjoj_jykEMQFSKHenNjuiDPVhX/exec',
-    spreadsheetId: '1Mk8xFzapTzXl2QUaY8G8tS413W3dVKKOt2OF_Xf4FTY',
+    scriptUrl: MAQUINADO_LOGICA,
+    spreadsheetId: LIBRERIA_ID,
     sheetName: 'Flycut Stock-mx'
   },
   materiales: {
-    scriptUrl: 'https://script.google.com/macros/s/AKfycbzwBWe6vj5qewHOwD_XY05zZ9a0Sk1MSi5wKhW7MaEjoj_jykEMQFSKHenNjuiDPVhX/exec',
-    spreadsheetId: '1Mk8xFzapTzXl2QUaY8G8tS413W3dVKKOt2OF_Xf4FTY',
+    scriptUrl: MAQUINADO_LOGICA,
+    spreadsheetId: LIBRERIA_ID,
     sheetName: 'Flycut Stock-mx'
   },
   stock: {
@@ -46,7 +48,8 @@ const formData = {
         '1141': 0, '1152': 0, '1155': 0, '1142': 0, '1145': 0,
         '8661': 0, '8662': 0, '8663': 0, '654': 0, '653': 0, '652': 0, '651': 0, '646': 0,
         '634': 0, '635': 0, '636': 0, '698': 0, '697': 0, '696': 0,
-        '6774': 0, '6775': 0, '6776': 0, '6985': 0, '6001': 0, '6002': 0, '6003': 0, '6004': 0
+        '6774': 0, '6775': 0, '6776': 0, '6985': 0, '6001': 0, '6002': 0, '6003': 0, '6004': 0, 
+        '9210': 0, '9218': 0, '9228': 0
     },
     scrap: {
         '9101': 0, '9102': 0, '9103': 0, '9103R': 0, '9104': 0, '9105': 0, '9114': 0, '9115': 0,
@@ -58,7 +61,8 @@ const formData = {
         '1141': 0, '1152': 0, '1155': 0, '1142': 0, '1145': 0,
         '8661': 0, '8662': 0, '8663': 0, '654': 0, '653': 0, '652': 0, '651': 0, '646': 0,
         '634': 0, '635': 0, '636': 0, '698': 0, '697': 0, '696': 0,
-        '6774': 0, '6775': 0, '6776': 0, '6985': 0, '6001': 0, '6002': 0, '6003': 0, '6004': 0
+        '6774': 0, '6775': 0, '6776': 0, '6985': 0, '6001': 0, '6002': 0, '6003': 0, '6004': 0, 
+        '9210': 0, '9218': 0, '9228': 0
     },
     bonding: {
         '10': 0, '10R': 0, '12': 0, '12R': 0, '14': 0, '14R': 0, 'NW': 0,
@@ -87,7 +91,8 @@ const produccionSections = [
     { title: '', codes: ['1141', '1152', '1155', '1142', '1145'] },
     { title: '', codes: ['8661', '8662', '8663', '654', '653', '652', '651', '646'] },
     { title: '', codes: ['634', '635', '636', '698', '697', '696'] },
-    { title: '', codes: ['6774', '6775', '6776', '6985', '6001', '6002', '6003', '6004'] }
+    { title: '', codes: ['6774', '6775', '6776', '6985', '6001', '6002', '6003', '6004'] },
+    { title: '', codes: ['9210', '9218', '9228'] }
 ];
 
 const materialesData = [
@@ -120,7 +125,7 @@ function getLeaderAndShift() {
     const hour = now.getHours();
 
     if (hour >= 6 && hour < 15) {
-        return { lider: 'Marco Cruger', turno: '1er turno' };
+        return { lider: 'Luis Ramirez', turno: '1er turno' };
     } else if (hour >= 15 && hour < 23) {
         return { lider: 'Juan Amador', turno: '2do turno' };
     } else {
