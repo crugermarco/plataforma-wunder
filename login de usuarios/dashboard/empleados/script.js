@@ -1,5 +1,6 @@
 const SCRIPT_SUSPENCION_URL = 'https://script.google.com/macros/s/AKfycbxhCrsH4v93AZlx9YmNdBVDCTvD5yNzz4E7JalcfbrQEJG0YNrlL4lRjZ8qNlRVUeb0ug/exec'
 const SCRIPT_VACACIONES_URL = 'https://script.google.com/macros/s/AKfycbxBmNzLb2a2D0x52w6EA-e534VCTreo1uxRIW4_fq67aLbjQR0uX1uDjchuBLdY-iSQ/exec'
+const FORMATO_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyIm50evaQ-4qohsHZUTMHiIjEaVlJrNtYn-fm7ymjRRDGMw8vjD7omQYAdEx0AHj6q/exec'
 
 const sheetConnections = {
   productivity: {
@@ -36,7 +37,12 @@ const sheetConnections = {
     scriptUrl: SCRIPT_SUSPENCION_URL,
     spreadsheetId: '1VPiuexZdnGe1zjk9Mwbc6Lxh3DKNgEX-bh6VID3BtBI',
     sheetName: 'SUSPENCION'
-  }
+  },
+  vacationFormato: {
+    scriptUrl: FORMATO_SCRIPT_URL,
+    spreadsheetId: '1ZDpnn0axnQ80USHsTbGbx92cTq7LI1g-ZOBuadoT0hY',
+    sheetName: 'FORMATO DE VACACIONES'
+  },
 };
 
 const columnMappingVacation = {
@@ -73,6 +79,12 @@ let currentFilters = {
 let filteredAttendanceData = [];
 let suspensionCheckInterval = null;
 let lastSuspensionCheckTime = null;
+let filteredVacationData = [];
+let vacationFilters = {
+    nombre: '',
+    area: '',
+    diciembre: ''
+};
 
 const elements = {
   navItems: null,
@@ -114,7 +126,10 @@ const elements = {
   addEmployeeBtn: null,
   exportVacationExcelBtn: null,
   addVacationScheduleBtn: null,
-  vacationConcentradoBody: null
+  vacationConcentradoBody: null,
+  vacationFilterNombre: null,
+  vacationFilterArea: null,
+  vacationFilterDiciembre: null
 };
 
 function initializeDOMElements() {
@@ -151,6 +166,9 @@ function initializeDOMElements() {
   elements.exportVacationExcelBtn = document.getElementById('export-vacation-excel-btn');
   elements.addVacationScheduleBtn = document.getElementById('add-vacation-schedule-btn');
   elements.vacationConcentradoBody = document.getElementById('vacation-concentrado-body');
+  elements.vacationFilterNombre = document.getElementById('vacation-filter-nombre');
+  elements.vacationFilterArea = document.getElementById('vacation-filter-area');
+  elements.vacationFilterDiciembre = document.getElementById('vacation-filter-diciembre');
 }
 
 function formatDate(dateString) {
@@ -398,6 +416,7 @@ async function initializeApp() {
     setupVacationAutocomplete();
     setupPermissionAutocomplete();
     setupFilterAutocomplete();
+    setupVacationFilters();
     
     initializeSuspensionSound();
     scheduleHourlySuspensionCheck();
@@ -494,11 +513,13 @@ async function loadVacationConcentradoData() {
     }
     
     vacationData = result.data || [];
-    renderVacationConcentradoTable();
+    filteredVacationData = [...vacationData];
     
+    renderVacationConcentradoTable();
     checkUpcomingVacations();
     
   } catch (error) {
+    console.error('Error al cargar vacaciones:', error);
     showNotification('Error crítico al cargar vacaciones', 'error');
   }
 }
@@ -509,7 +530,7 @@ function renderVacationConcentradoTable() {
   
   tableBody.innerHTML = '';
   
-  if (vacationData.length === 0) {
+  if (filteredVacationData.length === 0) {
     const row = document.createElement('tr');
     row.innerHTML = '<td colspan="12" class="no-data">No hay datos de vacaciones disponibles</td>';
     tableBody.appendChild(row);
@@ -519,21 +540,68 @@ function renderVacationConcentradoTable() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
-  vacationData.forEach((item, index) => {
+  filteredVacationData.forEach((item, index) => {
+    const formatDateFromSheet = (dateValue) => {
+      if (!dateValue) return '';
+      
+      if (typeof dateValue === 'string') {
+        if (dateValue.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+          const [part1, part2, year] = dateValue.split('/').map(Number);
+          
+          if (part1 > 12 && part2 <= 12) {
+            return `${part2.toString().padStart(2, '0')}/${part1.toString().padStart(2, '0')}/${year}`;
+          }
+          
+          return `${part1.toString().padStart(2, '0')}/${part2.toString().padStart(2, '0')}/${year}`;
+        }
+        
+        if (dateValue.includes('Date(') || dateValue.includes('-') || dateValue.includes('T')) {
+          try {
+            const date = new Date(dateValue);
+            if (!isNaN(date.getTime())) {
+              const month = (date.getMonth() + 1).toString().padStart(2, '0');
+              const day = date.getDate().toString().padStart(2, '0');
+              const year = date.getFullYear();
+              return `${month}/${day}/${year}`;
+            }
+          } catch (e) {
+            console.error(`Error parseando fecha:`, e);
+          }
+        }
+      }
+      
+      if (dateValue instanceof Date) {
+        const month = (dateValue.getMonth() + 1).toString().padStart(2, '0');
+        const day = dateValue.getDate().toString().padStart(2, '0');
+        const year = dateValue.getFullYear();
+        return `${month}/${day}/${year}`;
+      }
+      
+      return dateValue;
+    };
+    
+    const fechaIngreso = formatDateFromSheet(item['FECHA DE INGRESO']);
+    const fechaPago = formatDateFromSheet(item['FECHA DE PAGO']);
+    const fechaSalida = formatDateFromSheet(item['FECHA SALIDA']);
+    const fechaRegreso = formatDateFromSheet(item['FECHA REGRESO']);
+    
+    const nombre = item.NOMBRE || '';
+    const numeroEmpleado = item['NUMERO DE EMPLEADO'] || '';
+    const area = item['ÁREA'] || '';
+    const diasVacaciones = item['DÍAS VACACIONES'] || '0';
+    const autorizadas = item['AUTORIZADAS'] === true || item['AUTORIZADAS'] === 'TRUE' || item['AUTORIZADAS'] === 'true';
+    const diasTomados = item['DÍAS TOMADOS'] || '0';
+    const guardarDiciembre = item['GUARDAR DICIEMBRE'] || '0';
+    
     const row = document.createElement('tr');
     
-    const authorized = item['AUTORIZADAS'] === true || item['AUTORIZADAS'] === 'TRUE' || item['AUTORIZADAS'] === 'true';
-    
-    if (authorized) {
+    if (autorizadas) {
       row.classList.add('blinking-row-green');
     }
     
-    let hasStartDateClass = false;
-    const startDateStr = item['FECHA SALIDA'];
-    
-    if (startDateStr) {
+    if (fechaSalida) {
       try {
-        const [month, day, year] = startDateStr.split('/').map(Number);
+        const [month, day, year] = fechaSalida.split('/').map(Number);
         const startDate = new Date(year, month - 1, day);
         
         const diffTime = startDate - today;
@@ -541,43 +609,50 @@ function renderVacationConcentradoTable() {
         
         if (diffDays >= 0 && diffDays <= 15) {
           row.classList.add('blinking-row-red');
-          hasStartDateClass = true;
         } else if (diffDays > 15 && diffDays <= 30) {
           row.classList.add('blinking-row-yellow');
-          hasStartDateClass = true;
         }
         
       } catch (e) {
-        console.error('Error al procesar fecha:', startDateStr, e);
+        console.error('Error al procesar fecha de salida:', fechaSalida, e);
       }
     }
     
     const showActions = currentUser && currentUser.name.toLowerCase() === 'marco cruger';
     
     row.innerHTML = `
-      <td>${item.NOMBRE || ''}</td>
-      <td>${item['FECHA DE INGRESO'] || ''}</td>
-      <td>${item['NUMERO DE EMPLEADO'] || ''}</td>
-      <td>${item['ÁREA'] || ''}</td>
-      <td>${item['DÍAS VACACIONES'] || '0'}</td>
-      <td>${item['FECHA DE PAGO'] || ''}</td>
-      <td>${item['FECHA SALIDA'] || ''}</td>
-      <td>${item['FECHA REGRESO'] || ''}</td>
+      <td>${nombre}</td>
+      <td>${fechaIngreso}</td>
+      <td>${numeroEmpleado}</td>
+      <td>${area}</td>
+      <td>${diasVacaciones}</td>
+      <td>${fechaPago}</td>
+      <td>${fechaSalida}</td>
+      <td>${fechaRegreso}</td>
       <td>
         <label class="toggle-label">
-          <input type="checkbox" class="toggle-input" ${authorized ? 'checked' : ''} 
-            onchange="toggleVacationAuthorization(${index}, this.checked)"
+          <input type="checkbox" class="toggle-input" ${autorizadas ? 'checked' : ''} 
+            onchange="toggleVacationAuthorization(${vacationData.indexOf(item)}, this.checked)"
             ${!showActions ? 'disabled' : ''}>
           <span class="toggle-slider"></span>
         </label>
       </td>
-      <td>${item['DÍAS TOMADOS'] || '0'}</td>
-      <td>${item['GUARDAR DICIEMBRE'] || '0'}</td>
+      <td>${diasTomados}</td>
+      <td>${guardarDiciembre}</td>
       <td>
         ${showActions ? `
           <div class="action-buttons">
-            <button class="action-button small delete" onclick="deleteVacationRecord(${index})">
+            <button class="action-button small delete" onclick="deleteVacationRecord(${vacationData.indexOf(item)})">
+              <svg style="width: 0.75rem; height: 0.75rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
               Eliminar
+            </button>
+            <button class="action-button small print" onclick="printVacationPDF(${vacationData.indexOf(item)})">
+              <svg style="width: 0.75rem; height: 0.75rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+              </svg>
+              Imprimir
             </button>
           </div>
         ` : '<span class="no-permission">Solo lectura</span>'}
@@ -586,6 +661,56 @@ function renderVacationConcentradoTable() {
     
     tableBody.appendChild(row);
   });
+}
+
+function setupVacationFilters() {
+  if (elements.vacationFilterNombre) {
+    elements.vacationFilterNombre.addEventListener('input', function() {
+      vacationFilters.nombre = this.value.toLowerCase();
+      applyVacationFilters();
+    });
+  }
+  
+  if (elements.vacationFilterArea) {
+    elements.vacationFilterArea.addEventListener('input', function() {
+      vacationFilters.area = this.value.toLowerCase();
+      applyVacationFilters();
+    });
+  }
+  
+  if (elements.vacationFilterDiciembre) {
+    elements.vacationFilterDiciembre.addEventListener('input', function() {
+      vacationFilters.diciembre = this.value.toLowerCase();
+      applyVacationFilters();
+    });
+  }
+}
+
+function applyVacationFilters() {
+  filteredVacationData = [...vacationData];
+  
+  if (vacationFilters.nombre) {
+    filteredVacationData = filteredVacationData.filter(item => {
+      const nombre = item.NOMBRE || '';
+      return nombre.toLowerCase().includes(vacationFilters.nombre);
+    });
+  }
+  
+  if (vacationFilters.area) {
+    filteredVacationData = filteredVacationData.filter(item => {
+      const area = item['ÁREA'] || '';
+      return area.toLowerCase().includes(vacationFilters.area);
+    });
+  }
+  
+  if (vacationFilters.diciembre) {
+    filteredVacationData = filteredVacationData.filter(item => {
+      const diciembre = item['GUARDAR DICIEMBRE'] || '';
+      return diciembre.toString().toLowerCase().includes(vacationFilters.diciembre);
+    });
+  }
+  
+  renderVacationConcentradoTable();
 }
 
 async function toggleVacationAuthorization(index, isAuthorized) {
@@ -612,7 +737,7 @@ async function toggleVacationAuthorization(index, isAuthorized) {
     }
     
     vacationData[index]['AUTORIZADAS'] = isAuthorized;
-    renderVacationConcentradoTable();
+    applyVacationFilters();
     showNotification(`Vacación ${isAuthorized ? 'autorizada' : 'desautorizada'} exitosamente`, 'success');
     
   } catch (error) {
@@ -774,14 +899,25 @@ function handlePayDateChange(value) {
 
 function generateFridayOptions() {
   const customPayDateInput = document.getElementById('schedule-custom-pay-date');
+  const startDateInput = document.getElementById('schedule-start-date');
+  
   if (!customPayDateInput) return;
   
-  const today = new Date();
-  const currentMonth = today.getMonth();
-  const currentYear = today.getFullYear();
+  let targetMonth, targetYear;
   
-  const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
-  const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0);
+  if (startDateInput && startDateInput.value) {
+    const [year, month, day] = startDateInput.value.split('-');
+    targetYear = parseInt(year);
+    targetMonth = parseInt(month) - 1;
+  } else {
+    const today = new Date();
+    const ensenadaDate = new Date(today.toLocaleString('en-US', { timeZone: 'America/Tijuana' }));
+    targetYear = ensenadaDate.getFullYear();
+    targetMonth = ensenadaDate.getMonth();
+  }
+  
+  const firstDayOfMonth = new Date(targetYear, targetMonth, 1);
+  const lastDayOfMonth = new Date(targetYear, targetMonth + 1, 0);
   
   let fridays = [];
   let currentDate = new Date(firstDayOfMonth);
@@ -794,21 +930,92 @@ function generateFridayOptions() {
   }
   
   if (fridays.length > 0) {
-    const fridayFormatted = fridays.map(date => {
+    const fridayFormattedForInput = fridays.map(date => {
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
       return `${year}-${month}-${day}`;
     });
     
-    customPayDateInput.min = fridayFormatted[0];
-    customPayDateInput.max = fridayFormatted[fridayFormatted.length - 1];
-    customPayDateInput.value = fridayFormatted[0];
+    const fridayFormattedForDisplay = fridays.map(date => {
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${month}/${day}/${year}`;
+    });
+    
+    customPayDateInput.min = fridayFormattedForInput[0];
+    customPayDateInput.max = fridayFormattedForInput[fridayFormattedForInput.length - 1];
+    
+    let selectedFriday;
+    
+    if (startDateInput && startDateInput.value) {
+      const startDate = new Date(startDateInput.value);
+      
+      for (let i = fridays.length - 1; i >= 0; i--) {
+        if (fridays[i] <= startDate) {
+          selectedFriday = fridays[i];
+          break;
+        }
+      }
+      
+      if (!selectedFriday) {
+        selectedFriday = fridays[fridays.length - 1];
+      }
+    } else {
+      selectedFriday = fridays[0];
+    }
+    
+    const selectedYear = selectedFriday.getFullYear();
+    const selectedMonth = String(selectedFriday.getMonth() + 1).padStart(2, '0');
+    const selectedDay = String(selectedFriday.getDate()).padStart(2, '0');
+    const selectedFridayFormatted = `${selectedYear}-${selectedMonth}-${selectedDay}`;
+    
+    customPayDateInput.value = selectedFridayFormatted;
+    
+    const fridayDisplayElement = document.getElementById('friday-display');
+    if (!fridayDisplayElement) {
+      const displayDiv = document.createElement('div');
+      displayDiv.id = 'friday-display';
+      displayDiv.className = 'friday-display';
+      displayDiv.style.marginTop = '0.5rem';
+      displayDiv.style.color = 'var(--slate-300)';
+      displayDiv.style.fontSize = '0.9rem';
+      displayDiv.innerHTML = `<strong>Viernes de pago:</strong> ${formatDateForDisplay(selectedFriday)}`;
+      customPayDateInput.parentNode.appendChild(displayDiv);
+    } else {
+      fridayDisplayElement.innerHTML = `<strong>Viernes de pago:</strong> ${formatDateForDisplay(selectedFriday)}`;
+    }
+    
   } else {
-    customPayDateInput.min = today.toISOString().split('T')[0];
-    customPayDateInput.max = lastDayOfMonth.toISOString().split('T')[0];
-    customPayDateInput.value = today.toISOString().split('T')[0];
+    const defaultDate = new Date(targetYear, targetMonth, 15);
+    const defaultYear = defaultDate.getFullYear();
+    const defaultMonth = String(defaultDate.getMonth() + 1).padStart(2, '0');
+    const defaultDay = String(defaultDate.getDate()).padStart(2, '0');
+    const defaultFormatted = `${defaultYear}-${defaultMonth}-${defaultDay}`;
+    
+    customPayDateInput.min = defaultFormatted;
+    customPayDateInput.max = defaultFormatted;
+    customPayDateInput.value = defaultFormatted;
   }
+}
+
+function formatDateForDisplay(date) {
+  if (!date) return '';
+  
+  const dateObj = date instanceof Date ? date : new Date(date);
+  if (isNaN(dateObj.getTime())) return '';
+  
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  const year = dateObj.getFullYear();
+  
+  return `${month}/${day}/${year}`;
+}
+
+function getEnsenadaDate() {
+  const now = new Date();
+  return new Date(now.toLocaleString('en-US', { timeZone: 'America/Tijuana' }));
 }
 
 function setupEmployeeAutocomplete() {
@@ -919,15 +1126,25 @@ function calculateVacationDates() {
   
   let returnDate = new Date(startDate);
   let workDaysCounted = 0;
+  let daysAdded = 0;
+  let nonWorkingDaysCount = 0;
   
   while (workDaysCounted < workDaysNeeded) {
     returnDate.setDate(returnDate.getDate() + 1);
+    daysAdded++;
     
-    if (!isNonWorkingDay(returnDate)) {
+    const isNonWorking = isNonWorkingDay(returnDate);
+    const dayName = getDayName(returnDate.getDay());
+    
+    if (!isNonWorking) {
       workDaysCounted++;
+    } else {
+      nonWorkingDaysCount++;
     }
     
-    if (workDaysCounted > 365) break;
+    if (daysAdded > 365) {
+      break;
+    }
   }
   
   const returnYear = returnDate.getFullYear();
@@ -935,25 +1152,96 @@ function calculateVacationDates() {
   const returnDay = returnDate.getDate().toString().padStart(2, '0');
   const returnDateFormatted = `${returnMonth}/${returnDay}/${returnYear}`;
   
-  returnDateInput.value = returnDateFormatted;
+  if (returnDateInput) {
+    returnDateInput.value = returnDateFormatted;
+  }
   
   const totalUsed = daysToTake + decemberSave;
   const remainingBalance = availableDays - totalUsed;
   
   if (infoDiv) {
     infoDiv.innerHTML = `
-      <strong>Saldo disponible:</strong> ${availableDays.toFixed(1)} días de vacaciones<br>
-      <strong>Días de vacaciones a tomar:</strong> ${daysToTake.toFixed(1)} días<br>
-      <strong>Días de vacaciones a guardar:</strong> ${decemberSave.toFixed(1)} días<br>
-      <strong>Días que se descontarán del saldo:</strong> ${daysTaken.toFixed(1)} días<br>
-      <strong>Días laborales requeridos:</strong> ${workDaysCounted} días (${daysToTake.toFixed(1)} ÷ 1.2)<br>
-      <strong>Fecha de salida:</strong> ${formattedStartDate}<br>
-      <strong>Fecha de regreso:</strong> ${returnDateFormatted}<br>
-      <strong>Total días utilizados:</strong> ${totalUsed.toFixed(1)} días<br>
-      <strong>Saldo restante:</strong> ${remainingBalance.toFixed(1)} días<br>
-      <strong>Nota:</strong> Los días guardados para diciembre NO afectan la fecha de regreso
+      <div style="background: rgba(30, 41, 59, 0.5); padding: 1rem; border-radius: 0.5rem; border: 1px solid rgba(71, 85, 105, 0.3);">
+        <h4 style="color: var(--emerald-400); margin-bottom: 0.75rem;">RESUMEN DEL CÁLCULO</h4>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+          <div style="background: rgba(15, 23, 42, 0.4); padding: 0.5rem; border-radius: 0.375rem;">
+            <strong style="color: var(--slate-300);">Saldo disponible:</strong>
+            <div style="color: var(--emerald-400); font-size: 1.1rem; font-weight: bold;">${availableDays.toFixed(1)} días</div>
+          </div>
+          
+          <div style="background: rgba(15, 23, 42, 0.4); padding: 0.5rem; border-radius: 0.375rem;">
+            <strong style="color: var(--slate-300);">Días a tomar:</strong>
+            <div style="color: var(--blue-400); font-size: 1.1rem; font-weight: bold;">${daysToTake.toFixed(1)} días</div>
+          </div>
+          
+          <div style="background: rgba(15, 23, 42, 0.4); padding: 0.5rem; border-radius: 0.375rem;">
+            <strong style="color: var(--slate-300);">Guardar para diciembre:</strong>
+            <div style="color: var(--amber-400); font-size: 1.1rem; font-weight: bold;">${decemberSave.toFixed(1)} días</div>
+          </div>
+          
+          <div style="background: rgba(15, 23, 42, 0.4); padding: 0.5rem; border-radius: 0.375rem;">
+            <strong style="color: var(--slate-300);">Días descontados:</strong>
+            <div style="color: var(--red-400); font-size: 1.1rem; font-weight: bold;">${daysTaken.toFixed(1)} días</div>
+          </div>
+        </div>
+        
+        <div style="background: rgba(15, 23, 42, 0.6); padding: 0.75rem; border-radius: 0.375rem; margin-bottom: 1rem;">
+          <strong style="color: var(--slate-300);">Cálculo de días laborales:</strong><br>
+          <span style="color: var(--slate-400);">
+            ${daysToTake.toFixed(1)} días de vacaciones ÷ ${WORK_DAYS_PER_VACATION_DAY} = ${workDaysNeeded} días laborales requeridos<br>
+            Días contados: ${workDaysCounted} días laborales<br>
+            Días no laborales saltados: ${nonWorkingDaysCount} días
+          </span>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+          <div style="background: rgba(59, 130, 246, 0.1); padding: 0.75rem; border-radius: 0.375br; border: 1px solid rgba(59, 130, 246, 0.3);">
+            <strong style="color: var(--slate-300);">Fecha de salida:</strong><br>
+            <span style="color: var(--blue-300); font-weight: 500;">${formattedStartDate}</span>
+          </div>
+          
+          <div style="background: rgba(34, 197, 94, 0.1); padding: 0.75rem; border-radius: 0.375br; border: 1px solid rgba(34, 197, 94, 0.3);">
+            <strong style="color: var(--slate-300);">Fecha de regreso:</strong><br>
+            <span style="color: var(--emerald-300); font-weight: 500;">${returnDateFormatted}</span>
+          </div>
+        </div>
+        
+        <div style="background: rgba(15, 23, 42, 0.4); padding: 0.75rem; border-radius: 0.375rem; border: 1px solid rgba(71, 85, 105, 0.3);">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+            <span style="color: var(--slate-300);">Total días utilizados:</span>
+            <span style="color: ${totalUsed > availableDays ? 'var(--red-400)' : 'var(--slate-300)'}; font-weight: bold;">
+              ${totalUsed.toFixed(1)} días
+            </span>
+          </div>
+          
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--slate-300);">Saldo restante:</span>
+            <span style="color: ${remainingBalance < 0 ? 'var(--red-400)' : 'var(--emerald-400)'}; font-weight: bold;">
+              ${remainingBalance.toFixed(1)} días
+            </span>
+          </div>
+          
+          ${remainingBalance < 0 ? `
+            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); padding: 0.5rem; margin-top: 0.5rem; border-radius: 0.375rem;">
+              <span style="color: var(--red-400);">⚠️ Advertencia: El saldo sería negativo</span>
+            </div>
+          ` : ''}
+        </div>
+        
+        <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(71, 85, 105, 0.3);">
+          <small style="color: var(--slate-500); font-style: italic;">
+            Nota: Los días guardados para diciembre NO afectan la fecha de regreso
+          </small>
+        </div>
+      </div>
     `;
   }
+}
+
+function getDayName(dayNumber) {
+  const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  return days[dayNumber] || 'Desconocido';
 }
 
 function validateVacationScheduleForm() {
@@ -1002,7 +1290,7 @@ function validateVacationScheduleForm() {
   }
   
   if (daysValue + decemberValue > availableDays) {
-    showNotification(`La suma de días a tomar (${daysValue}) y guardar (${decemberValue}) = ${(daysValue + decemberValue).toFixed(1)} supera los días disponibles (${availableDays})`, 'error');
+    showNotification(`La suma de días a tomar (${daysValue}) y guardar (${decemberValue}) = ${(daysValue + diciembreValue).toFixed(1)} supera los días disponibles (${availableDays})`, 'error');
     return false;
   }
   
@@ -1058,7 +1346,7 @@ async function deleteVacationFromSheet(record, index) {
     }
     
     vacationData.splice(index, 1);
-    renderVacationConcentradoTable();
+    applyVacationFilters();
     showNotification('Registro de vacaciones eliminado exitosamente', 'success');
     
   } catch (error) {
@@ -1075,14 +1363,28 @@ function handleVacationScheduleSubmit(e) {
   
   const name = document.getElementById('schedule-employee-name').value;
   const startDate = document.getElementById('schedule-start-date').value;
-  const returnDate = document.getElementById('schedule-return-date').value;
+  const returnDateInput = document.getElementById('schedule-return-date');
   const daysToTake = parseFloat(document.getElementById('schedule-days-to-take').value) || 0;
   const decemberSave = parseFloat(document.getElementById('schedule-december-save').value) || 0;
   
   const daysTaken = daysToTake;
   
-  const [year, month, day] = startDate.split('-').map(Number);
-  const formattedStartDate = `${month.toString().padStart(2, '0')}/${day.toString().padStart(2, '0')}/${year}`;
+  const [startYear, startMonth, startDay] = startDate.split('-').map(Number);
+  const formattedStartDate = `${startMonth.toString().padStart(2, '0')}/${startDay.toString().padStart(2, '0')}/${startYear}`;
+  
+  const returnDateStr = returnDateInput.value;
+  
+  let formattedReturnDate = returnDateStr;
+  
+  if (returnDateStr && returnDateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+    const [part1, part2, year] = returnDateStr.split('/').map(Number);
+    
+    if (part1 > 12 && part2 <= 12) {
+      formattedReturnDate = `${part2.toString().padStart(2, '0')}/${part1.toString().padStart(2, '0')}/${year}`;
+    } else if (part1 <= 12 && part2 <= 12) {
+      formattedReturnDate = `${part1.toString().padStart(2, '0')}/${part2.toString().padStart(2, '0')}/${year}`;
+    }
+  }
   
   const formData = {
     'NOMBRE': name,
@@ -1092,7 +1394,7 @@ function handleVacationScheduleSubmit(e) {
     'DÍAS VACACIONES': document.getElementById('schedule-vacation-days').value,
     'FECHA DE PAGO': getPayDateValue(),
     'FECHA SALIDA': formattedStartDate,
-    'FECHA REGRESO': returnDate,
+    'FECHA REGRESO': formattedReturnDate,
     'AUTORIZADAS': document.getElementById('schedule-authorized').checked ? 'TRUE' : 'FALSE',
     'DÍAS TOMADOS': daysTaken.toFixed(1),
     'GUARDAR DICIEMBRE': decemberSave.toFixed(1)
@@ -1129,8 +1431,16 @@ function getPayDateValue() {
   if (payDateSelect.value === 'semanal') {
     return 'PAGO POR SEMANA';
   } else if (payDateSelect.value === 'fecha' && customPayDateInput.value) {
-    const date = new Date(customPayDateInput.value);
-    return formatDate(date.toISOString().split('T')[0]);
+    const dateStr = customPayDateInput.value;
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    
+    if (date.getDay() !== 5) {
+    }
+    
+    const formattedDate = `${month.toString().padStart(2, '0')}/${day.toString().padStart(2, '0')}/${year}`;
+    
+    return formattedDate;
   }
   
   return '';
@@ -1481,6 +1791,12 @@ function applyBlinkingStyles() {
     }
     .action-button.small.delete:hover {
       background: linear-gradient(135deg, var(--red-700), var(--red-600));
+    }
+    .action-button.small.print {
+      background: linear-gradient(135deg, var(--blue-600), var(--blue-500));
+    }
+    .action-button.small.print:hover {
+      background: linear-gradient(135deg, var(--blue-700), var(--blue-600));
     }
     .action-button.small.view {
       background: linear-gradient(135deg, var(--purple-600), var(--purple-500));
@@ -3884,14 +4200,14 @@ function exportDataTable() {
 }
 
 function exportVacationToExcel() {
-  if (vacationData.length === 0) {
+  if (filteredVacationData.length === 0) {
     showNotification('No hay datos de vacaciones para exportar', 'error');
     return;
   }
 
   let csvContent = "NOMBRE,FECHA DE INGRESO,NUMERO DE EMPLEADO,ÁREA,DÍAS VACACIONES,FECHA DE PAGO,FECHA SALIDA,FECHA REGRESO,AUTORIZADAS,DÍAS TOMADOS,GUARDAR DICIEMBRE\n";
   
-  vacationData.forEach(item => {
+  filteredVacationData.forEach(item => {
     const row = [
       `"${item.NOMBRE || ''}"`,
       `"${formatDate(item['FECHA DE INGRESO']) || ''}"`,
@@ -3926,6 +4242,388 @@ function exportVacationToExcel() {
   showNotification('Datos de vacaciones exportados exitosamente', 'success');
 }
 
+async function printVacationPDF(index) {
+  try {
+    const record = vacationData[index];
+    
+    const formatDateForPDF = (dateValue) => {
+      if (!dateValue) return '';
+      
+      try {
+        if (typeof dateValue === 'string') {
+          if (dateValue.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+            const [part1, part2, year] = dateValue.split('/').map(Number);
+            
+            if (part1 > 12 && part2 <= 12) {
+              return `${part2.toString().padStart(2, '0')}/${part1.toString().padStart(2, '0')}/${year}`;
+            } else {
+              return `${part1.toString().padStart(2, '0')}/${part2.toString().padStart(2, '0')}/${year}`;
+            }
+          }
+          
+          if (dateValue.match(/^\d{4}-\d{1,2}-\d{1,2}$/)) {
+            const [year, month, day] = dateValue.split('-').map(Number);
+            return `${month.toString().padStart(2, '0')}/${day.toString().padStart(2, '0')}/${year}`;
+          }
+        }
+        
+        if (dateValue instanceof Date) {
+          const month = (dateValue.getMonth() + 1).toString().padStart(2, '0');
+          const day = dateValue.getDate().toString().padStart(2, '0');
+          const year = dateValue.getFullYear();
+          return `${month}/${day}/${year}`;
+        }
+        
+        const date = new Date(dateValue);
+        if (!isNaN(date.getTime())) {
+          const month = (date.getMonth() + 1).toString().padStart(2, '0');
+          const day = date.getDate().toString().padStart(2, '0');
+          const year = date.getFullYear();
+          return `${month}/${day}/${year}`;
+        }
+      } catch (error) {
+        console.error('Error formateando fecha para PDF:', error);
+      }
+      
+      return dateValue;
+    };
+    
+    const nombre = record.NOMBRE || '';
+    const numeroEmpleado = record['NUMERO DE EMPLEADO'] || '';
+    const fechaIngreso = formatDateForPDF(record['FECHA DE INGRESO']);
+    const fechaPago = formatDateForPDF(record['FECHA DE PAGO']);
+    const fechaSalida = formatDateForPDF(record['FECHA SALIDA']);
+    const fechaRegreso = formatDateForPDF(record['FECHA REGRESO']);
+    const diasTomados = record['DÍAS TOMADOS'] || '0';
+    const diasVacaciones = record['DÍAS VACACIONES'] || '0';
+    const area = record['ÁREA'] || '';
+    
+    if (!nombre) {
+      showNotification('Error: No se pudo obtener el nombre del empleado', 'error');
+      return;
+    }
+    
+    showNotification(`Generando formato para ${nombre}...`, 'success');
+    
+    const pdfData = {
+      nombre: nombre,
+      numeroEmpleado: numeroEmpleado,
+      fechaIngreso: fechaIngreso,
+      fechaPago: fechaPago,
+      fechaSalida: fechaSalida,
+      fechaRegreso: fechaRegreso,
+      diasTomados: diasTomados,
+      diasVacaciones: diasVacaciones,
+      area: area,
+      comentarios: ''
+    };
+    
+    const result = await generateVacationPDFDirect(pdfData);
+    
+    if (result.success) {
+    } else {
+      console.error('Error:', result.error);
+    }
+    
+  } catch (error) {
+    console.error('Error en printVacationPDF:', error);
+    showNotification(`Error: ${error.message}`, 'error');
+  }
+}
+
+async function generateVacationPDFFromSchedule(formData) {
+  try {
+    const pdfData = {
+      nombre: formData.NOMBRE || '',
+      numeroEmpleado: formData['NUMERO DE EMPLEADO'] || '',
+      fechaIngreso: formData['FECHA DE INGRESO'] || '',
+      fechaPago: formData['FECHA DE PAGO'] || '',
+      fechaSalida: formData['FECHA SALIDA'] || '',
+      fechaRegreso: formData['FECHA REGRESO'] || '',
+      diasTomados: formData['DÍAS TOMADOS'] || '0',
+      diasVacaciones: formData['DÍAS VACACIONES'] || '0',
+      comentarios: ''
+    };
+    
+    return await generateVacationPDFDirect(pdfData);
+    
+  } catch (error) {
+    console.error('Error generando PDF desde schedule:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+function handleVacationScheduleSubmitWithPDF(e) {
+  e.preventDefault();
+  
+  if (!validateVacationScheduleForm()) {
+    return;
+  }
+  
+  const name = document.getElementById('schedule-employee-name').value;
+  const startDate = document.getElementById('schedule-start-date').value;
+  const returnDate = document.getElementById('schedule-return-date').value;
+  const daysToTake = parseFloat(document.getElementById('schedule-days-to-take').value) || 0;
+  const decemberSave = parseFloat(document.getElementById('schedule-december-save').value) || 0;
+  const daysTaken = daysToTake;
+  
+  const [year, month, day] = startDate.split('-').map(Number);
+  const formattedStartDate = `${month.toString().padStart(2, '0')}/${day.toString().padStart(2, '0')}/${year}`;
+  
+  const formData = {
+    'NOMBRE': name,
+    'FECHA DE INGRESO': document.getElementById('schedule-entry-date').value,
+    'NUMERO DE EMPLEADO': document.getElementById('schedule-employee-id').value,
+    'ÁREA': document.getElementById('schedule-area').value,
+    'DÍAS VACACIONES': document.getElementById('schedule-vacation-days').value,
+    'FECHA DE PAGO': getPayDateValue(),
+    'FECHA SALIDA': formattedStartDate,
+    'FECHA REGRESO': returnDate,
+    'AUTORIZADAS': document.getElementById('schedule-authorized').checked ? 'TRUE' : 'FALSE',
+    'DÍAS TOMADOS': daysTaken.toFixed(1),
+    'GUARDAR DICIEMBRE': decemberSave.toFixed(1)
+  };
+  
+  try {
+    showNotification('Guardando vacaciones...', 'success');
+    
+    const result = fetchSheetData(
+      sheetConnections.vacations, 
+      'append', 
+      [formData]
+    );
+    
+    if (result.error) {
+      showNotification('Error al guardar vacaciones: ' + result.error, 'error');
+      return;
+    }
+    
+    showNotification('Vacaciones guardadas exitosamente', 'success');
+    
+    if (confirm('¿Desea generar el formato PDF de vacaciones ahora?')) {
+      generateVacationPDFFromSchedule(formData);
+    }
+    
+    closeVacationScheduleModal();
+    loadVacationConcentradoData();
+    
+  } catch (error) {
+    showNotification('Error al guardar vacaciones', 'error');
+  }
+}
+
+async function generateVacationPDFDirect(vacationData) {
+  try {
+    showNotification('Generando PDF de vacaciones...', 'success');
+    
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'letter'
+    });
+    
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 25;
+    
+    const today = new Date();
+    const diasSemana = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+    const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    const diaSemana = diasSemana[today.getDay()];
+    const dia = today.getDate();
+    const mes = meses[today.getMonth()];
+    const anio = today.getFullYear();
+    const fechaHoy = `${diaSemana}, ${dia} de ${mes} de ${anio}`;
+    
+    const logoHeight = 25;
+    const logoWidth = 50;
+    const logoTopMargin = 20;
+    
+    const logoLeftPath = 'logos/ivemsa.png';
+    const logoRightPath = 'logos/wunderbar.png';
+    
+    const loadImage = (url) => {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = url;
+      });
+    };
+    
+    try {
+      const leftLogoImg = await loadImage(logoLeftPath);
+      doc.addImage(
+        leftLogoImg,
+        'JPEG',
+        margin,
+        logoTopMargin,
+        logoWidth,
+        logoHeight
+      );
+    } catch (error) {
+    }
+    
+    try {
+      const rightLogoImg = await loadImage(logoRightPath);
+      doc.addImage(
+        rightLogoImg,
+        'JPEG',
+        pageWidth - margin - logoWidth,
+        logoTopMargin,
+        logoWidth,
+        logoHeight
+      );
+    } catch (error) {
+    }
+    
+    const headerYPos = logoTopMargin + logoHeight + 5;
+    
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('VACACIONES', pageWidth / 2, headerYPos, { align: 'center' });
+    
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Ensenada, B.C., ${fechaHoy}`, pageWidth / 2, headerYPos + 10, { align: 'left' });
+    
+    let yPos = headerYPos + 25;
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Para:', margin, yPos);
+    doc.setFont('helvetica', 'normal');
+    doc.text('RECURSOS HUMANOS', margin + 15, yPos);
+    
+    yPos += 8;
+    doc.setFont('helvetica', 'bold');
+    doc.text('De:', margin, yPos);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Omar Arreola Meza', margin + 15, yPos);
+    
+    yPos += 12;
+    doc.setFont('helvetica', 'normal');
+    doc.text('Por medio de la presente le solicitamos le sean procesadas las vacaciones a:', margin, yPos);
+    
+    yPos += 12;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Nombre:', margin, yPos);
+    doc.setFont('helvetica', 'normal');
+    doc.text(vacationData.nombre || '', margin + 22, yPos);
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text('Numero de Empleado:', pageWidth / 2 + 10, yPos);
+    doc.setFont('helvetica', 'normal');
+    doc.text(vacationData.numeroEmpleado || '', pageWidth / 2 + 55, yPos);
+    
+    yPos += 10;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Fecha de ingreso:', margin, yPos);
+    doc.setFont('helvetica', 'normal');
+    doc.text(vacationData.fechaIngreso || '', margin + 38, yPos);
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text('Dias a gozar:', margin + 80, yPos);
+    doc.setFont('helvetica', 'normal');
+    doc.text(vacationData.diasTomados || '0', margin + 110, yPos);
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text('Dias a pagar:', margin + 130, yPos);
+    doc.setFont('helvetica', 'normal');
+    doc.text(vacationData.diasTomados || '0', margin + 160, yPos);
+    
+    yPos += 10;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Fecha de pago de vacaciones:', margin, yPos);
+    doc.setFont('helvetica', 'normal');
+    doc.text(vacationData.fechaPago || '', margin + 70, yPos);
+    
+    yPos += 10;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Fecha de Inicio de Vacaciones:', margin, yPos);
+    doc.setFont('helvetica', 'normal');
+    doc.text(vacationData.fechaSalida || '', margin + 70, yPos);
+    
+    yPos += 10;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Fecha de que debera presentarse a trabajar:', margin, yPos);
+    doc.setFont('helvetica', 'normal');
+    doc.text(vacationData.fechaRegreso || '', margin + 95, yPos);
+    
+    yPos += 10;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Comentarios:', margin, yPos);
+    
+    yPos += 5;
+    doc.setLineWidth(0.3);
+    doc.line(margin, yPos, pageWidth - margin, yPos);
+    
+    yPos += 5;
+    doc.setLineWidth(0.3);
+    doc.line(margin, yPos, pageWidth - margin, yPos);
+    
+    if (vacationData.comentarios) {
+      yPos += 7;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      const comentariosLines = doc.splitTextToSize(vacationData.comentarios, pageWidth - (margin * 2));
+      doc.text(comentariosLines, margin, yPos);
+      yPos += (comentariosLines.length * 5);
+    }
+    
+    yPos += 12;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Atentamente', pageWidth / 2, yPos, { align: 'center' });
+    
+    yPos += 20;
+    doc.setLineWidth(0.3);
+    doc.line(margin + 20, yPos, pageWidth / 2 - 10, yPos);
+    yPos += 5;
+    doc.setFontSize(9);
+    doc.text('Nombre y firma Autorizada', pageWidth / 4 + 10, yPos, { align: 'center' });
+    
+    yPos -= 5;
+    doc.line(pageWidth / 2 + 10, yPos, pageWidth - margin - 20, yPos);
+    yPos += 5;
+    doc.text('Firma del Trabajador', pageWidth * 3/4 - 10, yPos, { align: 'center' });
+    
+    yPos = pageHeight - 10;
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'italic');
+    doc.text('C.C.P. Expediente', margin, yPos);
+    
+    const pdfBlob = doc.output('blob');
+    const pdfUrl = URL.createObjectURL(pdfBlob);
+    
+    const timestamp = new Date().getTime();
+    const safeName = vacationData.nombre.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]/g, '_').replace(/\s+/g, '_');
+    const fileName = `Formato_Vacaciones_${safeName}_${timestamp}.pdf`;
+    
+    const downloadLink = document.createElement('a');
+    downloadLink.href = pdfUrl;
+    downloadLink.download = fileName;
+    downloadLink.style.display = 'none';
+    
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    
+    setTimeout(() => {
+      document.body.removeChild(downloadLink);
+      URL.revokeObjectURL(pdfUrl);
+    }, 100);
+    
+    showNotification('PDF generado exitosamente', 'success');
+    return { success: true, fileName: fileName };
+    
+  } catch (error) {
+    console.error('Error generando PDF:', error);
+    showNotification('Error al generar PDF: ' + error.message, 'error');
+    return { success: false, error: error.message };
+  }
+}
+
 window.openSuspensionModal = openSuspensionModal;
 window.closeSuspensionModal = closeSuspensionModal;
 window.closeSuspensionDateModal = closeSuspensionDateModal;
@@ -3944,6 +4642,11 @@ window.closeVacationScheduleModal = closeVacationScheduleModal;
 window.toggleVacationAuthorization = toggleVacationAuthorization;
 window.handlePayDateChange = handlePayDateChange;
 window.calculateVacationDates = calculateVacationDates;
+window.printVacationPDF = printVacationPDF;
+window.generateVacationPDFDirect = generateVacationPDFDirect;
+window.printVacationPDF = printVacationPDF;
+window.generateVacationPDFFromSchedule = generateVacationPDFFromSchedule;
+window.handleVacationScheduleSubmitWithPDF = handleVacationScheduleSubmitWithPDF;
 
 document.addEventListener('DOMContentLoaded', function() {
   initializeApp();
