@@ -309,6 +309,11 @@
                             + AGENDAR VACACIONES
                         </button>
                     </div>
+                    <div class="table-filters">
+                        <input type="text" class="filter-input" id="vacation-filter-nombre" placeholder="Filtrar por nombre..." data-column="0" data-table="vacation-concentrado">
+                        <input type="text" class="filter-input" id="vacation-filter-area" placeholder="Filtrar por área..." data-column="3" data-table="vacation-concentrado">
+                        <input type="text" class="filter-input" id="vacation-filter-diciembre" placeholder="Filtrar por guardar diciembre..." data-column="10" data-table="vacation-concentrado">
+                    </div>
                     <div class="attendance-table-container">
                         <table class="data-table" id="vacation-concentrado-table">
                             <thead>
@@ -621,5 +626,6 @@
     </div>
 
     <script src="script.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </body>
 </html>
