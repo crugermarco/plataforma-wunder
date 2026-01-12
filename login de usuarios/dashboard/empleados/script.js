@@ -618,7 +618,7 @@ function renderVacationConcentradoTable() {
       }
     }
     
-    const showActions = currentUser && currentUser.name.toLowerCase() === 'marco cruger';
+    const showActions = currentUser && currentUser.name.toLowerCase() === 'marco cruger','bosco alcazar';
     
     row.innerHTML = `
       <td>${nombre}</td>
@@ -4651,3 +4651,4 @@ window.handleVacationScheduleSubmitWithPDF = handleVacationScheduleSubmitWithPDF
 document.addEventListener('DOMContentLoaded', function() {
   initializeApp();
 });
+
