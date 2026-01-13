@@ -6,13 +6,14 @@
     <title>Plataforma de Enfermería</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
     <div class="dashboard-container">
         <div class="sidebar">
             <div class="sidebar-header">
                 <div class="logo">🏥 ENFERMERÍA</div>
-                <div class="logo-subtitle">Sistema de Gestión CRUGER 2.0</div>
+                <div class="logo-subtitle">Sistema de Gestión CRUGER 3.1</div>
             </div>
            
             <nav class="nav-menu">
@@ -101,8 +102,7 @@
                     </button>
                 </div>
                
-                <div class="inventory-grid" id="inventory-grid">
-                </div>
+                <div class="inventory-grid" id="inventory-grid"></div>
             </div>
 
             <div id="permisos-section" class="content-section">
@@ -120,14 +120,13 @@
                             </svg>
                             NUEVO PERMISO
                         </button>
-                     <button id="print-button" class="neon-print-btn" onclick="imprimirPermiso()">IMPRIMIR</button>
+                        <button id="print-button" class="neon-print-btn" onclick="imprimirPermiso()">IMPRIMIR</button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal de Consulta -->
     <div id="consulta-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -145,8 +144,7 @@
                     <div class="form-group">
                         <label class="form-label">Nombre</label>
                         <input type="text" id="nombre" class="form-input" list="nombres-list" placeholder="Buscar nombre..." required>
-                        <datalist id="nombres-list">
-                        </datalist>
+                        <datalist id="nombres-list"></datalist>
                     </div>
                    
                     <div class="form-group">
@@ -156,7 +154,7 @@
                    
                     <div class="form-group">
                         <label class="form-label">Operación</label>
-                        <input type="text" id="operacion" class="form-input" placeholder="Describa la Operacion">
+                        <input type="text" id="operacion" class="form-input" placeholder="Describa la Operación">
                     </div>
                    
                     <div class="form-group">
@@ -223,31 +221,26 @@
         </div>
     </div>
 
-    <!-- Modal de Alerta -->
     <div id="alert-modal" class="modal">
         <div class="modal-content alert-modal">
             <div class="modal-header">
                 <h3 class="modal-title">⚠️ Medicamento Vencido</h3>
                 <button class="close-button" onclick="closeAlertModal()">&times;</button>
             </div>
-            <div id="alert-content">
-            </div>
+            <div id="alert-content"></div>
         </div>
     </div>
 
-    <!-- Modal para Retirar Medicamento -->
     <div id="remove-med-modal" class="modal">
         <div class="modal-content alert-modal">
             <div class="modal-header">
                 <h3 class="modal-title">❌ Retirar Medicamento Vencido</h3>
                 <button class="close-button" onclick="closeRemoveMedModal()">&times;</button>
             </div>
-            <div id="remove-med-content">
-            </div>
+            <div id="remove-med-content"></div>
         </div>
     </div>
 
-    <!-- Modal para Agregar Stock -->
     <div id="add-stock-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -282,7 +275,6 @@
         </div>
     </div>
 
-    <!-- Modal de Solicitud -->
     <div id="request-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -292,7 +284,7 @@
             <div style="padding: 1.5rem;">
                 <div class="form-group">
                     <label class="form-label">Fecha y Hora</label>
-                    <input type="datetime-local" id="request-date" class="form-input" value="${new Date().toISOString().slice(0, 16)}">
+                    <input type="datetime-local" id="request-date" class="form-input">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Artículo</label>
@@ -318,7 +310,6 @@
         </div>
     </div>
 
-    <!-- Modal de Permiso Médico -->
     <div id="permiso-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -366,43 +357,6 @@
         </div>
     </div>
 
-    <!-- Sección de Impresión -->
-    <div id="print-section" style="display: none;">
-        <div class="print-header">
-            <h2>PASE MÉDICO</h2>
-            <div class="print-subheader">Sistema de Gestión CRUGER</div>
-        </div>
-        <div class="print-content">
-            <div class="print-row">
-                <div class="print-label">Nombre:</div>
-                <div class="print-value" id="print-nombre"></div>
-                <div class="print-label">Número de empleado:</div>
-                <div class="print-value" id="print-numero"></div>
-            </div>
-            <div class="print-row">
-                <div class="print-label">Área:</div>
-                <div class="print-value" id="print-area"></div>
-                <div class="print-label">Fecha y Hora:</div>
-                <div class="print-value" id="print-fecha-hora"></div>
-            </div>
-            <div class="print-row">
-                <div class="print-permiso" id="print-permiso">PERMISO DE SALIDA</div>
-            </div>
-            <div class="print-row">
-                <div class="print-label">Comentarios:</div>
-                <div class="print-value" id="print-comentarios"></div>
-            </div>
-            <div class="print-footer">
-                <div class="print-firma">Firma del Médico</div>
-                <div class="print-sello">SELLO</div>
-            </div>
-        </div>
-        <div class="print-actions">
-            <button id="print-button" class="neon-print-btn" onclick="imprimirPermiso()">IMPRIMIR</button>
-        </div>
-    </div>
-
     <script src="script.js"></script>
 </body>
-
 </html>
