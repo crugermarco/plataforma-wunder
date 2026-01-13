@@ -156,7 +156,7 @@ body {
     padding: 1.5rem;
     border-bottom: 1px solid rgba(71, 85, 105, 0.5);
     display: flex;
-    justify-content: between;
+    justify-content: space-between;
     align-items: center;
 }
 
@@ -175,7 +175,6 @@ body {
     cursor: pointer;
     font-weight: 600;
     transition: all 0.2s;
-    margin-left: auto;
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -865,352 +864,193 @@ body {
     color: var(--slate-500);
     font-size: 0.75rem;
 }
-/* Estilos para el modal de permisos médicos */
-#permiso-modal {
-  display: none;
-  position: fixed;
-  z-index: 1000;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-}
 
-#permiso-modal.show {
-  display: block;
-}
-
-#permiso-modal .modal-content {
-  background-color: rgba(15, 23, 42, 0.95);
-  margin: 5% auto;
-  padding: 20px;
-  border:  1px solid rgba(71, 85, 105, 0.5);
-  width: 80%;
-  max-width: 600px;
-  border-radius: 8px;
-}
-
-#permiso-modal .close {
-  color: #aaa;
-  float: right;
-  font-size: 28px;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-#permiso-modal .close:hover {
-  color: black;
-}
-
-#permiso-modal h2 {
-  margin-top: 0;
-  color: #2c3e50;
-}
-
-/* Estilos para la sección de impresión */
-#print-section {
-  background-color: white;
-  padding: 20px;
-  margin: 20px auto;
-  max-width: 800px;
-  border: 1px solid #ddd;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-}
-
-.print-header {
-  text-align: center;
-  margin-bottom: 20px;
-  border-bottom: 2px solid #2c3e50;
-  padding-bottom: 10px;
-}
-
-.print-header h2 {
-  margin: 0;
-  color: #2c3e50;
-}
-
-.print-content {
-  margin: 20px 0;
-}
-
-.print-row {
-  display: flex;
-  margin-bottom: 15px;
-  align-items: center;
-}
-
-.print-label {
-  font-weight: bold;
-  min-width: 150px;
-  margin-right: 10px;
-}
-
-.print-value {
-  flex: 1;
-}
-
-.print-permiso {
-  text-align: center;
-  font-weight: bold;
-  font-size: 1.2em;
-  margin: 20px 0;
-  padding: 10px;
-  background-color: #f8f9fa;
-  border-radius: 4px;
-}
-
-.print-actions {
-  text-align: center;
-  margin-top: 20px;
-}
-
-@media print {
-  body * {
-    visibility: hidden;
-  }
-  #print-section, #print-section * {
-    visibility: visible;
-  }
-  #print-section {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    margin: 0;
-    padding: 0;
-    border: none;
-    box-shadow: none;
-  }
-  .print-actions {
-    display: none;
-  }
-}
-
-/* Estilos para los filtros de la tabla */
 .table-filter-container {
     margin-bottom: 15px;
     display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
+    justify-content: space-between;
     align-items: center;
+    padding: 15px;
+    background: rgba(30, 41, 59, 0.8);
+    border-radius: 8px;
 }
 
-.table-filter {
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 20px;
-    background-color: #f8f9fa;
-    font-size: 14px;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-.table-filter:focus {
-    outline: none;
-    border-color: #4dabf7;
-    box-shadow: 0 0 0 3px rgba(77, 171, 247, 0.3);
-}
-
-.filter-label {
-    font-weight: 600;
-    color: #495057;
-    margin-right: 5px;
-}
-
-.filter-reset-btn {
-    padding: 8px 15px;
-    background-color: #f1f3f5;
-    border: 1px solid #ddd;
-    border-radius: 20px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.filter-reset-btn:hover {
-    background-color: #e9ecef;
-}
-
-/* Estilos para la tabla con filtros */
-.filterable-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.filterable-table th {
-    position: relative;
-    padding: 12px 15px;
-    text-align: left;
-    background-color: #f8f9fa;
-    font-weight: 600;
-}
-
-.filterable-table th.filter-header {
-    padding-top: 40px;
-}
-
-.filterable-table td {
-    padding: 12px 15px;
-    border-bottom: 1px solid #e9ecef;
-}
-
-.filterable-table tr:hover {
-    background-color: #f8f9fa;
-}
-
-/* Estilo para el botón de imprimir */
-.neon-print-btn {
-    background-color: #0d6efd;
-    color: white;
+.export-excel-btn {
+    background: linear-gradient(to right, var(--blue-600), var(--blue-500));
     border: none;
-    padding: 12px 25px;
-    font-size: 16px;
-    font-weight: bold;
-    border-radius: 30px;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
     cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 
-        0 0 10px #0d6efd,
-        0 0 20px rgba(13, 110, 253, 0.5),
-        0 0 30px rgba(13, 110, 253, 0.3);
-    animation: neon-pulse 1.5s infinite alternate;
-    margin-top: 20px;
-}
-
-.neon-print-btn:hover {
-    background-color: #0b5ed7;
-    box-shadow: 
-        0 0 15px #0d6efd,
-        0 0 25px rgba(13, 110, 253, 0.6),
-        0 0 35px rgba(13, 110, 253, 0.4);
-    transform: translateY(-2px);
-}
-
-@keyframes neon-pulse {
-    from {
-        box-shadow: 
-            0 0 10px #0d6efd,
-            0 0 20px rgba(13, 110, 253, 0.5),
-            0 0 30px rgba(13, 110, 253, 0.3);
-    }
-    to {
-        box-shadow: 
-            0 0 15px #0d6efd,
-            0 0 25px rgba(13, 110, 253, 0.6),
-            0 0 35px rgba(13, 110, 253, 0.4);
-    }
-}
-
-/* Estilos para los filtros de la tabla */
-.table-filter-container {
-    margin-bottom: 10px;
+    font-weight: 600;
+    transition: all 0.2s;
     display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
     align-items: center;
+    gap: 0.5rem;
+}
+
+.export-excel-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.filter-reset-btn {
+    background: linear-gradient(to right, var(--orange-600), var(--orange-500));
+    border: none;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.filter-reset-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3);
+}
+
+.filterable-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-top: 10px;
+}
+
+.filterable-table th {
+    background: linear-gradient(to bottom, var(--slate-800), var(--slate-900));
+    color: var(--slate-300);
+    padding: 16px 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    position: relative;
+    border-bottom: 2px solid var(--emerald-500);
+}
+
+.filterable-table th.filter-header {
+    padding-top: 50px;
+}
+
+.filterable-table td {
+    padding: 14px 12px;
+    border-bottom: 1px solid rgba(71, 85, 105, 0.3);
+    color: var(--slate-300);
+    font-size: 0.95rem;
+}
+
+.filterable-table tbody tr {
+    transition: all 0.2s;
+}
+
+.filterable-table tbody tr:nth-child(even) {
+    background: rgba(30, 41, 59, 0.4);
+}
+
+.filterable-table tbody tr:nth-child(odd) {
+    background: rgba(30, 41, 59, 0.2);
+}
+
+.filterable-table tbody tr:hover {
+    background: rgba(6, 150, 105, 0.2);
+    transform: translateX(5px);
 }
 
 .table-filter {
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 20px;
-    background-color: #f8f9fa;
-    font-size: 14px;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    position: absolute;
+    top: 10px;
+    left: 0;
+    width: calc(100% - 24px);
+    margin: 0 12px;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(71, 85, 105, 0.5);
+    border-radius: 4px;
+    color: white;
+    font-size: 0.85rem;
+    transition: all 0.2s;
 }
 
 .table-filter:focus {
     outline: none;
-    border-color: #4dabf7;
-    box-shadow: 0 0 0 3px rgba(77, 171, 247, 0.3);
+    border-color: var(--emerald-400);
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
 }
 
-.filter-label {
-    font-weight: 400;
-    color: #495057;
-    margin-right: 5px;
+.table-filter::placeholder {
+    color: var(--slate-400);
 }
 
-.filter-reset-btn {
-    padding: 8px 10px;
-    background-color: #f1f3f5;
-    border: 1px solid #ddd;
-    border-radius: 50px;
-    cursor: pointer;
-    transition: all 0.3s ease;
+.no-data-message {
+    text-align: center;
+    padding: 40px;
+    color: var(--slate-400);
+    font-size: 1.1rem;
+    background: rgba(30, 41, 59, 0.3);
+    border-radius: 8px;
+    margin: 20px 0;
+    border: 2px dashed rgba(71, 85, 105, 0.5);
 }
 
-.filter-reset-btn:hover {
-    background-color: #e9ecef;
-}
-
-/* Estilos para la tabla con filtros */
-.filterable-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.filterable-table th {
-    position: relative;
-    padding: 12px 15px;
-    text-align: left;
-    background-color: #475569;
-    font-weight: 600;
-}
-
-.filterable-table th.filter-header {
-    padding-top: 40px;
-}
-
-.filterable-table td {
-    padding: 12px 15px;
-    border-bottom: 2px solid #475569;
-}
-
-.filterable-table tr:hover {
-    background-color: #047857;
-}
-
-/* Estilo para el botón de imprimir */
 .neon-print-btn {
-    background-color: #0d6efd;
+    background: linear-gradient(45deg, #0066ff, #00ccff);
     color: white;
     border: none;
     padding: 12px 25px;
     font-size: 16px;
     font-weight: bold;
-    border-radius: 30px;
+    border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s ease;
     box-shadow: 
-        0 0 10px #0d6efd,
-        0 0 20px rgba(13, 110, 253, 0.5),
-        0 0 30px rgba(13, 110, 253, 0.3);
-    animation: neon-pulse 1.5s infinite alternate;
-    margin-top: 0px;
+        0 0 10px rgba(0, 102, 255, 0.5),
+        0 0 20px rgba(0, 102, 255, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    position: relative;
+    overflow: hidden;
 }
 
 .neon-print-btn:hover {
-    background-color: #0b5ed7;
+    transform: translateY(-2px);
     box-shadow: 
-        0 0 15px #0d6efd,
-        0 0 25px rgba(13, 110, 253, 0.6),
-        0 0 35px rgba(13, 110, 253, 0.4);
-    transform: translateY(-15px);
+        0 0 15px rgba(0, 102, 255, 0.6),
+        0 0 25px rgba(0, 102, 255, 0.4),
+        0 5px 15px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
-@keyframes neon-pulse {
-    from {
-        box-shadow: 
-            0 0 10px #0d6efd,
-            0 0 20px rgba(13, 110, 253, 0.5),
-            0 0 30px rgba(13, 110, 253, 0.3);
-    }
-    to {
-        box-shadow: 
-            0 0 15px #0d6efd,
-            0 0 25px rgba(13, 110, 253, 0.6),
-            0 0 35px rgba(13, 110, 253, 0.4);
-    }
+.neon-print-btn:active {
+    transform: translateY(0);
+}
+
+.neon-print-btn::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+        45deg,
+        transparent 30%,
+        rgba(255, 255, 255, 0.1) 50%,
+        transparent 70%
+    );
+    transform: rotate(45deg);
+    animation: shine 3s infinite linear;
+}
+
+@keyframes shine {
+    0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+    100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+}
+
+.medication-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 0.5rem;
 }
