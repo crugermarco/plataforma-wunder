@@ -5,7 +5,7 @@ const sheetsConfig = {
         sheetName: 'REPORTE DE CONSULTA',
         headers: [
             'FECHA Y HORA', 'NOMBRE', 'AREA', 'OPERACION',
-            'TIPO DE CONSULTA INTERNA/EXTERNA', 'SINTOMAS',
+            'TIPO DE CONSULTA', 'SINTOMAS',
             'DIAGNOSTICO', 'MEDICAMENTO', 'DOSIS', 'Tº',
             'PRESION ARTERIAL ALTA', 'PRESION ARTERIAL BAJA',
             'OXIMETRO', 'OBSERVACIONES'
@@ -37,10 +37,10 @@ const sheetsConfig = {
     },
     personal: {
         scriptUrl: 'https://script.google.com/macros/s/AKfycbzxK22mOK5Bwa5RCNUmz9HQgFyBwfAGeGtHn7jcri7PC64MHkMHRIHLGBlS_JgkWcS-/exec',
-        spreadsheetId: '1oJu9b0zCltzM2PCCFuXWgib7ckp2Xbj9nVcgpcYTYDI',
+        spreadsheetId: '1jO4KTH6X7NVslzTXQqMcrSa5XzFifBOMBTYduSMtJQE',
         sheetName: 'DATA',
         headers: [
-            'NOMBRE', 'PUESTO', 'AREA'
+            'NOMBRE', 'GAFETE', 'FECHA DE INGRESO', 'NUMERO DE EMPLEADO', 'AREA', 'AÑOS', 'DIAS DE VACACIONES'
         ]
     },
     permisos: {
@@ -58,12 +58,12 @@ let personalData = [];
 let vencimientoAlertShown = false;
 let selectedMedForRemoval = null;
 let selectedMedForRequest = null;
-let criterioSeleccionado = null; // Variable para almacenar el criterio seleccionado
+let criterioSeleccionado = null;
+let filteredConsultas = [];
+let filterTimeout = null;
 
-// --- helpers ---
 function pad(n) { return n < 10 ? '0' + n : String(n); }
 
-// Devuelve "YYYY-MM-DDTHH:MM" usando la hora local del navegador
 function getLocalDatetimeForInput(date = new Date()) {
     return date.getFullYear() + '-' +
         pad(date.getMonth() + 1) + '-' +
@@ -82,11 +82,11 @@ function verificarCredenciales() {
 }
 
 function mostrarAlertaSinPermiso() {
-    alert("❌ No cuentas con el permiso para este apartado");
+    alert("No cuentas con el permiso para este apartado");
     document.querySelectorAll('.content-section, .nav-item').forEach(el => el.style.display = 'none');
 }
 
-function showSection(sectionId, event) {
+function showSection(sectionId) {
     try {
         if (!verificarCredenciales()) return;
         
@@ -106,12 +106,15 @@ function showSection(sectionId, event) {
         
         section.classList.add('active');
         
-        if (event?.currentTarget) {
-            event.currentTarget.classList.add('active');
+        const activeButton = document.querySelector(`.nav-item[onclick*="${sectionId}"]`);
+        if (activeButton) {
+            activeButton.classList.add('active');
         }
         
         if (sectionId === 'consultas') {
-            actualizarTablaConsultas();
+            setTimeout(() => {
+                inicializarFiltros();
+            }, 100);
         } else if (sectionId === 'inventario') {
             renderizarInventario();
         }
@@ -120,27 +123,20 @@ function showSection(sectionId, event) {
     }
 }
 
-function buildUrl(config, params = {}, method = 'GET') {
-    const url = new URL(config.scriptUrl);
-    
-    url.searchParams.append('spreadsheetId', config.spreadsheetId);
-    url.searchParams.append('sheetName', config.sheetName);
-    
-    if (method === 'GET') {
+async function fetchData(config, params = {}) {
+    try {
+        const url = new URL(config.scriptUrl);
+        
+        url.searchParams.append('spreadsheetId', config.spreadsheetId);
+        url.searchParams.append('sheetName', config.sheetName);
+        
         for (const [key, value] of Object.entries(params)) {
             if (value !== undefined && value !== null) {
                 url.searchParams.append(key, value);
             }
         }
-        url.searchParams.append('_', Date.now());
-    }
-    
-    return url;
-}
-
-async function fetchData(config, params = {}) {
-    try {
-        const url = buildUrl(config, params, 'GET');
+        
+        url.searchParams.append('timestamp', Date.now());
         
         const response = await fetch(url.toString(), {
             method: 'GET',
@@ -153,41 +149,26 @@ async function fetchData(config, params = {}) {
 
         const result = await response.json();
         
-        if (!result) {
-            throw new Error('El servidor no devolvió una respuesta válida');
+        if (!result.success) {
+            throw new Error(result.error || 'Error en la respuesta del servidor');
         }
         
-        if (Array.isArray(result)) {
-            return result;
-        }
-        
-        if (result.success !== undefined) {
-            if (!result.success) {
-                throw new Error(result.error || 'Error en la respuesta del servidor');
-            }
-            return result.data || [];
-        }
-        
-        throw new Error('Formato de respuesta no reconocido');
+        return result.data || [];
     } catch (error) {
         console.error("Error en fetchData:", error);
-        throw error;
+        return [];
     }
 }
 
 async function guardarEnSheets(config, data) {
     try {
-        const url = buildUrl(config, {}, 'POST');
+        const url = new URL(config.scriptUrl);
         
-        const formData = new FormData();
+        const formData = new URLSearchParams();
         formData.append('spreadsheetId', config.spreadsheetId);
         formData.append('sheetName', config.sheetName);
         formData.append('data', JSON.stringify(data));
         
-        if (config.headers) {
-            formData.append('headers', JSON.stringify(config.headers));
-        }
-
         if (data.accion) {
             formData.append('action', data.accion);
         }
@@ -195,6 +176,9 @@ async function guardarEnSheets(config, data) {
         const response = await fetch(url.toString(), {
             method: 'POST',
             mode: 'cors',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
             body: formData
         });
 
@@ -217,21 +201,22 @@ async function guardarEnSheets(config, data) {
 
 async function cargarDatosDesdeSheets() {
     try {
+        console.log('Cargando datos desde Sheets...');
+        
         consultas = [];
         medicamentosData = [];
         personalData = [];
 
         const consultasData = await fetchData(sheetsConfig.consultas, {
-            action: 'get',
             range: 'A2:N'
         });
         
         if (consultasData && consultasData.length > 0) {
             consultas = processData(consultasData, sheetsConfig.consultas.headers);
+            filteredConsultas = [...consultas];
         }
 
         const inventarioData = await fetchData(sheetsConfig.inventario, {
-            action: 'get',
             range: 'A2:G'
         });
         
@@ -250,14 +235,15 @@ async function cargarDatosDesdeSheets() {
         await cargarEstadoConsultorio();
 
         const personalDataResponse = await fetchData(sheetsConfig.personal, {
-            action: 'get',
-            range: 'A2:C'
+            range: 'A2:G'
         });
         
         if (personalDataResponse && personalDataResponse.length > 0) {
             personalData = personalDataResponse.map(row => ({
                 nombre: row[0] || '',
-                area: row[2] || ''
+                gafete: row[1] || '',
+                numero_empleado: row[3] || '',
+                area: row[4] || ''
             }));
             
             const nombresList = document.getElementById('nombres-list');
@@ -277,6 +263,7 @@ async function cargarDatosDesdeSheets() {
         configurarAutocompletado();
         configurarCriteriosMedicamentos();
 
+        console.log('Datos cargados exitosamente');
     } catch (error) {
         console.error("Error al cargar datos:", error);
         alert("Error al cargar datos. Por favor recarga la página.");
@@ -303,7 +290,17 @@ function configurarAutocompletado() {
             const persona = personalData.find(p => p.nombre === nombre);
             if (persona) {
                 document.getElementById('permiso-area').value = persona.area;
+                document.getElementById('permiso-numero').value = persona.numero_empleado;
             }
+        });
+    }
+    
+    const permisoDatalist = document.getElementById('nombres-list');
+    if (permisoDatalist) {
+        personalData.forEach(persona => {
+            const option = document.createElement('option');
+            option.value = persona.nombre;
+            permisoDatalist.appendChild(option);
         });
     }
 }
@@ -312,22 +309,19 @@ function configurarCriteriosMedicamentos() {
     const medicamentoSelect = document.getElementById('medicamento');
     if (!medicamentoSelect) return;
 
-    // Agregar opciones de criterios específicos al final de la lista de medicamentos
     const criterios = [
-        { value: 'criterio_colicos', text: '💊TRATAMIENTO CÓLICOS (BUSCAPINA + KETEROLACO)' },
-        { value: 'criterio_muscular', text: '💪TRATAMIENTO MUSCULAR (IBUPROFENO + TRIBEDOCE)' },
-        { value: 'criterio_gripe', text: '🤧TRATAMIENTO GRIPE (DESENFRIOL-D + IBUPROFENO + LORATADINA)' },
-        { value: 'criterio_colitis', text: '🤢TRATAMIENTO COLITIS (BUSCAPINA + OMEPRAZOL)' },
-        { value: 'criterio_inyectado', text: '💉MEDICAMENTO INYECTADO (DEXAMETASONA + KETEROLACO)' }
+        { value: 'criterio_colicos', text: '💊 TRATAMIENTO CÓLICOS (BUSCAPINA + KETEROLACO)' },
+        { value: 'criterio_muscular', text: '💪 TRATAMIENTO MUSCULAR (IBUPROFENO + TRIBEDOCE)' },
+        { value: 'criterio_gripe', text: '🤧 TRATAMIENTO GRIPE (DESENFRIOL-D + IBUPROFENO + LORATADINA)' },
+        { value: 'criterio_colitis', text: '🤢 TRATAMIENTO COLITIS (BUSCAPINA + OMEPRAZOL)' },
+        { value: 'criterio_inyectado', text: '💉 MEDICAMENTO INYECTADO (DEXAMETASONA + KETEROLACO)' }
     ];
 
-    // Separador
     const separator = document.createElement('option');
     separator.disabled = true;
     separator.textContent = '────────── TRATAMIENTOS ESPECIALES ──────────';
     medicamentoSelect.appendChild(separator);
 
-    // Agregar criterios
     criterios.forEach(criterio => {
         const option = document.createElement('option');
         option.value = criterio.value;
@@ -335,12 +329,10 @@ function configurarCriteriosMedicamentos() {
         medicamentoSelect.appendChild(option);
     });
 
-    // Configurar el evento para almacenar el criterio seleccionado
     medicamentoSelect.addEventListener('change', function() {
         const valor = this.value;
         if (valor.startsWith('criterio_')) {
             criterioSeleccionado = valor;
-            // Mostrar información del criterio seleccionado
             const infoDiv = document.getElementById('criterio-info');
             if (infoDiv) {
                 const nombresCriterios = {
@@ -366,27 +358,23 @@ function configurarCriteriosMedicamentos() {
     });
 }
 
-// Función mejorada para buscar medicamentos de forma flexible
 function buscarMedicamentoFlexible(nombreBuscado) {
     if (!nombreBuscado) return null;
     
     const nombreLimpio = nombreBuscado.toString().toLowerCase().trim();
     
-    // Buscar coincidencia exacta primero
     let medicamento = medicamentosData.find(med => 
         med.nombre.toLowerCase().trim() === nombreLimpio
     );
     
     if (medicamento) return medicamento;
     
-    // Buscar coincidencia parcial (que contenga el texto)
     medicamento = medicamentosData.find(med => 
         med.nombre.toLowerCase().includes(nombreLimpio)
     );
     
     if (medicamento) return medicamento;
     
-    // Buscar por similitud (eliminando caracteres especiales y espacios)
     const nombreNormalizado = nombreLimpio.replace(/[^a-z0-9]/g, '');
     medicamento = medicamentosData.find(med => {
         const medNormalizado = med.nombre.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -421,7 +409,6 @@ async function aplicarCriterioMedicamentos(criterio) {
             let exitosos = 0;
             let fallidos = [];
             
-            // Descontar cada medicamento con búsqueda flexible
             for (const nombreMedicamento of medicamentosAConsumir) {
                 const medicamento = buscarMedicamentoFlexible(nombreMedicamento);
                 
@@ -437,14 +424,12 @@ async function aplicarCriterioMedicamentos(criterio) {
                 }
             }
             
-            // Actualizar la interfaz
             renderizarInventario();
             
-            // Mostrar resultado
             if (fallidos.length === 0) {
-                alert(`✅ Tratamiento aplicado para: ${nombreCriterio}\nSe descontó 1 unidad de ${exitosos} medicamentos`);
+                alert(`Tratamiento aplicado para: ${nombreCriterio}\nSe descontó 1 unidad de ${exitosos} medicamentos`);
             } else {
-                alert(`⚠️ Tratamiento parcialmente aplicado\n✅ Exitoso: ${exitosos} medicamentos\n❌ No encontrados: ${fallidos.join(', ')}`);
+                alert(`Tratamiento parcialmente aplicado\nExitoso: ${exitosos} medicamentos\nNo encontrados: ${fallidos.join(', ')}`);
             }
             
         } catch (error) {
@@ -465,59 +450,160 @@ function processData(data, headers) {
     });
 }
 
+function filterTable() {
+    if (filterTimeout) {
+        clearTimeout(filterTimeout);
+    }
+    
+    filterTimeout = setTimeout(() => {
+        const filterInputs = document.querySelectorAll('.table-filter');
+        const filters = Array.from(filterInputs).map(input => 
+            input ? input.value.toLowerCase().trim() : ''
+        );
+        
+        console.log('Filtros aplicados:', filters);
+        
+        if (filters.every(filter => filter === '')) {
+            filteredConsultas = [...consultas];
+        } else {
+            filteredConsultas = consultas.filter(consulta => {
+                return filters.every((filter, index) => {
+                    if (!filter || filter === '') return true;
+                    
+                    const header = sheetsConfig.consultas.headers[index];
+                    if (!header) return true;
+                    
+                    const key = header.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+                    const cellValue = String(consulta[key] || '').toLowerCase().trim();
+                    
+                    return cellValue.includes(filter);
+                });
+            });
+        }
+        
+        console.log('Resultados filtrados:', filteredConsultas.length);
+        actualizarContenidoTabla();
+    }, 300);
+}
+
+function actualizarContenidoTabla() {
+    const tbody = document.querySelector('#consultas-table-container .filterable-table tbody');
+    if (!tbody) {
+        console.error('No se encontró el tbody de la tabla');
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    
+    if (filteredConsultas.length > 0) {
+        filteredConsultas.forEach(consulta => {
+            const row = document.createElement('tr');
+            
+            sheetsConfig.consultas.headers.forEach(header => {
+                const key = header.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+                const cell = document.createElement('td');
+                
+                if (header === 'FECHA Y HORA') {
+                    try {
+                        const fecha = new Date(consulta[key]);
+                        cell.textContent = fecha.toLocaleString('es-MX');
+                    } catch (e) {
+                        cell.textContent = consulta[key] || '';
+                    }
+                } else if (header === 'Tº') {
+                    cell.textContent = consulta[key] ? `${consulta[key]}°C` : '';
+                } else if (header === 'OXIMETRO') {
+                    cell.textContent = consulta[key] ? `${consulta[key]}%` : '';
+                } else {
+                    cell.textContent = consulta[key] || '';
+                }
+                
+                row.appendChild(cell);
+            });
+            
+            tbody.appendChild(row);
+        });
+    } else {
+        const emptyRow = document.createElement('tr');
+        const emptyCell = document.createElement('td');
+        emptyCell.colSpan = sheetsConfig.consultas.headers.length;
+        emptyCell.textContent = consultas.length === 0 
+            ? 'No hay consultas registradas' 
+            : 'No se encontraron consultas con los filtros aplicados';
+        emptyCell.style.textAlign = 'center';
+        emptyCell.style.padding = '40px';
+        emptyCell.style.color = '#94a3b8';
+        emptyRow.appendChild(emptyCell);
+        tbody.appendChild(emptyRow);
+    }
+}
+
 function actualizarTablaConsultas() {
     const tableContainer = document.getElementById('consultas-table-container');
-    if (!tableContainer) return;
+    if (!tableContainer) {
+        console.error('No se encontró el contenedor de la tabla');
+        return;
+    }
     
-    // Crear contenedor de filtros
+    tableContainer.innerHTML = '';
+    
     const filterContainer = document.createElement('div');
     filterContainer.className = 'table-filter-container';
     
-    // Botón para resetear filtros
+    const exportButton = document.createElement('button');
+    exportButton.className = 'export-excel-btn';
+    exportButton.innerHTML = '📊 Exportar a Excel';
+    exportButton.onclick = exportToExcel;
+    
     const resetButton = document.createElement('button');
     resetButton.className = 'filter-reset-btn';
     resetButton.textContent = 'Resetear Filtros';
     resetButton.onclick = () => {
-        document.querySelectorAll('.table-filter').forEach(filter => {
-            filter.value = '';
+        const filterInputs = document.querySelectorAll('.table-filter');
+        filterInputs.forEach(input => {
+            if (input) input.value = '';
         });
-        filterTable();
+        filteredConsultas = [...consultas];
+        actualizarContenidoTabla();
     };
     
-    // Crear tabla
     const table = document.createElement('table');
     table.className = 'filterable-table';
     const thead = document.createElement('thead');
     const tbody = document.createElement('tbody');
     const headerRow = document.createElement('tr');
     
-    // Limpiar contenedor
-    tableContainer.innerHTML = '';
-    
-    // Crear encabezados y filtros
     sheetsConfig.consultas.headers.forEach((header, index) => {
         const th = document.createElement('th');
         th.className = 'filter-header';
         th.textContent = header;
         
-        // Crear input de filtro
         const filterInput = document.createElement('input');
         filterInput.type = 'text';
         filterInput.className = 'table-filter';
-        filterInput.placeholder = `🔻​${header}`;
+        filterInput.placeholder = `🔍 ${header}`;
         filterInput.dataset.columnIndex = index;
-        filterInput.addEventListener('input', filterTable);
         
-        // Contenedor para el filtro
+        filterInput.addEventListener('input', function(e) {
+            e.stopPropagation();
+            filterTable();
+        });
+        
+        filterInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                filterTable();
+            }
+        });
+        
         const filterDiv = document.createElement('div');
         filterDiv.style.position = 'absolute';
-        filterDiv.style.top = '5px';
+        filterDiv.style.top = '10px';
         filterDiv.style.left = '0';
-        filterDiv.style.width = '100%';
-        filterDiv.style.padding = '0 15px';
-        filterDiv.style.boxSizing = 'border-box';
-        
+        filterDiv.style.width = 'calc(100% - 24px)';
+        filterDiv.style.margin = '0 12px';
         filterDiv.appendChild(filterInput);
+        
         th.appendChild(filterDiv);
         headerRow.appendChild(th);
     });
@@ -526,54 +612,118 @@ function actualizarTablaConsultas() {
     table.appendChild(thead);
     table.appendChild(tbody);
     
-    // Función para filtrar la tabla
-    function filterTable() {
-        const filters = Array.from(document.querySelectorAll('.table-filter')).map(input => input.value.toLowerCase());
-        
-        tbody.innerHTML = '';
-        
-        consultas.forEach(consulta => {
-            const rowData = sheetsConfig.consultas.headers.map(header => {
+    if (filteredConsultas.length > 0) {
+        filteredConsultas.forEach(consulta => {
+            const row = document.createElement('tr');
+            
+            sheetsConfig.consultas.headers.forEach(header => {
                 const key = header.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-                return String(consulta[key] || '').toLowerCase();
-            });
-            
-            const shouldShow = filters.every((filter, index) => {
-                return rowData[index].includes(filter);
-            });
-            
-            if (shouldShow) {
-                const row = document.createElement('tr');
+                const cell = document.createElement('td');
                 
-                sheetsConfig.consultas.headers.forEach(header => {
-                    const key = header.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-                    const cell = document.createElement('td');
-                    
-                    if (header === 'FECHA Y HORA') {
-                        cell.textContent = new Date(consulta[key]).toLocaleString();
-                    } else if (header === 'Tº') {
-                        cell.textContent = consulta[key] ? `${consulta[key]}°C` : '';
-                    } else if (header === 'OXIMETRO') {
-                        cell.textContent = consulta[key] ? `${consulta[key]}%` : '';
-                    } else {
+                if (header === 'FECHA Y HORA') {
+                    try {
+                        const fecha = new Date(consulta[key]);
+                        cell.textContent = fecha.toLocaleString('es-MX');
+                    } catch (e) {
                         cell.textContent = consulta[key] || '';
                     }
-                    
-                    row.appendChild(cell);
-                });
+                } else if (header === 'Tº') {
+                    cell.textContent = consulta[key] ? `${consulta[key]}°C` : '';
+                } else if (header === 'OXIMETRO') {
+                    cell.textContent = consulta[key] ? `${consulta[key]}%` : '';
+                } else {
+                    cell.textContent = consulta[key] || '';
+                }
                 
-                tbody.appendChild(row);
-            }
+                row.appendChild(cell);
+            });
+            
+            tbody.appendChild(row);
         });
+    } else {
+        const emptyRow = document.createElement('tr');
+        const emptyCell = document.createElement('td');
+        emptyCell.colSpan = sheetsConfig.consultas.headers.length;
+        emptyCell.textContent = consultas.length === 0 
+            ? 'No hay consultas registradas' 
+            : 'No se encontraron consultas con los filtros aplicados';
+        emptyCell.style.textAlign = 'center';
+        emptyCell.style.padding = '40px';
+        emptyCell.style.color = '#94a3b8';
+        emptyRow.appendChild(emptyCell);
+        tbody.appendChild(emptyRow);
     }
     
-    // Agregar elementos al DOM
+    filterContainer.appendChild(exportButton);
     filterContainer.appendChild(resetButton);
     tableContainer.appendChild(filterContainer);
     tableContainer.appendChild(table);
+}
+
+function inicializarFiltros() {
+    const tableContainer = document.getElementById('consultas-table-container');
+    if (tableContainer) {
+        const oldFilters = tableContainer.querySelectorAll('.table-filter');
+        oldFilters.forEach(filter => {
+            const newFilter = filter.cloneNode(true);
+            filter.parentNode.replaceChild(newFilter, filter);
+        });
+    }
     
-    // Renderizar datos iniciales
-    filterTable();
+    actualizarTablaConsultas();
+}
+
+function exportToExcel() {
+    if (filteredConsultas.length === 0) {
+        alert('No hay datos para exportar');
+        return;
+    }
+    
+    try {
+        if (typeof XLSX === 'undefined') {
+            alert('Error: La librería XLSX no está cargada');
+            return;
+        }
+        
+        const headers = sheetsConfig.consultas.headers;
+        
+        const worksheetData = [
+            headers,
+            ...filteredConsultas.map(consulta => {
+                return headers.map(header => {
+                    const key = header.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+                    const value = consulta[key] || '';
+                    
+                    if (header === 'FECHA Y HORA') {
+                        try {
+                            return new Date(value).toLocaleString('es-MX');
+                        } catch (e) {
+                            return value;
+                        }
+                    } else if (header === 'Tº') {
+                        return value ? `${value}°C` : '';
+                    } else if (header === 'OXIMETRO') {
+                        return value ? `${value}%` : '';
+                    }
+                    
+                    return value;
+                });
+            })
+        ];
+        
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(worksheetData);
+        
+        XLSX.utils.book_append_sheet(wb, ws, "Consultas");
+        
+        const today = new Date();
+        const fileName = `consultas_${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}.xlsx`;
+        
+        XLSX.writeFile(wb, fileName);
+    } catch (error) {
+        console.error('Error al exportar a Excel:', error);
+        alert('Error al exportar a Excel.');
+    }
 }
 
 function renderizarInventario() {
@@ -598,20 +748,36 @@ function renderizarInventario() {
         addMedicamentoSelect.innerHTML = '<option value="">Seleccionar medicamento</option>';
     }
 
+    if (medicamentosData.length === 0) {
+        grid.innerHTML = `
+            <div class="no-data-message">
+                <p>No hay medicamentos en el inventario</p>
+            </div>
+        `;
+        return;
+    }
+
     medicamentosData.forEach(med => {
         const card = document.createElement('div');
         card.className = `inventory-card ${med.unidades <= 10 ? 'low-stock-card' : ''}`;
        
-        const fechaCaducidad = new Date(med.fecha_de_caducidad);
-        const hoy = new Date();
-        hoy.setHours(0, 0, 0, 0);
-        const isVencido = fechaCaducidad <= hoy;
+        let isVencido = false;
+        if (med.fecha_de_caducidad) {
+            try {
+                const fechaCaducidad = new Date(med.fecha_de_caducidad);
+                const hoy = new Date();
+                hoy.setHours(0, 0, 0, 0);
+                isVencido = fechaCaducidad <= hoy;
+            } catch (e) {
+                console.error('Error al parsear fecha:', med.fecha_de_caducidad);
+            }
+        }
 
         card.innerHTML = `
             <div class="medication-image">
-                <img src="${med.imagen}" alt="${med.nombre}" onerror="this.src='https://via.placeholder.com/150'">
+                <img src="${med.imagen || 'https://via.placeholder.com/150'}" alt="${med.nombre}" onerror="this.src='https://via.placeholder.com/150'">
             </div>
-            <h3>${med.nombre} ${med.mg}</h3>
+            <h3 class="medication-name">${med.nombre} ${med.mg}</h3>
             <div class="medication-details">
                 <div class="detail-row">
                     <span>Cantidad por caja:</span>
@@ -627,7 +793,9 @@ function renderizarInventario() {
                 </div>
                 <div class="detail-row">
                     <span>Fecha de caducidad:</span>
-                    <span class="detail-value ${isVencido ? 'expired' : ''}">${fechaCaducidad.toLocaleDateString()}</span>
+                    <span class="detail-value ${isVencido ? 'expired' : ''}">
+                        ${med.fecha_de_caducidad ? new Date(med.fecha_de_caducidad).toLocaleDateString() : 'N/A'}
+                    </span>
                 </div>
             </div>
             <div class="medication-actions">
@@ -663,16 +831,13 @@ function renderizarInventario() {
         }
     });
 
-    // Volver a configurar los criterios después de renderizar
     configurarCriteriosMedicamentos();
-
     verificarMedicamentosVencidos();
 }
 
 async function cargarEstadoConsultorio() {
     try {
         const estadoData = await fetchData(sheetsConfig.estado, {
-            action: 'get',
             range: 'B1'
         });
         
@@ -681,6 +846,7 @@ async function cargarEstadoConsultorio() {
         }
     } catch (error) {
         console.error("Error al cargar estado del consultorio:", error);
+        estadoConsultorio = "ACTIVO";
     }
 }
 
@@ -711,8 +877,12 @@ async function toggleConsultorio() {
     estadoConsultorio = estadoConsultorio === "ACTIVO" ? "CERRADO" : "ACTIVO";
 
     try {
-        await guardarEnSheets(sheetsConfig.estado, { estado: estadoConsultorio });
+        await guardarEnSheets(sheetsConfig.estado, { 
+            accion: 'update',
+            estado: estadoConsultorio 
+        });
         actualizarEstadoConsultorioUI();
+        alert(`Estado del consultorio actualizado a: ${estadoConsultorio}`);
     } catch (error) {
         console.error("Error al actualizar estado:", error);
         alert("Error al actualizar el estado del consultorio");
@@ -721,7 +891,6 @@ async function toggleConsultorio() {
 
 async function descontarMedicamento(nombreMedicamento, dosis) {
     try {
-        // Buscar medicamento de forma flexible
         const medicamento = buscarMedicamentoFlexible(nombreMedicamento);
         
         if (!medicamento) {
@@ -754,7 +923,7 @@ async function descontarMedicamento(nombreMedicamento, dosis) {
         return true;
     } catch (error) {
         console.error("Error al descontar medicamento:", error);
-        alert("Error al actualizar el inventario. Por favor intente nuevamente.");
+        alert("Error al actualizar el inventario.");
         return false;
     }
 }
@@ -766,27 +935,38 @@ function verificarMedicamentosVencidos() {
     hoy.setHours(0, 0, 0, 0);
     
     const vencidos = medicamentosData.filter(med => {
-        const fechaCaducidad = new Date(med.fecha_de_caducidad);
-        return fechaCaducidad <= hoy;
+        if (!med.fecha_de_caducidad) return false;
+        try {
+            const fechaCaducidad = new Date(med.fecha_de_caducidad);
+            return fechaCaducidad <= hoy;
+        } catch (e) {
+            console.error("Error al parsear fecha:", med.fecha_de_caducidad);
+            return false;
+        }
     });
 
     if (vencidos.length > 0) {
-        const medicamentosList = vencidos.map(med => `${med.nombre} (${new Date(med.fecha_de_caducidad).toLocaleDateString()})`).join('\n');
-        alert(`⚠️ Medicamentos vencidos:\n\n${medicamentosList}\n\nPor favor retírelos del inventario.`);
+        const medicamentosList = vencidos.map(med => {
+            try {
+                const fecha = new Date(med.fecha_de_caducidad);
+                return `${med.nombre} (${fecha.toLocaleDateString()})`;
+            } catch (e) {
+                return `${med.nombre} (Fecha inválida)`;
+            }
+        }).join('\n');
+        
+        alert(`Medicamentos vencidos:\n\n${medicamentosList}\n\nPor favor retírelos del inventario.`);
         vencimientoAlertShown = true;
     }
 }
 
-// --- funciones principales del modal de consultas ---
 function openConsultaModal() {
     if (!verificarCredenciales()) return;
 
     document.getElementById('consulta-modal').classList.add('show');
     
-    // SOLO MODIFICACIÓN: Usar la función helper para obtener la hora local correcta
     document.getElementById('fecha-hora').value = getLocalDatetimeForInput();
     
-    // Crear div para mostrar información del criterio si no existe
     if (!document.getElementById('criterio-info')) {
         const infoDiv = document.createElement('div');
         infoDiv.id = 'criterio-info';
@@ -798,7 +978,6 @@ function openConsultaModal() {
         }
     }
     
-    // Resetear criterio seleccionado
     criterioSeleccionado = null;
 }
 
@@ -806,65 +985,65 @@ function closeConsultaModal() {
     document.getElementById('consulta-modal').classList.remove('show');
     document.getElementById('consulta-form').reset();
     
-    // Ocultar información del criterio
     const infoDiv = document.getElementById('criterio-info');
     if (infoDiv) {
         infoDiv.style.display = 'none';
     }
     
-    // Resetear criterio seleccionado
     criterioSeleccionado = null;
 }
 
-// Registramos el listener cuando el DOM esté listo para evitar problemas en Vercel/SSR
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('consulta-form')?.addEventListener('submit', async function(e) {
-        e.preventDefault();
-       
-        const formData = {
-            fecha_y_hora: document.getElementById('fecha-hora').value,
-            nombre: document.getElementById('nombre').value,
-            area: document.getElementById('area').value,
-            operacion: document.getElementById('operacion').value,
-            tipo_de_consulta_interna_externa: document.getElementById('tipo-consulta').value,
-            sintomas: document.getElementById('sintomas').value,
-            diagnostico: document.getElementById('diagnostico').value,
-            medicamento: document.getElementById('medicamento').value,
-            dosis: parseInt(document.getElementById('dosis').value) || 0,
-            t_: parseFloat(document.getElementById('temperatura').value) || 0,
-            presion_arterial_alta: parseInt(document.getElementById('presion-alta').value) || 0,
-            presion_arterial_baja: parseInt(document.getElementById('presion-baja').value) || 0,
-            oximetro: parseInt(document.getElementById('oximetro').value) || 0,
-            observaciones: document.getElementById('observaciones').value
-        };
+    const consultaForm = document.getElementById('consulta-form');
+    if (consultaForm) {
+        consultaForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+           
+            const formData = {
+                fecha_y_hora: document.getElementById('fecha-hora').value,
+                nombre: document.getElementById('nombre').value,
+                area: document.getElementById('area').value,
+                operacion: document.getElementById('operacion').value,
+                tipo_de_consulta: document.getElementById('tipo-consulta').value,
+                sintomas: document.getElementById('sintomas').value,
+                diagnostico: document.getElementById('diagnostico').value,
+                medicamento: document.getElementById('medicamento').value,
+                dosis: parseInt(document.getElementById('dosis').value) || 0,
+                t_: parseFloat(document.getElementById('temperatura').value) || 0,
+                presion_arterial_alta: parseInt(document.getElementById('presion-alta').value) || 0,
+                presion_arterial_baja: parseInt(document.getElementById('presion-baja').value) || 0,
+                oximetro: parseInt(document.getElementById('oximetro').value) || 0,
+                observaciones: document.getElementById('observaciones').value
+            };
 
-        if (!formData.nombre || !formData.tipo_de_consulta_interna_externa || !formData.sintomas || !formData.diagnostico) {
-            alert('Por favor complete todos los campos requeridos');
-            return;
-        }
-
-        try {
-            // Aplicar criterio si está seleccionado (solo al guardar)
-            if (criterioSeleccionado) {
-                await aplicarCriterioMedicamentos(criterioSeleccionado);
-            }
-            
-            // Solo descontar medicamento específico si no es un criterio especial
-            if (formData.medicamento && !formData.medicamento.startsWith('criterio_') && formData.dosis > 0) {
-                const success = await descontarMedicamento(formData.medicamento, formData.dosis);
-                if (!success) return;
+            if (!formData.nombre || !formData.tipo_de_consulta || !formData.sintomas || !formData.diagnostico) {
+                alert('Por favor complete todos los campos requeridos');
+                return;
             }
 
-            await guardarEnSheets(sheetsConfig.consultas, formData);
-            consultas.push(formData);
-            actualizarTablaConsultas();
-            closeConsultaModal();
-            alert('Consulta registrada exitosamente');
-        } catch (error) {
-            console.error("Error al guardar consulta:", error);
-            alert('Error al guardar la consulta. Por favor intente nuevamente.');
-        }
-    });
+            try {
+                if (criterioSeleccionado) {
+                    await aplicarCriterioMedicamentos(criterioSeleccionado);
+                }
+                
+                if (formData.medicamento && !formData.medicamento.startsWith('criterio_') && formData.dosis > 0) {
+                    const success = await descontarMedicamento(formData.medicamento, formData.dosis);
+                    if (!success) return;
+                }
+
+                await guardarEnSheets(sheetsConfig.consultas, formData);
+                
+                consultas.push(formData);
+                filteredConsultas = [...consultas];
+                actualizarTablaConsultas();
+                closeConsultaModal();
+                alert('Consulta registrada exitosamente');
+            } catch (error) {
+                console.error("Error al guardar consulta:", error);
+                alert('Error al guardar la consulta: ' + error.message);
+            }
+        });
+    }
 });
 
 function openRequestModal(nombreMedicamento) {
@@ -924,6 +1103,7 @@ function mostrarModalRetirarMedicamento(nombreMedicamento = null) {
     hoy.setHours(0, 0, 0, 0);
     
     const medicamentosVencidos = medicamentosData.filter(med => {
+        if (!med.fecha_de_caducidad) return false;
         try {
             const fechaCaducidad = new Date(med.fecha_de_caducidad);
             return fechaCaducidad <= hoy;
@@ -939,12 +1119,20 @@ function mostrarModalRetirarMedicamento(nombreMedicamento = null) {
     }
     
     const optionsHTML = medicamentosVencidos.map(med => {
-        const fechaCaducidad = new Date(med.fecha_de_caducidad);
-        return `
-            <option value="${med.nombre}" ${nombreMedicamento && med.nombre === nombreMedicamento ? 'selected' : ''}>
-                ${med.nombre} ${med.mg} - Vence: ${fechaCaducidad.toLocaleDateString()} - Unidades: ${med.unidades}
-            </option>
-        `;
+        try {
+            const fechaCaducidad = new Date(med.fecha_de_caducidad);
+            return `
+                <option value="${med.nombre}" ${nombreMedicamento && med.nombre === nombreMedicamento ? 'selected' : ''}>
+                    ${med.nombre} ${med.mg} - Vence: ${fechaCaducidad.toLocaleDateString()} - Unidades: ${med.unidades}
+                </option>
+            `;
+        } catch (e) {
+            return `
+                <option value="${med.nombre}">
+                    ${med.nombre} ${med.mg} - Fecha inválida - Unidades: ${med.unidades}
+                </option>
+            `;
+        }
     }).join('');
     
     document.getElementById('remove-med-content').innerHTML = `
@@ -977,7 +1165,9 @@ function mostrarModalRetirarMedicamento(nombreMedicamento = null) {
     document.getElementById('select-med-vencido').addEventListener('change', function() {
         const nombreMed = this.value;
         selectedMedForRemoval = medicamentosData.find(med => med.nombre === nombreMed);
-        document.getElementById('remove-cantidad').max = selectedMedForRemoval.unidades;
+        if (selectedMedForRemoval) {
+            document.getElementById('remove-cantidad').max = selectedMedForRemoval.unidades;
+        }
     });
     
     document.getElementById('remove-med-modal').classList.add('show');
@@ -1049,12 +1239,8 @@ async function confirmRemoveMed() {
         return true;
         
     } catch (error) {
-        console.error("Error al retirar medicamento:", {
-            error: error.message,
-            medicamento: selectedMedForRemoval,
-            stack: error.stack
-        });
-        alert("Error al retirar el medicamento. Por favor intente nuevamente.");
+        console.error("Error al retirar medicamento:", error);
+        alert("Error al retirar el medicamento.");
         return false;
     }
 }
@@ -1109,45 +1295,23 @@ document.getElementById('add-stock-form')?.addEventListener('submit', async func
             fecha_caducidad: fechaCaducidad
         };
         
-        const result = await guardarEnSheets(sheetsConfig.inventario, updateData);
+        await guardarEnSheets(sheetsConfig.inventario, updateData);
         
-        if (result.success) {
-            medicamento.stock += cantidadCajas;
-            medicamento.unidades += unidadesAAgregar;
-            medicamento.fecha_de_caducidad = fechaCaducidad;
-            
-            renderizarInventario();
-            closeAddStockModal();
-            alert(`Se agregaron ${cantidadCajas} cajas (${unidadesAAgregar} unidades) de ${medicamento.nombre}\nNuevo stock: ${medicamento.stock} cajas (${medicamento.unidades} unidades)`);
-        } else {
-            throw new Error(result.error || 'Error al guardar');
-        }
+        medicamento.stock += cantidadCajas;
+        medicamento.unidades += unidadesAAgregar;
+        medicamento.fecha_de_caducidad = fechaCaducidad;
+        
+        renderizarInventario();
+        closeAddStockModal();
+        alert(`Se agregaron ${cantidadCajas} cajas (${unidadesAAgregar} unidades) de ${medicamento.nombre}\nNuevo stock: ${medicamento.stock} cajas (${medicamento.unidades} unidades)`);
     } catch (error) {
         console.error("Error al agregar stock:", error);
-        alert("Error al agregar stock. Por favor intente nuevamente.");
+        alert("Error al agregar stock.");
     }
 });
 
 function enviarSolicitudCompra(medicamento) {
-    const asunto = `Solicitud de compra urgente: ${medicamento.nombre}`;
-    const mensaje = `
-        Se requiere compra urgente del siguiente medicamento:
-        
-        Medicamento: ${medicamento.nombre} ${medicamento.mg}
-        Stock actual: ${medicamento.stock} cajas (${medicamento.unidades} unidades)
-        
-        El stock ha bajado del nivel mínimo recomendado.
-        
-        Fecha: ${new Date().toLocaleString()}
-    `;
-    
-    const url = new URL(sheetsConfig.inventario.scriptUrl);
-    url.searchParams.append('action', 'sendEmail');
-    url.searchParams.append('to', 'ricardoruizcastillo1@gmail.com');
-    url.searchParams.append('subject', asunto);
-    url.searchParams.append('body', mensaje);
-    
-    fetch(url.toString()).catch(error => console.error("Error al enviar solicitud:", error));
+    console.log(`Solicitud de compra para: ${medicamento.nombre}`);
 }
 
 function openPermisoModal() {
@@ -1156,6 +1320,11 @@ function openPermisoModal() {
     document.getElementById('permiso-modal').classList.add('show');
     document.getElementById('permiso-fecha').valueAsDate = new Date();
     document.getElementById('permiso-hora').value = new Date().toTimeString().substring(0, 5);
+    
+    // Limpiar campos al abrir
+    document.getElementById('permiso-nombre').value = '';
+    document.getElementById('permiso-numero').value = '';
+    document.getElementById('permiso-area').value = '';
 }
 
 function closePermisoModal() {
@@ -1179,62 +1348,70 @@ document.getElementById('permiso-form')?.addEventListener('submit', async functi
     }
 
     try {
-        await guardarEnSheets(sheetsConfig.permisos, {
-            accion: 'ACTUALIZAR_PERMISO',
+        // Preparar datos para guardar
+        const permisoData = {
             nombre: nombre,
             numero: numero,
             area: area,
             fecha: fecha,
             hora: hora,
             comentarios: comentarios
+        };
+
+        console.log('Guardando permiso:', permisoData);
+        
+        await guardarEnSheets(sheetsConfig.permisos, {
+            accion: 'update',
+            ...permisoData
         });
 
         alert('Pase médico generado correctamente');
         
         closePermisoModal();
         
-        document.getElementById('print-nombre').textContent = nombre;
-        document.getElementById('print-numero').textContent = numero || 'N/A';
-        document.getElementById('print-area').textContent = area;
-        document.getElementById('print-fecha-hora').textContent = `${new Date(fecha).toLocaleDateString()} ${hora}`;
-        document.getElementById('print-comentarios').textContent = comentarios || 'Ninguno';
-        document.getElementById('print-permiso').textContent = `PERMISO DE SALIDA ${hora}`;
-
-        document.getElementById('print-section').style.display = 'block';
-    } catch (error) {
-        console.error("Error al guardar permiso:", error);
-        alert('Error al generar el permiso. Por favor intente nuevamente.');
-    }
-});
-
-function imprimirPermiso() {
-    try {
-        // Configuración de la hoja específica
         const spreadsheetId = "1YLksBSie8ciDB9VKg0qadsZ2IsDXnUVq0UV321Hrl6Q";
-        const sheetName = "PASE MEDICO";
         const gid = "724084909";
         
-        // URL directa al PDF de impresión
         const pdfUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=pdf&gid=${gid}&portrait=true&fitw=true`;
         
-        // Abrir el PDF en una nueva ventana para imprimir
         const printWindow = window.open(pdfUrl, '_blank');
         
-        // Si el navegador bloquea la ventana emergente
         if (!printWindow || printWindow.closed || typeof printWindow.closed === 'undefined') {
-            // Alternativa: abrir en la misma ventana
             window.location.href = pdfUrl;
-            
-            // Mostrar mensaje al usuario
-            alert("Por favor habilite las ventanas emergentes para este sitio. O imprima el documento que se ha abierto.");
         } else {
-            // Pequeño retraso para asegurar que el PDF se cargue
             setTimeout(() => {
                 try {
                     printWindow.print();
                 } catch (printError) {
                     console.error("Error al imprimir:", printError);
-                    // Alternativa si falla el print()
+                    printWindow.close();
+                    window.location.href = pdfUrl;
+                }
+            }, 2000);
+        }
+    } catch (error) {
+        console.error("Error al guardar permiso:", error);
+        alert('Error al generar el permiso: ' + error.message);
+    }
+});
+
+function imprimirPermiso() {
+    try {
+        const spreadsheetId = "1YLksBSie8ciDB9VKg0qadsZ2IsDXnUVq0UV321Hrl6Q";
+        const gid = "724084909";
+        
+        const pdfUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=pdf&gid=${gid}&portrait=true&fitw=true`;
+        
+        const printWindow = window.open(pdfUrl, '_blank');
+        
+        if (!printWindow || printWindow.closed || typeof printWindow.closed === 'undefined') {
+            window.location.href = pdfUrl;
+        } else {
+            setTimeout(() => {
+                try {
+                    printWindow.print();
+                } catch (printError) {
+                    console.error("Error al imprimir:", printError);
                     printWindow.close();
                     window.location.href = pdfUrl;
                 }
@@ -1242,7 +1419,7 @@ function imprimirPermiso() {
         }
     } catch (error) {
         console.error("Error en imprimirPermiso:", error);
-        alert("Error al preparar el pase médico para impresión. Por favor intente nuevamente.");
+        alert("Error al preparar el pase médico para impresión.");
     }
 }
 
@@ -1251,7 +1428,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     cargarDatosDesdeSheets();
     
-    document.getElementById('consultorio-toggle')?.addEventListener('click', toggleConsultorio);
+    const toggleBtn = document.getElementById('consultorio-toggle');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', toggleConsultorio);
+    }
     
     setInterval(verificarMedicamentosVencidos, 3600000);
 });
@@ -1271,3 +1451,5 @@ window.closeAddStockModal = closeAddStockModal;
 window.openPermisoModal = openPermisoModal;
 window.closePermisoModal = closePermisoModal;
 window.imprimirPermiso = imprimirPermiso;
+window.exportToExcel = exportToExcel;
+window.filterTable = filterTable;
