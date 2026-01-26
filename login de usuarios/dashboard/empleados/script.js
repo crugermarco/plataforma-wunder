@@ -469,15 +469,14 @@ function isNonWorkingDay(date) {
     const dateStr = formatDate(dateObj);
     
     const specificNonWorkingDays = [
-      '03/02/2025',
-      '17/03/2025',
-      '18/04/2025',
-      '01/05/2025',
-      '15/09/2025',
-      '17/11/2025',
-      '24/12/2025',
-      '25/12/2025',
-      '01/01/2026'
+      '02/02/2026',
+      '16/03/2026',
+      '03/04/2026',
+      '01/05/2026',
+      '16/09/2026',
+      '16/11/2026',
+      '25/12/2026',
+      '01/01/2027'
     ];
     
     if (specificNonWorkingDays.includes(dateStr)) {
@@ -4654,5 +4653,6 @@ window.handleVacationScheduleSubmitWithPDF = handleVacationScheduleSubmitWithPDF
 document.addEventListener('DOMContentLoaded', function() {
   initializeApp();
 });
+
 
 
