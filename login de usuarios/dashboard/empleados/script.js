@@ -470,12 +470,12 @@ function isNonWorkingDay(date) {
     
     const specificNonWorkingDays = [
       '02/02/2026',
-      '16/03/2026',
-      '03/04/2026',
-      '01/05/2026',
-      '16/09/2026',
-      '16/11/2026',
-      '25/12/2026',
+      '03/16/2026',
+      '04/03/2026',
+      '05/01/2026',
+      '09/16/2026',
+      '11/16/2026',
+      '12/25/2026',
       '01/01/2027'
     ];
     
@@ -1128,15 +1128,15 @@ function calculateVacationDates() {
   
   let returnDate = new Date(startDate);
   let workDaysCounted = 0;
-  let daysAdded = 0;
+  let totalDaysElapsed = 0;
   let nonWorkingDaysCount = 0;
   
   while (workDaysCounted < workDaysNeeded) {
     returnDate.setDate(returnDate.getDate() + 1);
-    daysAdded++;
+    totalDaysElapsed++;
     
-    const isNonWorking = isNonWorkingDay(returnDate);
-    const dayName = getDayName(returnDate.getDay());
+    const dateStr = formatDateForInput(returnDate.toISOString().split('T')[0]);
+    const isNonWorking = isNonWorkingDay(dateStr);
     
     if (!isNonWorking) {
       workDaysCounted++;
@@ -1144,9 +1144,13 @@ function calculateVacationDates() {
       nonWorkingDaysCount++;
     }
     
-    if (daysAdded > 365) {
+    if (totalDaysElapsed > 365) {
       break;
     }
+  }
+  
+  while (isNonWorkingDay(formatDateForInput(returnDate.toISOString().split('T')[0]))) {
+    returnDate.setDate(returnDate.getDate() + 1);
   }
   
   const returnYear = returnDate.getFullYear();
@@ -4653,6 +4657,7 @@ window.handleVacationScheduleSubmitWithPDF = handleVacationScheduleSubmitWithPDF
 document.addEventListener('DOMContentLoaded', function() {
   initializeApp();
 });
+
 
 
 
