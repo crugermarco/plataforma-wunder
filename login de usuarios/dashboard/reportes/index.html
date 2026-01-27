@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Gráficas y Análisis CRUGER 1.3</title>
+    <title>Dashboard - Gráficas y Análisis CRUGER 2.1</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <link rel="stylesheet" href="styles.css">
@@ -11,7 +11,10 @@
 <body>
     <div class="background-animation">
         <div class="pulse-circle" style="width: 300px; height: 300px; top: 10%; left: 80%;"></div>
+        <div class="pulse-circle" style="width: 300px; height: 300px; top: 10%; left: 80%;"></div>
         <div class="pulse-circle" style="width: 200px; height: 200px; top: 60%; left: 5%; animation-delay: 2s;"></div>
+        <div class="pulse-circle" style="width: 200px; height: 200px; top: 60%; left: 5%; animation-delay: 2s;"></div>
+        <div class="pulse-circle" style="width: 150px; height: 150px; top: 30%; left: 70%; animation-delay: 4s;"></div>
         <div class="pulse-circle" style="width: 150px; height: 150px; top: 30%; left: 70%; animation-delay: 4s;"></div>
     </div>
 
@@ -19,7 +22,7 @@
         <div class="sidebar">
             <div class="sidebar-header">
                 <div class="sidebar-title">GRÁFICAS Y ANÁLISIS</div>
-                <div class="sidebar-subtitle">Sistema de Monitoreo CRUGER 1.3</div>
+                <div class="sidebar-subtitle">Sistema de Monitoreo CRUGER 2.1</div>
             </div>
 
             <div class="nav-section">
@@ -37,27 +40,23 @@
                         <div class="nav-icon" style="background: #10b981;"></div>
                         GRÁFICA DE ASISTENCIAS
                     </div>
-                    <div class="nav-item" data-section="uso-bano">
-                        <div class="nav-icon" style="background: #eab308;"></div>
-                        USO DE BAÑO
-                    </div>
                 </div>
             </div>
 
             <div class="nav-section">
                 <div class="nav-section-title">ANÁLISIS DETALLADO</div>
                 <div class="nav-menu">
-                    <div class="nav-item" data-section="area-rotaciones">
+                    <div class="nav-item" data-section="analisis-rotaciones">
                         <div class="nav-icon" style="background: #8b5cf6;"></div>
-                        ANÁLISIS DE ÁREA CON MÁS ROTACIONES
+                        ANÁLISIS DE ROTACIONES
                     </div>
-                    <div class="nav-item" data-section="tiempo-muerto">
+                    <div class="nav-item" data-section="analisis-mantenimientos">
                         <div class="nav-icon" style="background: #ef4444;"></div>
-                        ANÁLISIS DE TIEMPO MUERTO
+                        ANÁLISIS DE MANTENIMIENTOS
                     </div>
-                    <div class="nav-item" data-section="frecuencia-faltas">
+                    <div class="nav-item" data-section="analisis-asistencias">
                         <div class="nav-icon" style="background: #475569;"></div>
-                        ANÁLISIS DE FRECUENCIA DE FALTAS
+                        ANÁLISIS DE ASISTENCIAS
                     </div>
                 </div>
             </div>
@@ -67,115 +66,237 @@
             <div class="content-header">
                 <div class="page-title">Panel de Control Analítico</div>
                 <div class="page-subtitle">Visualización de datos y análisis estadístico</div>
-                <div class="loading-spinner" id="loadingSpinner"></div>
+                <div class="loading-spinner" id="loadingSpinner" style="display: none;"></div>
             </div>
 
             <div class="section-content active" id="rotaciones">
-                <div class="stats-grid" id="rotacionesStats">
-                    <!-- Stats will be populated by JavaScript -->
-                </div>
-                <div class="chart-container">
-                    <div class="chart-title">Distribución de Rotaciones por Mes</div>
-                    <div class="chart-wrapper">
-                        <canvas id="rotacionesChart"></canvas>
+                <div class="charts-container">
+                    <div class="chart-section">
+                        <div class="chart-title">ROTACIONES 2025 - REGISTROS POR MES</div>
+                        <div class="chart-wrapper">
+                            <canvas id="rotaciones2025Chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-section">
+                        <div class="chart-title">ROTACIONES 2026 - REGISTROS POR MES (MÁS VIGENTE)</div>
+                        <div class="chart-wrapper">
+                            <canvas id="rotaciones2026Chart"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <div class="section-content" id="mantenimientos">
-                <div class="stats-grid" id="mantenimientosStats">
-                    <!-- Stats will be populated by JavaScript -->
-                </div>
-                <div class="chart-container">
-                    <div class="chart-title">Mantenimientos por Mes</div>
-                    <div class="chart-wrapper">
-                        <canvas id="mantenimientosChart"></canvas>
+                <div class="charts-container">
+                    <div class="chart-section">
+                        <div class="chart-title">MANTENIMIENTOS 2025 - REGISTROS POR MES</div>
+                        <div class="chart-wrapper">
+                            <canvas id="mantenimientos2025Chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-section">
+                        <div class="chart-title">MANTENIMIENTOS 2026 - REGISTROS POR MES</div>
+                        <div class="chart-wrapper">
+                            <canvas id="mantenimientos2026Chart"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <div class="section-content" id="asistencias">
-                <div class="stats-grid" id="asistenciasStats">
-                    <!-- Stats will be populated by JavaScript -->
-                </div>
-                <div class="chart-container">
-                    <div class="chart-title">Estado de Asistencias Mensual</div>
-                    <div class="chart-wrapper">
-                        <canvas id="asistenciasChart"></canvas>
+                <div class="charts-container">
+                    <div class="chart-section">
+                        <div class="chart-title">ASISTENCIAS 2025 - REGISTROS POR MES</div>
+                        <div class="chart-wrapper">
+                            <canvas id="asistencias2025Chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-section">
+                        <div class="chart-title">ASISTENCIAS 2026 - REGISTROS POR MES</div>
+                        <div class="chart-wrapper">
+                            <canvas id="asistencias2026Chart"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="section-content" id="uso-bano">
-                <div class="stats-grid" id="banioStats">
-                    <!-- Stats will be populated by JavaScript -->
-                </div>
-                <div class="chart-container">
-                    <div class="chart-title">Uso de Sanitarios por Día de la Semana</div>
-                    <div class="chart-wrapper">
-                        <canvas id="usoBanoChart"></canvas>
+            <div class="section-content" id="analisis-rotaciones">
+                <div class="analysis-container">
+                    <div class="analysis-header">
+                        <div class="analysis-title">ANÁLISIS DETALLADO DE ROTACIONES</div>
+                        <div class="area-top" id="area-top-container"></div>
                     </div>
-                </div>
-            </div>
-
-            <div class="section-content" id="tiempo-muerto">
-                <div class="analysis-content">
-                    <div class="analysis-title">Análisis de Tiempo Muerto</div>
-                    <div class="analysis-text" id="tiempo-muerto-text">
-                        <!-- Analysis will be populated by JavaScript -->
-                    </div>
-                </div>
-                <div class="chart-container">
-                    <div class="chart-title">Top 5 Máquinas con Más Frecuencia de Problemas</div>
-                    <div class="chart-wrapper">
-                        <canvas id="tiempoMuertoChart"></canvas>
-                    </div>
-                </div>
-                <div class="analysis-content">
-                    <div class="analysis-title">Problema con Mayor Tiempo de Respuesta</div>
-                    <div class="analysis-text" id="max-time-problem-text">
-                        <!-- Analysis will be populated by JavaScript -->
-                    </div>
-                </div>
-            </div>
-
-            <div class="section-content" id="frecuencia-faltas">
-                <div class="analysis-content">
-                    <div class="analysis-title">Análisis de Frecuencia de Faltas</div>
+                    
                     <div class="tabs">
-                        <button class="tab-button active" data-tab="month-faltas">Faltas del Mes</button>
-                        <button class="tab-button" data-tab="year-faltas">Faltas del Año</button>
+                        <button class="tab-button active" data-tab="top-personal-2025">TOP 5 PERSONAL 2025</button>
+                        <button class="tab-button" data-tab="top-personal-2026">TOP 5 PERSONAL 2026</button>
+                        <button class="tab-button" data-tab="top-areas">TOP 3 ÁREAS</button>
                     </div>
-                </div>
-                <div class="chart-container tab-content active" id="month-faltas">
-                    <div class="chart-title">Top 10 Personas con Más Faltas en el Mes</div>
-                    <div class="top-list" id="month-faltas-list">
-                        <!-- List will be populated by JavaScript -->
+                    
+                    <div class="tab-content active" id="top-personal-2025">
+                        <div class="charts-container">
+                            <div class="chart-section">
+                                <div class="chart-title">TOP 5 PERSONAL CON MÁS ROTACIONES 2025</div>
+                                <div class="chart-wrapper">
+                                    <canvas id="topPersonal2025Chart"></canvas>
+                                </div>
+                            </div>
+                            <div class="chart-section">
+                                <div class="chart-title">LISTADO DETALLADO</div>
+                                <div class="top-list" id="top-personal-2025-list"></div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div class="chart-container tab-content" id="year-faltas">
-                    <div class="chart-title">Top 10 Personas con Más Faltas en el Año</div>
-                    <div class="top-list" id="year-faltas-list">
-                        <!-- List will be populated by JavaScript -->
+                    
+                    <div class="tab-content" id="top-personal-2026">
+                        <div class="charts-container">
+                            <div class="chart-section">
+                                <div class="chart-title">TOP 5 PERSONAL CON MÁS ROTACIONES 2026</div>
+                                <div class="chart-wrapper">
+                                    <canvas id="topPersonal2026Chart"></canvas>
+                                </div>
+                            </div>
+                            <div class="chart-section">
+                                <div class="chart-title">LISTADO DETALLADO</div>
+                                <div class="top-list" id="top-personal-2026-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-content" id="top-areas">
+                        <div class="charts-container">
+                            <div class="chart-section">
+                                <div class="chart-title">DISTRIBUCIÓN DE ROTACIONES POR ÁREA (TOP 3)</div>
+                                <div class="chart-wrapper">
+                                    <canvas id="topAreasChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="chart-section">
+                                <div class="chart-title">LISTADO DETALLADO POR ÁREA</div>
+                                <div class="top-list" id="top-areas-list"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="section-content" id="area-rotaciones">
-                <div class="analysis-content">
-                    <div class="analysis-title">Análisis de Área con Más Rotaciones</div>
-                    <div class="analysis-text">
-                        Top 3 de áreas con mayor rotación de personal en lo que va del año
+            <div class="section-content" id="analisis-mantenimientos">
+                <div class="analysis-container">
+                    <div class="analysis-header">
+                        <div class="analysis-title">ANÁLISIS DETALLADO DE MANTENIMIENTOS</div>
+                    </div>
+                    
+                    <div class="tabs">
+                        <button class="tab-button active" data-tab="top-maquinas-mes">TOP 5 MÁQUINAS MES</button>
+                        <button class="tab-button" data-tab="top-maquinas-anio">TOP 10 MÁQUINAS AÑO</button>
+                        <button class="tab-button" data-tab="top-usuarios">TOP 3 USUARIOS</button>
+                    </div>
+                    
+                    <div class="tab-content active" id="top-maquinas-mes">
+                        <div class="charts-container">
+                            <div class="chart-section">
+                                <div class="chart-title">MÁQUINAS CON MÁS PROBLEMAS ESTE MES</div>
+                                <div class="chart-wrapper">
+                                    <canvas id="topMaquinasMesChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="chart-section">
+                                <div class="chart-title">LISTADO DETALLADO</div>
+                                <div class="top-list" id="top-maquinas-mes-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-content" id="top-maquinas-anio">
+                        <div class="charts-container">
+                            <div class="chart-section">
+                                <div class="chart-title">MÁQUINAS CON MÁS PROBLEMAS ESTE AÑO</div>
+                                <div class="chart-wrapper">
+                                    <canvas id="topMaquinasAnioChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="chart-section">
+                                <div class="chart-title">LISTADO DETALLADO</div>
+                                <div class="top-list" id="top-maquinas-anio-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-content" id="top-usuarios">
+                        <div class="charts-container">
+                            <div class="chart-section">
+                                <div class="chart-title">USUARIOS QUE MÁS REGISTROS ENVÍAN</div>
+                                <div class="chart-wrapper">
+                                    <canvas id="topUsuariosChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="chart-section">
+                                <div class="chart-title">ESTADÍSTICAS DE USUARIOS</div>
+                                <div class="stats-grid" id="usuarios-stats"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="chart-container">
-                    <div class="chart-title">Distribución de Rotaciones por Área</div>
-                    <div class="chart-wrapper">
-                        <canvas id="areaRotacionesChart"></canvas>
+            </div>
+
+            <div class="section-content" id="analisis-asistencias">
+                <div class="analysis-container">
+                    <div class="analysis-header">
+                        <div class="analysis-title">ANÁLISIS DETALLADO DE ASISTENCIAS</div>
                     </div>
-                </div>
-                <div class="top-list" id="area-rotaciones-list">
-                    <!-- List will be populated by JavaScript -->
+                    
+                    <div class="tabs">
+                        <button class="tab-button active" data-tab="top-faltas-mes">TOP FALTAS INJUSTIFICADAS MES</button>
+                        <button class="tab-button" data-tab="top-faltas-anio">TOP FALTAS INJUSTIFICADAS AÑO</button>
+                        <button class="tab-button" data-tab="top-permisos">TOP PERMISOS</button>
+                    </div>
+                    
+                    <div class="tab-content active" id="top-faltas-mes">
+                        <div class="charts-container">
+                            <div class="chart-section">
+                                <div class="chart-title">FRECUENCIA DE FALTAS INJUSTIFICADAS POR MES</div>
+                                <div class="chart-wrapper">
+                                    <canvas id="topFaltasMesChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="chart-section">
+                                <div class="chart-title">LISTADO DETALLADO</div>
+                                <div class="top-list" id="top-faltas-mes-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-content" id="top-faltas-anio">
+                        <div class="charts-container">
+                            <div class="chart-section">
+                                <div class="chart-title">FRECUENCIA DE FALTAS INJUSTIFICADAS POR AÑO</div>
+                                <div class="chart-wrapper">
+                                    <canvas id="topFaltasAnioChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="chart-section">
+                                <div class="chart-title">LISTADO DETALLADO</div>
+                                <div class="top-list" id="top-faltas-anio-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-content" id="top-permisos">
+                        <div class="charts-container">
+                            <div class="chart-section">
+                                <div class="chart-title">TOP PERMISOS POR DÍA</div>
+                                <div class="chart-wrapper">
+                                    <canvas id="topPermisosDiaChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="chart-section">
+                                <div class="chart-title">TOP PERMISOS POR HORA</div>
+                                <div class="chart-wrapper">
+                                    <canvas id="topPermisosHoraChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
