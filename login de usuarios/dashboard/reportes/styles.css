@@ -187,6 +187,38 @@ body {
     to { opacity: 1; transform: translateY(0); }
 }
 
+.charts-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.chart-section {
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(20px);
+    border-radius: 1rem;
+    border: 1px solid rgba(71, 85, 105, 0.5);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    padding: 2rem;
+}
+
+.chart-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.chart-wrapper {
+    position: relative;
+    height: 350px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
 .chart-container {
     background: rgba(15, 23, 42, 0.8);
     backdrop-filter: blur(20px);
@@ -197,25 +229,9 @@ body {
     margin-bottom: 2rem;
 }
 
-.chart-title {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: white;
-    margin-bottom: 1.5rem;
-    text-align: center;
-}
-
-.chart-wrapper {
-    position: relative;
-    height: 400px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1.5rem;
     margin-bottom: 2rem;
 }
@@ -236,7 +252,7 @@ body {
 }
 
 .stat-value {
-    font-size: 2rem;
+    font-size: 1.5rem;
     font-weight: 700;
     color: var(--emerald-400);
     margin-bottom: 0.5rem;
@@ -261,12 +277,16 @@ body {
     to { transform: rotate(360deg); }
 }
 
-.analysis-content {
+.analysis-container {
     background: rgba(15, 23, 42, 0.8);
     backdrop-filter: blur(20px);
     border-radius: 1rem;
     border: 1px solid rgba(71, 85, 105, 0.5);
     padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.analysis-header {
     margin-bottom: 2rem;
 }
 
@@ -277,46 +297,38 @@ body {
     margin-bottom: 1rem;
 }
 
-.analysis-text {
+.area-top-card {
+    background: rgba(139, 92, 246, 0.2);
+    border: 2px solid rgba(139, 92, 246, 0.5);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    text-align: center;
+    margin-top: 1rem;
+}
+
+.area-top-title {
     color: var(--slate-300);
-    line-height: 1.6;
-    margin-bottom: 1rem;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
 }
 
-.highlight-number {
-    color: var(--emerald-400);
-    font-weight: 700;
+.area-top-value {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--purple-500);
+    margin-bottom: 0.5rem;
 }
 
-.data-loading {
-    position: relative;
-    min-height: 200px;
+.area-top-count {
+    color: var(--slate-400);
+    font-size: 1rem;
 }
 
-.data-loading::after {
-    content: "Cargando datos...";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: var(--emerald-400);
-    font-weight: 600;
-}
-
-.error-message {
-    color: var(--red-500);
-    background: rgba(239, 68, 68, 0.1);
-    padding: 1rem;
-    border-radius: 0.5rem;
-    margin-bottom: 1rem;
-    border-left: 4px solid var(--red-500);
-}
-
-/* Tabs styling */
 .tabs {
     display: flex;
-    margin-bottom: 1rem;
+    margin-bottom: 2rem;
     border-bottom: 1px solid rgba(71, 85, 105, 0.5);
+    flex-wrap: wrap;
 }
 
 .tab-button {
@@ -328,6 +340,7 @@ body {
     cursor: pointer;
     transition: all 0.3s;
     position: relative;
+    white-space: nowrap;
 }
 
 .tab-button:hover {
@@ -357,11 +370,13 @@ body {
     animation: fadeIn 0.3s ease-in-out;
 }
 
-/* Top list styling */
 .top-list {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
 }
 
 .top-item {
@@ -392,8 +407,16 @@ body {
     animation-delay: 0.2s;
 }
 
+.top-item:nth-child(4) {
+    animation-delay: 0.3s;
+}
+
+.top-item:nth-child(5) {
+    animation-delay: 0.4s;
+}
+
 .top-item .rank {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 800;
     color: var(--emerald-400);
     min-width: 40px;
@@ -402,6 +425,7 @@ body {
 .top-item .name {
     flex: 1;
     margin: 0 1rem;
+    font-size: 0.9rem;
 }
 
 .top-item .count {
@@ -410,32 +434,7 @@ body {
     background: rgba(16, 185, 129, 0.1);
     padding: 0.5rem 1rem;
     border-radius: 2rem;
-}
-
-.problem-card {
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    border-radius: 0.75rem;
-    padding: 1.5rem;
-    margin-top: 1rem;
-}
-
-.problem-title {
-    color: var(--red-400);
-    font-weight: 700;
-    margin-bottom: 0.5rem;
-}
-
-.problem-description {
-    color: var(--slate-300);
-    margin-bottom: 1rem;
-    line-height: 1.5;
-}
-
-.problem-time {
-    color: var(--emerald-400);
-    font-weight: 700;
-    font-size: 1.25rem;
+    font-size: 0.85rem;
 }
 
 @media (max-width: 768px) {
@@ -457,7 +456,24 @@ body {
         min-width: 150px;
     }
     
-    .stats-grid {
+    .charts-container {
         grid-template-columns: 1fr;
+    }
+    
+    .chart-section {
+        padding: 1rem;
+    }
+    
+    .chart-wrapper {
+        height: 300px;
+    }
+    
+    .tabs {
+        flex-direction: column;
+    }
+    
+    .tab-button {
+        text-align: left;
+        padding: 0.5rem 1rem;
     }
 }
