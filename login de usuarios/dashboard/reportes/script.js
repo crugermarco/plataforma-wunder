@@ -1,47 +1,39 @@
-// Configuración del backend único
-const scriptUrl = 'https://script.google.com/macros/s/AKfycbzI-19vfR4NJIZ9zRYsJY0C2UBYe3PMI2PD6m36TsLd5NK9OfUIZictvujaZtzNMPevkQ/exec';
+const scriptUrl = 'https://script.google.com/macros/s/AKfycbzHeOCIwdfVrF7BSLKksF5uUXa4Fs9mnFxSDcaVf_Elh2JXfOuvVu8Sm-VNqup_fCF2uw/exec';
 
-// Configuración de las hojas de Google Sheets
 const sheetsConfig = {
+    rotaciones: {
+        spreadsheetId: '1Cj6EaRlXmhA5hN3UKy_288iWKHkw-woEVLTqz1jj_wM',
+        sheetName: 'REGISTRO',
+        range: 'A:D'
+    },
+    personalAreas: {
+        spreadsheetId: '1Cj6EaRlXmhA5hN3UKy_288iWKHkw-woEVLTqz1jj_wM',
+        sheetName: 'PERSONAL POR AREA',
+        range: 'A:B'
+    },
     mantenimientos: {
         spreadsheetId: '1JIjuUcogzSW-oVKq7mNaUlAqtxvjtBDf1uSF4CUpnJU',
-        sheetName: 'GRAFICA',
-        range: 'A2:B13'
-    },
-    bano: {
-        spreadsheetId: '1VJf4jHb67XY7OI0JS4wAG51C4PWRYPRU_EVByYo0vY0',
-        sheetName: 'GRAFICA DE BAÑO',
-        range: 'A2:B6'
+        sheetName: 'CONCENTRADO DE REQUERIMIENTOS',
+        range: 'A:K'
     },
     asistencias: {
         spreadsheetId: '1NsT7jztJLNZgOE6xJkSofq2hqcpE-1ySiChjVM-zV0c',
-        sheetName: 'GRAFICA 2025',
-        range: 'A2:H13'
-    },
-    rotaciones: {
-        spreadsheetId: '1Cj6EaRlXmhA5hN3UKy_288iWKHkw-woEVLTqz1jj_wM',
-        sheetName: 'GRAFICA 2025',
-        range: 'A2:D13'
+        sheetName: 'Productivity Bonus 2025',
+        range: 'A:E'
     }
 };
 
-// Variables globales para almacenar datos
-let mantenimientosData = [];
-let banoData = [];
-let asistenciasData = [];
 let rotacionesData = [];
-let tiempoMuertoData = null;
-let frecuenciaFaltasData = null;
-let areaRotacionesData = null;
+let personalAreasData = [];
+let mantenimientosData = [];
+let asistenciasData = [];
 
-// Inicialización cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', function() {
     initNavigation();
     initTabs();
     loadAllData();
 });
 
-// Inicializar la navegación
 function initNavigation() {
     const navItems = document.querySelectorAll('.nav-item');
     
@@ -49,38 +41,18 @@ function initNavigation() {
         item.addEventListener('click', function() {
             const sectionId = this.getAttribute('data-section');
             
-            // Actualizar clases activas
             navItems.forEach(navItem => navItem.classList.remove('active'));
             this.classList.add('active');
             
-            // Mostrar sección correspondiente
             document.querySelectorAll('.section-content').forEach(section => {
                 section.classList.remove('active');
             });
             
             document.getElementById(sectionId).classList.add('active');
-            
-            // Cargar datos específicos si es necesario
-            if (sectionId === 'mantenimientos' && mantenimientosData.length === 0) {
-                loadMantenimientosData();
-            } else if (sectionId === 'uso-bano' && banoData.length === 0) {
-                loadBanoData();
-            } else if (sectionId === 'asistencias' && asistenciasData.length === 0) {
-                loadAsistenciasData();
-            } else if (sectionId === 'rotaciones' && rotacionesData.length === 0) {
-                loadRotacionesData();
-            } else if (sectionId === 'tiempo-muerto' && !tiempoMuertoData) {
-                loadTiempoMuertoAnalysis();
-            } else if (sectionId === 'frecuencia-faltas' && !frecuenciaFaltasData) {
-                loadFrecuenciaFaltasAnalysis();
-            } else if (sectionId === 'area-rotaciones' && !areaRotacionesData) {
-                loadAreaRotacionesAnalysis();
-            }
         });
     });
 }
 
-// Inicializar pestañas
 function initTabs() {
     const tabButtons = document.querySelectorAll('.tab-button');
     
@@ -88,11 +60,9 @@ function initTabs() {
         button.addEventListener('click', function() {
             const tabId = this.getAttribute('data-tab');
             
-            // Actualizar clases activas
             tabButtons.forEach(btn => btn.classList.remove('active'));
             this.classList.add('active');
             
-            // Mostrar contenido correspondiente
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
             });
@@ -102,25 +72,27 @@ function initTabs() {
     });
 }
 
-// Cargar todos los datos
-function loadAllData() {
+async function loadAllData() {
     showLoading(true);
     
-    Promise.all([
-        loadMantenimientosData(),
-        loadBanoData(),
-        loadAsistenciasData(),
-        loadRotacionesData()
-    ]).then(() => {
+    try {
+        await Promise.all([
+            loadRotacionesData(),
+            loadPersonalAreasData(),
+            loadMantenimientosData(),
+            loadAsistenciasData()
+        ]);
+        
+        renderAllCharts();
+        renderAllAnalysis();
         showLoading(false);
-    }).catch(error => {
+    } catch (error) {
         console.error('Error loading data:', error);
+        showError('Error al cargar los datos');
         showLoading(false);
-        showError('Error al cargar los datos. Por favor, recarga la página.');
-    });
+    }
 }
 
-// Mostrar/ocultar loading
 function showLoading(show) {
     const loadingSpinner = document.getElementById('loadingSpinner');
     if (loadingSpinner) {
@@ -128,26 +100,10 @@ function showLoading(show) {
     }
 }
 
-// Mostrar error
 function showError(message) {
-    // Crear elemento de error si no existe
-    let errorElement = document.querySelector('.error-message');
-    if (!errorElement) {
-        errorElement = document.createElement('div');
-        errorElement.className = 'error-message';
-        document.querySelector('.content-header').appendChild(errorElement);
-    }
-    
-    errorElement.textContent = message;
-    errorElement.style.display = 'block';
-    
-    // Ocultar después de 5 segundos
-    setTimeout(() => {
-        errorElement.style.display = 'none';
-    }, 5000);
+    alert(message);
 }
 
-// Función genérica para hacer fetch
 async function fetchData(params) {
     try {
         const queryString = new URLSearchParams(params).toString();
@@ -169,160 +125,142 @@ async function fetchData(params) {
         return data;
     } catch (error) {
         console.error('Fetch error:', error);
-        throw new Error('No se pudieron cargar los datos. Verifica la conexión y que la URL del backend sea correcta.');
+        throw new Error('No se pudieron cargar los datos');
     }
 }
 
-// Cargar datos de mantenimientos
-async function loadMantenimientosData() {
-    try {
-        const data = await fetchData({
-            action: 'getData',
-            spreadsheetId: sheetsConfig.mantenimientos.spreadsheetId,
-            sheetName: sheetsConfig.mantenimientos.sheetName,
-            range: sheetsConfig.mantenimientos.range
-        });
-        
-        mantenimientosData = data.data;
-        renderMantenimientosChart();
-        updateMantenimientosStats();
-    } catch (error) {
-        console.error('Error loading mantenimientos data:', error);
-        showError('Error al cargar datos de mantenimientos');
-    }
-}
-
-// Cargar datos de baño
-async function loadBanoData() {
-    try {
-        const data = await fetchData({
-            action: 'getData',
-            spreadsheetId: sheetsConfig.bano.spreadsheetId,
-            sheetName: sheetsConfig.bano.sheetName,
-            range: sheetsConfig.bano.range
-        });
-        
-        banoData = data.data;
-        renderBanoChart();
-        updateBanoStats();
-    } catch (error) {
-        console.error('Error loading baño data:', error);
-        showError('Error al cargar datos de uso de baño');
-    }
-}
-
-// Cargar datos de asistencias
-async function loadAsistenciasData() {
-    try {
-        const data = await fetchData({
-            action: 'getData',
-            spreadsheetId: sheetsConfig.asistencias.spreadsheetId,
-            sheetName: sheetsConfig.asistencias.sheetName,
-            range: sheetsConfig.asistencias.range
-        });
-        
-        asistenciasData = data.data;
-        renderAsistenciasChart();
-        updateAsistenciasStats();
-    } catch (error) {
-        console.error('Error loading asistencias data:', error);
-        showError('Error al cargar datos de asistencias');
-    }
-}
-
-// Cargar datos de rotaciones
 async function loadRotacionesData() {
-    try {
-        const data = await fetchData({
-            action: 'getData',
-            spreadsheetId: sheetsConfig.rotaciones.spreadsheetId,
-            sheetName: sheetsConfig.rotaciones.sheetName,
-            range: sheetsConfig.rotaciones.range
-        });
-        
-        rotacionesData = data.data;
-        renderRotacionesChart();
-        updateRotacionesStats();
-    } catch (error) {
-        console.error('Error loading rotaciones data:', error);
-        showError('Error al cargar datos de rotaciones');
-    }
-}
-
-// Cargar análisis de tiempo muerto
-async function loadTiempoMuertoAnalysis() {
-    try {
-        showLoading(true);
-        const data = await fetchData({
-            action: 'getTiempoMuerto'
-        });
-        
-        tiempoMuertoData = data;
-        renderTiempoMuertoAnalysis();
-        showLoading(false);
-    } catch (error) {
-        console.error('Error loading tiempo muerto analysis:', error);
-        showError('Error al cargar análisis de tiempo muerto');
-        showLoading(false);
-    }
-}
-
-// Cargar análisis de frecuencia de faltas
-async function loadFrecuenciaFaltasAnalysis() {
-    try {
-        showLoading(true);
-        const data = await fetchData({
-            action: 'getFrecuenciaFaltas'
-        });
-        
-        frecuenciaFaltasData = data;
-        renderFrecuenciaFaltasAnalysis();
-        showLoading(false);
-    } catch (error) {
-        console.error('Error loading frecuencia faltas analysis:', error);
-        showError('Error al cargar análisis de frecuencia de faltas');
-        showLoading(false);
-    }
-}
-
-// Cargar análisis de área con más rotaciones
-async function loadAreaRotacionesAnalysis() {
-    try {
-        showLoading(true);
-        const data = await fetchData({
-            action: 'getAreaRotaciones'
-        });
-        
-        areaRotacionesData = data;
-        renderAreaRotacionesAnalysis();
-        showLoading(false);
-    } catch (error) {
-        console.error('Error loading area rotaciones analysis:', error);
-        showError('Error al cargar análisis de área con más rotaciones');
-        showLoading(false);
-    }
-}
-
-// Renderizar análisis de tiempo muerto
-function renderTiempoMuertoAnalysis() {
-    if (!tiempoMuertoData) return;
+    const data = await fetchData({
+        action: 'getData',
+        spreadsheetId: sheetsConfig.rotaciones.spreadsheetId,
+        sheetName: sheetsConfig.rotaciones.sheetName,
+        range: sheetsConfig.rotaciones.range
+    });
     
-    // Renderizar top 5 máquinas
-    const ctx = document.getElementById('tiempoMuertoChart').getContext('2d');
-    const labels = tiempoMuertoData.topMachines.map(item => item.machine);
-    const data = tiempoMuertoData.topMachines.map(item => item.count);
+    rotacionesData = data.data.filter(row => row[0] && row[0].toString().trim() !== '');
+}
+
+async function loadPersonalAreasData() {
+    const data = await fetchData({
+        action: 'getData',
+        spreadsheetId: sheetsConfig.personalAreas.spreadsheetId,
+        sheetName: sheetsConfig.personalAreas.sheetName,
+        range: sheetsConfig.personalAreas.range
+    });
     
-    new Chart(ctx, {
+    personalAreasData = data.data.filter(row => row[0] && row[0].toString().trim() !== '');
+}
+
+async function loadMantenimientosData() {
+    const data = await fetchData({
+        action: 'getData',
+        spreadsheetId: sheetsConfig.mantenimientos.spreadsheetId,
+        sheetName: sheetsConfig.mantenimientos.sheetName,
+        range: sheetsConfig.mantenimientos.range
+    });
+    
+    mantenimientosData = data.data.filter(row => row[0] && row[0].toString().trim() !== '');
+}
+
+async function loadAsistenciasData() {
+    const data = await fetchData({
+        action: 'getData',
+        spreadsheetId: sheetsConfig.asistencias.spreadsheetId,
+        sheetName: sheetsConfig.asistencias.sheetName,
+        range: sheetsConfig.asistencias.range
+    });
+    
+    asistenciasData = data.data.filter(row => row[0] && row[0].toString().trim() !== '');
+}
+
+function renderAllCharts() {
+    renderRotacionesCharts();
+    renderMantenimientosCharts();
+    renderAsistenciasCharts();
+}
+
+function renderAllAnalysis() {
+    renderRotacionesAnalysis();
+    renderMantenimientosAnalysis();
+    renderAsistenciasAnalysis();
+}
+
+function renderRotacionesCharts() {
+    const data2025 = processRotacionesYear(2025);
+    const data2026 = processRotacionesYear(2026);
+    
+    renderRotacionesChart('rotaciones2025Chart', data2025, true);
+    renderRotacionesChart('rotaciones2026Chart', data2026, false);
+}
+
+function processRotacionesYear(year) {
+    const yearData = rotacionesData.filter(row => {
+        const dateStr = row[0];
+        if (!dateStr) return false;
+        
+        try {
+            const date = new Date(dateStr);
+            return date.getFullYear() === year;
+        } catch {
+            return false;
+        }
+    });
+    
+    const monthlyCounts = Array(12).fill(0);
+    
+    yearData.forEach(row => {
+        try {
+            const date = new Date(row[0]);
+            const month = date.getMonth();
+            monthlyCounts[month]++;
+        } catch (e) {
+            console.error('Error processing date:', row[0]);
+        }
+    });
+    
+    return monthlyCounts;
+}
+
+function renderRotacionesChart(canvasId, monthlyCounts, is2025) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    
+    const meta = 8500;
+    const registros = monthlyCounts;
+    const faltantes = registros.map(count => Math.max(0, meta - count));
+    
+    const datasets = [
+        {
+            label: 'Meta (8500)',
+            data: Array(12).fill(meta),
+            backgroundColor: 'rgba(59, 130, 246, 0.5)',
+            borderColor: 'rgba(59, 130, 246, 1)',
+            borderWidth: 1,
+            order: 3
+        },
+        {
+            label: 'Registros',
+            data: registros,
+            backgroundColor: 'rgba(16, 185, 129, 0.7)',
+            borderColor: 'rgba(16, 185, 129, 1)',
+            borderWidth: 1,
+            order: 2
+        },
+        {
+            label: 'Faltantes',
+            data: faltantes,
+            backgroundColor: 'rgba(239, 68, 68, 0.7)',
+            borderColor: 'rgba(239, 68, 68, 1)',
+            borderWidth: 1,
+            order: 1
+        }
+    ];
+    
+    const chart = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: labels,
-            datasets: [{
-                label: 'Frecuencia de Problemas',
-                data: data,
-                backgroundColor: 'rgba(239, 68, 68, 0.7)',
-                borderColor: 'rgba(239, 68, 68, 1)',
-                borderWidth: 1
-            }]
+            labels: meses,
+            datasets: datasets
         },
         options: {
             responsive: true,
@@ -331,7 +269,10 @@ function renderTiempoMuertoAnalysis() {
                 y: {
                     beginAtZero: true,
                     ticks: {
-                        color: '#cbd5e1'
+                        color: '#cbd5e1',
+                        callback: function(value) {
+                            return value.toLocaleString();
+                        }
                     },
                     grid: {
                         color: 'rgba(71, 85, 105, 0.3)'
@@ -356,128 +297,82 @@ function renderTiempoMuertoAnalysis() {
         }
     });
     
-    // Renderizar problema con mayor tiempo de respuesta
-    const problemText = document.getElementById('max-time-problem-text');
-    if (problemText && tiempoMuertoData.maxTimeProblem) {
-        problemText.innerHTML = `
-            <div class="problem-card">
-                <div class="problem-title">Descripción del Problema:</div>
-                <div class="problem-description">${tiempoMuertoData.maxTimeProblem.description || 'No disponible'}</div>
-                <div class="problem-time">Tiempo de respuesta: ${tiempoMuertoData.maxTimeProblem.time} horas</div>
-            </div>
-        `;
+    if (is2025) {
+        addJulyAnnotation(chart);
     }
 }
 
-// Renderizar análisis de frecuencia de faltas
-function renderFrecuenciaFaltasAnalysis() {
-    if (!frecuenciaFaltasData) return;
+function addJulyAnnotation(chart) {
+    const ctx = chart.ctx;
+    const xAxis = chart.scales.x;
+    const yAxis = chart.scales.y;
     
-    // Renderizar faltas del mes
-    const monthList = document.getElementById('month-faltas-list');
-    if (monthList) {
-        monthList.innerHTML = '';
-        
-        frecuenciaFaltasData.monthFaltas.forEach((item, index) => {
-            const listItem = document.createElement('div');
-            listItem.className = 'top-item';
-            listItem.style.animationDelay = `${index * 0.1}s`;
-            listItem.innerHTML = `
-                <div class="rank">${index + 1}</div>
-                <div class="name">${item.person}</div>
-                <div class="count">${item.count} faltas</div>
-            `;
-            monthList.appendChild(listItem);
-        });
-    }
+    if (!xAxis || !yAxis) return;
     
-    // Renderizar faltas del año
-    const yearList = document.getElementById('year-faltas-list');
-    if (yearList) {
-        yearList.innerHTML = '';
-        
-        frecuenciaFaltasData.yearFaltas.forEach((item, index) => {
-            const listItem = document.createElement('div');
-            listItem.className = 'top-item';
-            listItem.style.animationDelay = `${index * 0.1}s`;
-            listItem.innerHTML = `
-                <div class="rank">${index + 1}</div>
-                <div class="name">${item.person}</div>
-                <div class="count">${item.count} faltas</div>
-            `;
-            yearList.appendChild(listItem);
-        });
-    }
+    const xPosition = xAxis.getPixelForValue(6.5);
+    const yTop = yAxis.top;
+    const yBottom = yAxis.bottom;
+    
+    ctx.save();
+    ctx.beginPath();
+    ctx.setLineDash([5, 5]);
+    ctx.moveTo(xPosition, yTop);
+    ctx.lineTo(xPosition, yBottom);
+    ctx.strokeStyle = 'rgba(139, 92, 246, 1)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+    
+    ctx.save();
+    ctx.fillStyle = 'rgba(139, 92, 246, 0.8)';
+    ctx.fillRect(xPosition - 70, yTop + 10, 140, 30);
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 12px Inter';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Inicio de plataforma', xPosition, yTop + 25);
+    ctx.restore();
 }
 
-// Renderizar análisis de área con más rotaciones
-function renderAreaRotacionesAnalysis() {
-    if (!areaRotacionesData) return;
+function renderMantenimientosCharts() {
+    const data2025 = processMantenimientosYear(2025);
+    const data2026 = processMantenimientosYear(2026);
     
-    // Renderizar gráfica
-    const ctx = document.getElementById('areaRotacionesChart').getContext('2d');
-    const labels = areaRotacionesData.topAreas.map(item => item.area);
-    const data = areaRotacionesData.topAreas.map(item => item.count);
-    
-    new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: data,
-                backgroundColor: [
-                    'rgba(139, 92, 246, 0.7)',
-                    'rgba(59, 130, 246, 0.7)',
-                    'rgba(16, 185, 129, 0.7)'
-                ],
-                borderColor: [
-                    'rgba(139, 92, 246, 1)',
-                    'rgba(59, 130, 246, 1)',
-                    'rgba(16, 185, 129, 1)'
-                ],
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        color: '#cbd5e1',
-                        padding: 20
-                    }
-                }
-            }
+    renderMantenimientosChart('mantenimientos2025Chart', data2025);
+    renderMantenimientosChart('mantenimientos2026Chart', data2026);
+}
+
+function processMantenimientosYear(year) {
+    const yearData = mantenimientosData.filter(row => {
+        const dateStr = row[0];
+        if (!dateStr) return false;
+        
+        try {
+            const date = new Date(dateStr);
+            return date.getFullYear() === year;
+        } catch {
+            return false;
         }
     });
     
-    // Renderizar lista
-    const areaList = document.getElementById('area-rotaciones-list');
-    if (areaList) {
-        areaList.innerHTML = '';
-        
-        areaRotacionesData.topAreas.forEach((item, index) => {
-            const listItem = document.createElement('div');
-            listItem.className = 'top-item';
-            listItem.style.animationDelay = `${index * 0.1}s`;
-            listItem.innerHTML = `
-                <div class="rank">${index + 1}</div>
-                <div class="name">${item.area}</div>
-                <div class="count">${item.count} rotaciones</div>
-            `;
-            areaList.appendChild(listItem);
-        });
-    }
+    const monthlyCounts = Array(12).fill(0);
+    
+    yearData.forEach(row => {
+        try {
+            const date = new Date(row[0]);
+            const month = date.getMonth();
+            monthlyCounts[month]++;
+        } catch (e) {
+            console.error('Error processing date:', row[0]);
+        }
+    });
+    
+    return monthlyCounts;
 }
 
-// Renderizar gráfica de mantenimientos
-function renderMantenimientosChart() {
-    const ctx = document.getElementById('mantenimientosChart').getContext('2d');
-    
-    const meses = mantenimientosData.map(row => row[0]);
-    const valores = mantenimientosData.map(row => parseInt(row[1]) || 0);
+function renderMantenimientosChart(canvasId, monthlyCounts) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     
     new Chart(ctx, {
         type: 'bar',
@@ -485,7 +380,7 @@ function renderMantenimientosChart() {
             labels: meses,
             datasets: [{
                 label: 'Mantenimientos',
-                data: valores,
+                data: monthlyCounts,
                 backgroundColor: 'rgba(249, 115, 22, 0.7)',
                 borderColor: 'rgba(249, 115, 22, 1)',
                 borderWidth: 1
@@ -524,22 +419,189 @@ function renderMantenimientosChart() {
     });
 }
 
-// Renderizar gráfica de baño
-function renderBanoChart() {
-    const ctx = document.getElementById('usoBanoChart').getContext('2d');
+function renderAsistenciasCharts() {
+    const data2025 = processAsistenciasYear(2025);
+    const data2026 = processAsistenciasYear(2026);
     
-    const dias = banoData.map(row => row[0]);
-    const valores = banoData.map(row => parseInt(row[1]) || 0);
+    renderAsistenciasChart('asistencias2025Chart', data2025);
+    renderAsistenciasChart('asistencias2026Chart', data2026);
+}
+
+function processAsistenciasYear(year) {
+    const yearData = asistenciasData.filter(row => {
+        const dateStr = row[0];
+        if (!dateStr) return false;
+        
+        try {
+            const date = new Date(dateStr);
+            return date.getFullYear() === year;
+        } catch {
+            return false;
+        }
+    });
+    
+    const motivos = {
+        'falta injustificada': Array(12).fill(0),
+        'permiso - por día': Array(12).fill(0),
+        'incapacidad': Array(12).fill(0),
+        'suspension': Array(12).fill(0),
+        'error de proceso': Array(12).fill(0),
+        '5hrs': Array(12).fill(0),
+        'no se escanea o no cuenta con gafete': Array(12).fill(0),
+        'retardo': Array(12).fill(0),
+        'permiso - por hora': Array(12).fill(0)
+    };
+    
+    yearData.forEach(row => {
+        try {
+            const date = new Date(row[0]);
+            const month = date.getMonth();
+            const motivo = (row[2] || '').toString().toLowerCase().trim();
+            
+            for (const key in motivos) {
+                if (motivo.includes(key)) {
+                    motivos[key][month]++;
+                    break;
+                }
+            }
+        } catch (e) {
+            console.error('Error processing date:', row[0]);
+        }
+    });
+    
+    return motivos;
+}
+
+function renderAsistenciasChart(canvasId, motivos) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    
+    const datasets = [];
+    const colors = [
+        'rgba(239, 68, 68, 0.7)',
+        'rgba(59, 130, 246, 0.7)',
+        'rgba(139, 92, 246, 0.7)',
+        'rgba(107, 114, 128, 0.7)',
+        'rgba(249, 115, 22, 0.7)',
+        'rgba(234, 179, 8, 0.7)',
+        'rgba(16, 185, 129, 0.7)',
+        'rgba(236, 72, 153, 0.7)',
+        'rgba(6, 182, 212, 0.7)'
+    ];
+    
+    let i = 0;
+    for (const motivo in motivos) {
+        datasets.push({
+            label: motivo.toUpperCase(),
+            data: motivos[motivo],
+            backgroundColor: colors[i],
+            borderColor: colors[i].replace('0.7', '1'),
+            borderWidth: 1
+        });
+        i++;
+    }
     
     new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: dias,
+            labels: meses,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        color: '#cbd5e1'
+                    },
+                    grid: {
+                        color: 'rgba(71, 85, 105, 0.3)'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: '#cbd5e1'
+                    },
+                    grid: {
+                        color: 'rgba(71, 85, 105, 0.3)'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    labels: {
+                        color: '#cbd5e1',
+                        font: {
+                            size: 10
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderRotacionesAnalysis() {
+    const top2025 = getTopPersonal(2025, 5);
+    const top2026 = getTopPersonal(2026, 5);
+    const topAreas = getTopAreas(3);
+    
+    renderTopPersonalBarChart('topPersonal2025Chart', top2025, 'TOP 5 PERSONAL 2025');
+    renderTopPersonalBarChart('topPersonal2026Chart', top2026, 'TOP 5 PERSONAL 2026');
+    renderTopAreasPieChart('topAreasChart', topAreas);
+    
+    renderTopPersonalList('top-personal-2025-list', top2025);
+    renderTopPersonalList('top-personal-2026-list', top2026);
+    renderTopAreasList('top-areas-list', topAreas);
+    
+    updateAreaTop();
+}
+
+function getTopPersonal(year, limit) {
+    const yearData = rotacionesData.filter(row => {
+        const dateStr = row[0];
+        if (!dateStr) return false;
+        
+        try {
+            const date = new Date(dateStr);
+            return date.getFullYear() === year;
+        } catch {
+            return false;
+        }
+    });
+    
+    const personalCount = {};
+    
+    yearData.forEach(row => {
+        const nombre = row[1];
+        if (nombre) {
+            personalCount[nombre] = (personalCount[nombre] || 0) + 1;
+        }
+    });
+    
+    return Object.entries(personalCount)
+        .map(([nombre, count]) => ({ nombre, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, limit);
+}
+
+function renderTopPersonalBarChart(canvasId, topList, title) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    
+    const labels = topList.map(item => item.nombre);
+    const counts = topList.map(item => item.count);
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
             datasets: [{
-                label: 'Uso de Baño',
-                data: valores,
-                backgroundColor: 'rgba(234, 179, 8, 0.7)',
-                borderColor: 'rgba(234, 179, 8, 1)',
+                label: 'Rotaciones',
+                data: counts,
+                backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                borderColor: 'rgba(59, 130, 246, 1)',
                 borderWidth: 1
             }]
         },
@@ -558,7 +620,10 @@ function renderBanoChart() {
                 },
                 x: {
                     ticks: {
-                        color: '#cbd5e1'
+                        color: '#cbd5e1',
+                        font: {
+                            size: 11
+                        }
                     },
                     grid: {
                         color: 'rgba(71, 85, 105, 0.3)'
@@ -576,76 +641,258 @@ function renderBanoChart() {
     });
 }
 
-// Renderizar gráfica de asistencias
-function renderAsistenciasChart() {
-    const ctx = document.getElementById('asistenciasChart').getContext('2d');
+function getTopAreas(limit) {
+    const personalMap = {};
     
-    const meses = asistenciasData.map(row => row[0]);
+    personalAreasData.forEach(row => {
+        const nombre = row[0];
+        const area = row[1];
+        if (nombre && area) {
+            personalMap[nombre] = area;
+        }
+    });
     
-    // Obtener los datos para cada categoría
-    const asistenciaGral = asistenciasData.map(row => parseInt(row[1]) || 0);
-    const faltaInjustificada = asistenciasData.map(row => parseInt(row[2]) || 0);
-    const permisoDia = asistenciasData.map(row => parseInt(row[3]) || 0);
-    const permisoHora = asistenciasData.map(row => parseInt(row[4]) || 0);
-    const suspension = asistenciasData.map(row => parseInt(row[5]) || 0);
-    const vacaciones = asistenciasData.map(row => parseInt(row[6]) || 0);
-    const noEscan = asistenciasData.map(row => parseInt(row[7]) || 0);
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    
+    const yearData = rotacionesData.filter(row => {
+        const dateStr = row[0];
+        if (!dateStr) return false;
+        
+        try {
+            const date = new Date(dateStr);
+            return date.getFullYear() === currentYear;
+        } catch {
+            return false;
+        }
+    });
+    
+    const areaCount = {};
+    
+    yearData.forEach(row => {
+        const nombre = row[1];
+        if (nombre && personalMap[nombre]) {
+            const area = personalMap[nombre];
+            areaCount[area] = (areaCount[area] || 0) + 1;
+        }
+    });
+    
+    return Object.entries(areaCount)
+        .map(([area, count]) => ({ area, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, limit);
+}
+
+function renderTopAreasPieChart(canvasId, topAreas) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    
+    const labels = topAreas.map(item => item.area);
+    const counts = topAreas.map(item => item.count);
+    
+    new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: counts,
+                backgroundColor: [
+                    'rgba(139, 92, 246, 0.7)',
+                    'rgba(59, 130, 246, 0.7)',
+                    'rgba(16, 185, 129, 0.7)'
+                ],
+                borderColor: [
+                    'rgba(139, 92, 246, 1)',
+                    'rgba(59, 130, 246, 1)',
+                    'rgba(16, 185, 129, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: '#cbd5e1',
+                        padding: 20,
+                        font: {
+                            size: 12
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderTopPersonalList(containerId, topList) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    topList.forEach((item, index) => {
+        const itemElement = document.createElement('div');
+        itemElement.className = 'top-item';
+        itemElement.style.animationDelay = `${index * 0.1}s`;
+        itemElement.innerHTML = `
+            <div class="rank">${index + 1}</div>
+            <div class="name">${item.nombre}</div>
+            <div class="count">${item.count} rotaciones</div>
+        `;
+        container.appendChild(itemElement);
+    });
+}
+
+function renderTopAreasList(containerId, topAreas) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    topAreas.forEach((item, index) => {
+        const itemElement = document.createElement('div');
+        itemElement.className = 'top-item';
+        itemElement.style.animationDelay = `${index * 0.1}s`;
+        itemElement.innerHTML = `
+            <div class="rank">${index + 1}</div>
+            <div class="name">${item.area}</div>
+            <div class="count">${item.count} registros</div>
+        `;
+        container.appendChild(itemElement);
+    });
+}
+
+function updateAreaTop() {
+    const container = document.getElementById('area-top-container');
+    if (!container) return;
+    
+    const personalMap = {};
+    
+    personalAreasData.forEach(row => {
+        const nombre = row[0];
+        const area = row[1];
+        if (nombre && area) {
+            personalMap[nombre] = area;
+        }
+    });
+    
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth();
+    
+    const monthlyData = rotacionesData.filter(row => {
+        const dateStr = row[0];
+        if (!dateStr) return false;
+        
+        try {
+            const date = new Date(dateStr);
+            return date.getFullYear() === currentYear && date.getMonth() === currentMonth;
+        } catch {
+            return false;
+        }
+    });
+    
+    const areaCount = {};
+    
+    monthlyData.forEach(row => {
+        const nombre = row[1];
+        if (nombre && personalMap[nombre]) {
+            const area = personalMap[nombre];
+            areaCount[area] = (areaCount[area] || 0) + 1;
+        }
+    });
+    
+    let topArea = 'No hay datos';
+    let maxCount = 0;
+    
+    for (const area in areaCount) {
+        if (areaCount[area] > maxCount) {
+            maxCount = areaCount[area];
+            topArea = area;
+        }
+    }
+    
+    container.innerHTML = `
+        <div class="area-top-card">
+            <div class="area-top-title">ÁREA CON MÁS ROTACIONES ESTE MES:</div>
+            <div class="area-top-value">${topArea}</div>
+            <div class="area-top-count">${maxCount} registros</div>
+        </div>
+    `;
+}
+
+function renderMantenimientosAnalysis() {
+    const topMaquinasMes = getTopMaquinas('month', 5);
+    const topMaquinasAnio = getTopMaquinas('year', 10);
+    const topUsuarios = getTopUsuarios(3);
+    
+    renderTopMaquinasBarChart('topMaquinasMesChart', topMaquinasMes);
+    renderTopMaquinasBarChart('topMaquinasAnioChart', topMaquinasAnio);
+    renderTopUsuariosBarChart('topUsuariosChart', topUsuarios);
+    
+    renderTopMaquinasList('top-maquinas-mes-list', topMaquinasMes);
+    renderTopMaquinasList('top-maquinas-anio-list', topMaquinasAnio);
+    
+    updateUsuariosStats(topUsuarios);
+}
+
+function getTopMaquinas(period, limit) {
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth();
+    
+    const filteredData = mantenimientosData.filter(row => {
+        const dateStr = row[0];
+        if (!dateStr) return false;
+        
+        try {
+            const date = new Date(dateStr);
+            
+            if (period === 'month') {
+                return date.getFullYear() === currentYear && date.getMonth() === currentMonth;
+            } else {
+                return date.getFullYear() === currentYear;
+            }
+        } catch {
+            return false;
+        }
+    });
+    
+    const maquinaCount = {};
+    
+    filteredData.forEach(row => {
+        const maquina = row[2];
+        if (maquina) {
+            maquinaCount[maquina] = (maquinaCount[maquina] || 0) + 1;
+        }
+    });
+    
+    return Object.entries(maquinaCount)
+        .map(([maquina, count]) => ({ maquina, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, limit);
+}
+
+function renderTopMaquinasBarChart(canvasId, data) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    
+    const labels = data.map(item => item.maquina);
+    const counts = data.map(item => item.count);
     
     new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: meses,
-            datasets: [
-                {
-                    label: 'Asistencia General',
-                    data: asistenciaGral,
-                    backgroundColor: 'rgba(16, 185, 129, 0.7)',
-                    borderColor: 'rgba(16, 185, 129, 1)',
-                    borderWidth: 1
-                },
-                {
-                    label: 'Falta Injustificada',
-                    data: faltaInjustificada,
-                    backgroundColor: 'rgba(239, 68, 68, 0.7)',
-                    borderColor: 'rgba(239, 68, 68, 1)',
-                    borderWidth: 1
-                },
-                {
-                    label: 'Permiso - Por Día',
-                    data: permisoDia,
-                    backgroundColor: 'rgba(59, 130, 246, 0.7)',
-                    borderColor: 'rgba(59, 130, 246, 1)',
-                    borderWidth: 1
-                },
-                {
-                    label: 'Permiso - Por Hora',
-                    data: permisoHora,
-                    backgroundColor: 'rgba(139, 92, 246, 0.7)',
-                    borderColor: 'rgba(139, 92, 246, 1)',
-                    borderWidth: 1
-                },
-                {
-                    label: 'Suspensión',
-                    data: suspension,
-                    backgroundColor: 'rgba(107, 114, 128, 0.7)',
-                    borderColor: 'rgba(107, 114, 128, 1)',
-                    borderWidth: 1
-                },
-                {
-                    label: 'Vacaciones',
-                    data: vacaciones,
-                    backgroundColor: 'rgba(249, 115, 22, 0.7)',
-                    borderColor: 'rgba(249, 115, 22, 1)',
-                    borderWidth: 1
-                },
-                {
-                    label: 'No se escanea',
-                    data: noEscan,
-                    backgroundColor: 'rgba(234, 179, 8, 0.7)',
-                    borderColor: 'rgba(234, 179, 8, 1)',
-                    borderWidth: 1
-                }
-            ]
+            labels: labels,
+            datasets: [{
+                label: 'Número de problemas',
+                data: counts,
+                backgroundColor: 'rgba(239, 68, 68, 0.7)',
+                borderColor: 'rgba(239, 68, 68, 1)',
+                borderWidth: 1
+            }]
         },
         options: {
             responsive: true,
@@ -653,7 +900,6 @@ function renderAsistenciasChart() {
             scales: {
                 y: {
                     beginAtZero: true,
-                    stacked: false,
                     ticks: {
                         color: '#cbd5e1'
                     },
@@ -662,9 +908,11 @@ function renderAsistenciasChart() {
                     }
                 },
                 x: {
-                    stacked: false,
                     ticks: {
-                        color: '#cbd5e1'
+                        color: '#cbd5e1',
+                        font: {
+                            size: 11
+                        }
                     },
                     grid: {
                         color: 'rgba(71, 85, 105, 0.3)'
@@ -682,42 +930,73 @@ function renderAsistenciasChart() {
     });
 }
 
-// Renderizar gráfica de rotaciones
-function renderRotacionesChart() {
-    const ctx = document.getElementById('rotacionesChart').getContext('2d');
+function renderTopMaquinasList(containerId, data) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
     
-    const meses = rotacionesData.map(row => row[0]);
-    const total = rotacionesData.map(row => parseInt(row[1]) || 0);
-    const terminados = rotacionesData.map(row => parseInt(row[2]) || 0);
-    const pendientes = rotacionesData.map(row => parseInt(row[3]) || 0);
+    container.innerHTML = '';
+    
+    data.forEach((item, index) => {
+        const itemElement = document.createElement('div');
+        itemElement.className = 'top-item';
+        itemElement.style.animationDelay = `${index * 0.1}s`;
+        itemElement.innerHTML = `
+            <div class="rank">${index + 1}</div>
+            <div class="name">${item.maquina}</div>
+            <div class="count">${item.count} problemas</div>
+        `;
+        container.appendChild(itemElement);
+    });
+}
+
+function getTopUsuarios(limit) {
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    
+    const yearData = mantenimientosData.filter(row => {
+        const dateStr = row[0];
+        if (!dateStr) return false;
+        
+        try {
+            const date = new Date(dateStr);
+            return date.getFullYear() === currentYear;
+        } catch {
+            return false;
+        }
+    });
+    
+    const usuarioCount = {};
+    
+    yearData.forEach(row => {
+        const usuario = row[1];
+        if (usuario) {
+            usuarioCount[usuario] = (usuarioCount[usuario] || 0) + 1;
+        }
+    });
+    
+    return Object.entries(usuarioCount)
+        .map(([usuario, count]) => ({ usuario, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, limit);
+}
+
+function renderTopUsuariosBarChart(canvasId, data) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    
+    const labels = data.map(item => item.usuario);
+    const counts = data.map(item => item.count);
     
     new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: meses,
-            datasets: [
-                {
-                    label: 'Total',
-                    data: total,
-                    backgroundColor: 'rgba(59, 130, 246, 0.7)',
-                    borderColor: 'rgba(59, 130, 246, 1)',
-                    borderWidth: 1
-                },
-                {
-                    label: 'Terminados',
-                    data: terminados,
-                    backgroundColor: 'rgba(16, 185, 129, 0.7)',
-                    borderColor: 'rgba(16, 185, 129, 1)',
-                    borderWidth: 1
-                },
-                {
-                    label: 'Pendientes',
-                    data: pendientes,
-                    backgroundColor: 'rgba(239, 68, 68, 0.7)',
-                    borderColor: 'rgba(239, 68, 68, 1)',
-                    borderWidth: 1
-                }
-            ]
+            labels: labels,
+            datasets: [{
+                label: 'Registros enviados',
+                data: counts,
+                backgroundColor: 'rgba(139, 92, 246, 0.7)',
+                borderColor: 'rgba(139, 92, 246, 1)',
+                borderWidth: 1
+            }]
         },
         options: {
             responsive: true,
@@ -734,7 +1013,10 @@ function renderRotacionesChart() {
                 },
                 x: {
                     ticks: {
-                        color: '#cbd5e1'
+                        color: '#cbd5e1',
+                        font: {
+                            size: 11
+                        }
                     },
                     grid: {
                         color: 'rgba(71, 85, 105, 0.3)'
@@ -752,103 +1034,241 @@ function renderRotacionesChart() {
     });
 }
 
-// Actualizar estadísticas de mantenimientos
-function updateMantenimientosStats() {
-    const statsContainer = document.getElementById('mantenimientosStats');
-    if (!statsContainer) return;
+function updateUsuariosStats(usuarios) {
+    const container = document.getElementById('usuarios-stats');
+    if (!container) return;
     
-    const total = mantenimientosData.reduce((sum, row) => sum + (parseInt(row[1]) || 0), 0);
-    const promedio = total / (mantenimientosData.length || 1);
-    const max = Math.max(...mantenimientosData.map(row => parseInt(row[1]) || 0));
+    let html = '';
+    usuarios.forEach(usuario => {
+        html += `
+            <div class="stat-card">
+                <div class="stat-value">${usuario.usuario}</div>
+                <div class="stat-label">${usuario.count} registros este año</div>
+            </div>
+        `;
+    });
     
-    statsContainer.innerHTML = `
-        <div class="stat-card">
-            <div class="stat-value">${total}</div>
-            <div class="stat-label">Total de Mantenimientos</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-value">${Math.round(promedio)}</div>
-            <div class="stat-label">Promedio Mensual</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-value">${max}</div>
-            <div class="stat-label">Máximo en un Mes</div>
-        </div>
-    `;
+    container.innerHTML = html;
 }
 
-// Actualizar estadísticas de baño
-function updateBanoStats() {
-    const statsContainer = document.getElementById('banioStats');
-    if (!statsContainer) return;
+function renderAsistenciasAnalysis() {
+    const topFaltasMes = getTopFaltas('month', 10);
+    const topFaltasAnio = getTopFaltas('year', 10);
+    const topPermisosDia = getTopPermisos('dia', 10);
+    const topPermisosHora = getTopPermisos('hora', 10);
     
-    const total = banoData.reduce((sum, row) => sum + (parseInt(row[1]) || 0), 0);
-    const max = Math.max(...banoData.map(row => parseInt(row[1]) || 0));
-    const diaMax = banoData.find(row => parseInt(row[1]) === max)?.[0] || 'N/A';
+    renderTopFaltasBarChart('topFaltasMesChart', topFaltasMes, 'Faltas injustificadas por mes');
+    renderTopFaltasBarChart('topFaltasAnioChart', topFaltasAnio, 'Faltas injustificadas por año');
+    renderTopPermisosBarChart('topPermisosDiaChart', topPermisosDia, 'Permisos por día');
+    renderTopPermisosBarChart('topPermisosHoraChart', topPermisosHora, 'Permisos por hora');
     
-    statsContainer.innerHTML = `
-        <div class="stat-card">
-            <div class="stat-value">${total}</div>
-            <div class="stat-label">Total de Usos</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-value">${max}</div>
-            <div class="stat-label">Máximo en un Día</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-value">${diaMax}</div>
-            <div class="stat-label">Día con Más Uso</div>
-        </div>
-    `;
+    renderTopList('top-faltas-mes-list', topFaltasMes, 'faltas');
+    renderTopList('top-faltas-anio-list', topFaltasAnio, 'faltas');
 }
 
-// Actualizar estadísticas de asistencias
-function updateAsistenciasStats() {
-    const statsContainer = document.getElementById('asistenciasStats');
-    if (!statsContainer) return;
+function getTopFaltas(period, limit) {
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth();
     
-    // Calcular totales por categoría
-    const totalAsistencia = asistenciasData.reduce((sum, row) => sum + (parseInt(row[1]) || 0), 0);
-    const totalFaltas = asistenciasData.reduce((sum, row) => sum + (parseInt(row[2]) || 0), 0);
+    const filteredData = asistenciasData.filter(row => {
+        const dateStr = row[0];
+        if (!dateStr) return false;
+        
+        try {
+            const date = new Date(dateStr);
+            
+            if (period === 'month') {
+                return date.getFullYear() === currentYear && date.getMonth() === currentMonth;
+            } else {
+                return date.getFullYear() === currentYear;
+            }
+        } catch {
+            return false;
+        }
+    }).filter(row => {
+        const motivo = (row[2] || '').toString().toLowerCase();
+        return motivo.includes('falta injustificada');
+    });
     
-    statsContainer.innerHTML = `
-        <div class="stat-card">
-            <div class="stat-value">${totalAsistencia}</div>
-            <div class="stat-label">Asistencia General</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-value">${totalFaltas}</div>
-            <div class="stat-label">Faltas Injustificadas</div>
-        </div>
-    `;
+    const personaCount = {};
+    
+    filteredData.forEach(row => {
+        const nombre = row[1];
+        if (nombre) {
+            personaCount[nombre] = (personaCount[nombre] || 0) + 1;
+        }
+    });
+    
+    return Object.entries(personaCount)
+        .map(([nombre, count]) => ({ nombre, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, limit);
 }
 
-// Actualizar estadísticas de rotaciones
-function updateRotacionesStats() {
-    const statsContainer = document.getElementById('rotacionesStats');
-    if (!statsContainer) return;
+function renderTopFaltasBarChart(canvasId, data, title) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
     
-    const totalRotaciones = rotacionesData.reduce((sum, row) => sum + (parseInt(row[1]) || 0), 0);
-    const totalTerminados = rotacionesData.reduce((sum, row) => sum + (parseInt(row[2]) || 0), 0);
-    const totalPendientes = rotacionesData.reduce((sum, row) => sum + (parseInt(row[3]) || 0), 0);
-    const porcentajeCompletado = totalRotaciones > 0 ? Math.round((totalTerminados / totalRotaciones) * 100) : 0;
+    const labels = data.map(item => item.nombre);
+    const counts = data.map(item => item.count);
     
-    statsContainer.innerHTML = `
-        <div class="stat-card">
-            <div class="stat-value">${totalRotaciones}</div>
-            <div class="stat-label">Total de Rotaciones</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-value">${totalTerminados}</div>
-            <div class="stat-label">Rotaciones Terminadas</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-value">${totalPendientes}</div>
-            <div class="stat-label">Rotaciones Pendientes</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-value">${porcentajeCompletado}%</div>
-            <div class="stat-label">Porcentaje Completado</div>
-        </div>
-    `;
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: title,
+                data: counts,
+                backgroundColor: 'rgba(239, 68, 68, 0.7)',
+                borderColor: 'rgba(239, 68, 68, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        color: '#cbd5e1'
+                    },
+                    grid: {
+                        color: 'rgba(71, 85, 105, 0.3)'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: '#cbd5e1',
+                        font: {
+                            size: 10
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(71, 85, 105, 0.3)'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    labels: {
+                        color: '#cbd5e1'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function getTopPermisos(tipo, limit) {
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    
+    const yearData = asistenciasData.filter(row => {
+        const dateStr = row[0];
+        if (!dateStr) return false;
+        
+        try {
+            const date = new Date(dateStr);
+            return date.getFullYear() === currentYear;
+        } catch {
+            return false;
+        }
+    }).filter(row => {
+        const motivo = (row[2] || '').toString().toLowerCase();
+        if (tipo === 'dia') {
+            return motivo.includes('permiso - por día') || motivo.includes('permiso por día');
+        } else {
+            return motivo.includes('permiso - por hora') || motivo.includes('permiso por hora');
+        }
+    });
+    
+    const personaCount = {};
+    
+    yearData.forEach(row => {
+        const nombre = row[1];
+        if (nombre) {
+            personaCount[nombre] = (personaCount[nombre] || 0) + 1;
+        }
+    });
+    
+    return Object.entries(personaCount)
+        .map(([nombre, count]) => ({ nombre, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, limit);
+}
+
+function renderTopPermisosBarChart(canvasId, data, title) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    
+    const labels = data.map(item => item.nombre);
+    const counts = data.map(item => item.count);
+    const color = title.includes('día') ? 'rgba(59, 130, 246, 0.7)' : 'rgba(6, 182, 212, 0.7)';
+    const borderColor = title.includes('día') ? 'rgba(59, 130, 246, 1)' : 'rgba(6, 182, 212, 1)';
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: title,
+                data: counts,
+                backgroundColor: color,
+                borderColor: borderColor,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        color: '#cbd5e1'
+                    },
+                    grid: {
+                        color: 'rgba(71, 85, 105, 0.3)'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: '#cbd5e1',
+                        font: {
+                            size: 10
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(71, 85, 105, 0.3)'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    labels: {
+                        color: '#cbd5e1'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderTopList(containerId, data, type) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    data.forEach((item, index) => {
+        const itemElement = document.createElement('div');
+        itemElement.className = 'top-item';
+        itemElement.style.animationDelay = `${index * 0.1}s`;
+        itemElement.innerHTML = `
+            <div class="rank">${index + 1}</div>
+            <div class="name">${item.nombre}</div>
+            <div class="count">${item.count} ${type}</div>
+        `;
+        container.appendChild(itemElement);
+    });
 }
