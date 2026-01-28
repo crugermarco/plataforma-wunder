@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     reportes: './reportes/index.html',
     enfermeria: './enfermeria/index.html',
     produccion: './zab/index.html',
-    calidad: './calidad/index.html',
+    bitacoras: './BITACORAS/index.html',
     configuracion: './cnc/produccion.html'
   };
 
@@ -97,6 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 });
+
 
 
 
