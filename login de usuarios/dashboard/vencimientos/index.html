@@ -7,22 +7,64 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+    <div class="background-animation">
+        <div class="pulse-circle" style="width: 300px; height: 300px; top: 10%; left: 10%;"></div>
+        <div class="pulse-circle" style="width: 400px; height: 400px; top: 60%; right: -40%; animation-delay: 2s;"></div>
+        <div class="pulse-circle" style="width: 350px; height: 350px; bottom: 50%; left: 50%; animation-delay: 4s;"></div>
+        <div class="pulse-circle" style="width: 250px; height: 250px; top: 10%; right: 10%; animation-delay: 4s;"></div>
+        <div class="pulse-circle" style="width: 600px; height: 600px; top: 60%; left: 10%; animation-delay: 2s;"></div>
+    </div>
+
   <header class="header">
     <h1>Control de Vencimientos - Andon Digital</h1>
     <div class="header-info">
       <div class="info-item" id="total-machines">0 Químicos</div>
       <div class="info-item">Última actualización: <span id="last-update-time">--:--:--</span></div>
       <div class="info-item" id="current-time"></div>
+      <div class="info-item warning-item" id="vencidos-count">0 Vencidos</div>
     </div>
   </header>
 
-  <section class="controls">
-    <button class="btn-refresh" id="btn-refresh">Actualizar Ahora</button>
-  </section>
-
   <main class="container" id="content">
-    <!-- Aquí se cargan las tarjetas dinámicamente -->
   </main>
+
+  <div class="modal-overlay" id="stock-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-title">Ajustar Stock</h3>
+        <button class="modal-close" id="modal-close">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="product-name">Producto:</label>
+          <input type="text" id="product-name" readonly>
+        </div>
+        <div class="form-group">
+          <label for="current-quantity">Cantidad Actual:</label>
+          <input type="number" id="current-quantity" readonly>
+        </div>
+        <div class="form-group">
+          <label for="action-type">Acción:</label>
+          <select id="action-type">
+            <option value="add">Agregar Stock</option>
+            <option value="remove">Dar de Baja</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="adjust-quantity">Cantidad a Ajustar:</label>
+          <input type="number" id="adjust-quantity" min="1" value="1">
+        </div>
+        <div class="form-group" id="expiration-group">
+          <label for="new-expiration">Nueva Fecha de Vencimiento:</label>
+          <input type="date" id="new-expiration">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" id="btn-cancel">Cancelar</button>
+        <button class="btn-confirm" id="btn-confirm">Confirmar Ajuste</button>
+      </div>
+    </div>
+  </div>
 
   <script src="script.js"></script>
 </body>
