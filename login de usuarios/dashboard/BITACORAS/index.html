@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Bitácoras EHS - IVEMSA</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="background-animation">
+        <div class="pulse-circle" style="width: 300px; height: 300px; top: 10%; left: 10%;"></div>
+        <div class="pulse-circle" style="width: 400px; height: 400px; top: 60%; right: -40%; animation-delay: 2s;"></div>
+        <div class="pulse-circle" style="width: 400px; height: 400px; bottom: 10%; left: 75%; animation-delay: 4s;"></div>
+        <div class="pulse-circle" style="width: 250px; height: 250px; top: 10%; right: 10%; animation-delay: 4s;"></div>
+        <div class="pulse-circle" style="width: 600px; height: 600px; top: 60%; left: 10%; animation-delay: 2s;"></div>
+    </div>
+
+    <div class="app-container">
+        <header class="header">
+            <div class="logo-container">
+                <div class="logo-placeholder">IV</div>
+                <div class="header-title">
+                    <h1>Sistema de Bitácoras EHS</h1>
+                    <p>IVEMSA S.A. DE C.V. DIVISIÓN WUNDERBAR</p>
+                </div>
+            </div>
+            <div class="header-info">
+                <div class="info-item">
+                    <i class="fas fa-user"></i>
+                    <span>Usuario: Marco Cruger</span>
+                </div>
+                <div class="info-item">
+                    <i class="fas fa-building"></i>
+                    <span>Planta: Wunderbar</span>
+                </div>
+                <div class="info-item warning-item">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>3 bitácoras próximas a vencer</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="container">
+            <div id="dashboard" class="dashboard-container">
+                <aside class="sidebar">
+                    <h2 class="sidebar-title">Menú Principal</h2>
+                    <ul class="nav-menu">
+                        <li class="nav-item">
+                            <a href="#dashboard" class="nav-link active" onclick="showSection('dashboard')">
+                                <span class="nav-icon"><i class="fas fa-home"></i></span>
+                                Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#bitacoras" class="nav-link" onclick="showSection('bitacoras')">
+                                <span class="nav-icon"><i class="fas fa-clipboard-list"></i></span>
+                                Todas las Bitácoras
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#historial" class="nav-link" onclick="showSection('historial')">
+                                <span class="nav-icon"><i class="fas fa-history"></i></span>
+                                Historial
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#configuracion" class="nav-link" onclick="showSection('configuracion')">
+                                <span class="nav-icon"><i class="fas fa-cog"></i></span>
+                                Configuración
+                            </a>
+                        </li>
+                    </ul>
+                </aside>
+
+                <main class="main-content">
+                    <div class="search-container">
+                        <div class="search-box">
+                            <input type="text" class="search-input" placeholder="Buscar bitácora..." id="searchInput">
+                            <span class="search-icon"><i class="fas fa-search"></i></span>
+                        </div>
+                        <div class="filters">
+                            <select class="filter-select" id="filterNorma">
+                                <option value="">Todas las normas</option>
+                                <option value="NOM-001-STPS-2008">NOM-001-STPS-2008</option>
+                                <option value="NOM-002-STPS-2010">NOM-002-STPS-2010</option>
+                                <option value="NOM-006-STPS-2023">NOM-006-STPS-2023</option>
+                                <option value="NOM-009-STPS-2011">NOM-009-STPS-2011</option>
+                                <option value="NOM-017-STPS-2008">NOM-017-STPS-2008</option>
+                                <option value="NOM-020-STPS-2011">NOM-020-STPS-2011</option>
+                            </select>
+                            <select class="filter-select" id="filterFrecuencia">
+                                <option value="">Todas las frecuencias</option>
+                                <option value="Diario">Diario</option>
+                                <option value="Mensual">Mensual</option>
+                                <option value="Semestral">Semestral</option>
+                                <option value="Anual">Anual</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="bitacorasGrid" class="bitacoras-grid">
+                    </div>
+                </main>
+            </div>
+
+            <div id="formContainer" class="form-container">
+                <div class="form-header">
+                    <h2 class="form-title" id="formTitle">Formulario de Bitácora</h2>
+                    <p class="form-subtitle" id="formSubtitle"></p>
+                </div>
+                
+                <button class="back-button" onclick="showSection('dashboard')">
+                    <i class="fas fa-arrow-left"></i> Volver al Dashboard
+                </button>
+
+                <div id="formContent"></div>
+
+                <div class="signature-section">
+                    <h3>Firma Digital del Responsable</h3>
+                    <div class="signature-container">
+                        <canvas id="signaturePad" class="signature-pad"></canvas>
+                    </div>
+                    <div class="signature-buttons">
+                        <button class="btn btn-secondary" onclick="clearSignature()">
+                            <i class="fas fa-eraser"></i> Limpiar
+                        </button>
+                        <button class="btn btn-primary" onclick="saveSignature()">
+                            <i class="fas fa-save"></i> Guardar Firma
+                        </button>
+                    </div>
+                    <div id="signaturePreview" class="signature-preview">
+                        <h4>Vista Previa de la Firma</h4>
+                        <img id="signatureImage" class="signature-image" alt="Firma capturada">
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button class="btn btn-secondary" onclick="resetForm()">
+                        <i class="fas fa-trash"></i> Borrar Formulario
+                    </button>
+                    <button class="btn btn-success" onclick="saveForm()">
+                        <i class="fas fa-save"></i> Guardar Bitácora
+                    </button>
+                    <button class="btn btn-primary" onclick="exportToPDF()">
+                        <i class="fas fa-file-pdf"></i> Exportar PDF
+                    </button>
+                    <button class="btn btn-primary" onclick="saveToDrive()">
+                        <i class="fas fa-cloud-upload-alt"></i> Guardar en Drive
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">Confirmación</h3>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p id="modalMessage">¿Está seguro de realizar esta acción?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+                <button class="btn-confirm" onclick="confirmAction()">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
