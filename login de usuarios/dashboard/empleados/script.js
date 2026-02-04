@@ -312,7 +312,7 @@ function getMonthName(monthNumber) {
 function getMonthNumber(monthName) {
   const months = {
     'enero': '01', 'febrero': '02', 'marzo': '03', 'abril': '04',
-    'mayo': '05', 'junio': '06', 'julio': '07', 'agosto': '08',
+    'mayo': '05', 'juni': '06', 'julio': '07', 'agosto': '08',
     'septiembre': '09', 'octubre': '10', 'noviembre': '11', 'diciembre': '12'
   };
   return months[monthName.toLowerCase()] || '';
@@ -502,6 +502,157 @@ function isNonWorkingDay(date) {
   }
 }
 
+function calculateVacationDates() {
+  const startDateInput = document.getElementById('schedule-start-date');
+  const daysToTakeInput = document.getElementById('schedule-days-to-take');
+  const decemberSaveInput = document.getElementById('schedule-december-save');
+  const returnDateInput = document.getElementById('schedule-return-date');
+  const infoDiv = document.getElementById('days-calculation-info');
+  const vacationDaysInput = document.getElementById('schedule-vacation-days');
+  const daysTakenInput = document.getElementById('schedule-days-taken');
+  
+  if (!startDateInput.value || !daysToTakeInput.value) {
+    return;
+  }
+  
+  const startDateStr = startDateInput.value;
+  const [year, month, day] = startDateStr.split('-').map(Number);
+  const startDate = new Date(year, month - 1, day, 12, 0, 0);
+  
+  let daysToTake = parseFloat(daysToTakeInput.value) || 0;
+  let decemberSave = parseFloat(decemberSaveInput.value) || 0;
+  const availableDays = parseFloat(vacationDaysInput.value) || 0;
+  
+  const daysTaken = daysToTake;
+  
+  if (daysTakenInput) {
+    daysTakenInput.value = daysTaken.toFixed(1);
+  }
+  
+  const formattedStartDate = `${month.toString().padStart(2, '0')}/${day.toString().padStart(2, '0')}/${year}`;
+  
+  const WORK_DAYS_PER_VACATION_DAY = 1.2;
+  const workDaysNeeded = Math.ceil(daysToTake / WORK_DAYS_PER_VACATION_DAY);
+  
+  let returnDate = new Date(startDate);
+  let workDaysCounted = 0;
+  let totalDaysElapsed = 0;
+  let nonWorkingDaysCount = 0;
+  
+  while (workDaysCounted < workDaysNeeded) {
+    returnDate.setDate(returnDate.getDate() + 1);
+    totalDaysElapsed++;
+    
+    const dateStr = formatDateForInput(returnDate.toISOString().split('T')[0]);
+    const isNonWorking = isNonWorkingDay(dateStr);
+    
+    if (!isNonWorking) {
+      workDaysCounted++;
+    } else {
+      nonWorkingDaysCount++;
+    }
+    
+    if (totalDaysElapsed > 365) {
+      break;
+    }
+  }
+  
+  while (isNonWorkingDay(formatDateForInput(returnDate.toISOString().split('T')[0]))) {
+    returnDate.setDate(returnDate.getDate() + 1);
+  }
+  
+  const returnYear = returnDate.getFullYear();
+  const returnMonth = (returnDate.getMonth() + 1).toString().padStart(2, '0');
+  const returnDay = returnDate.getDate().toString().padStart(2, '0');
+  const returnDateFormatted = `${returnMonth}/${returnDay}/${returnYear}`;
+  
+  if (returnDateInput) {
+    returnDateInput.value = returnDateFormatted;
+  }
+  
+  const totalUsed = daysToTake + decemberSave;
+  const remainingBalance = availableDays - totalUsed;
+  
+  if (infoDiv) {
+    infoDiv.innerHTML = `
+      <div style="background: rgba(30, 41, 59, 0.5); padding: 1rem; border-radius: 0.5rem; border: 1px solid rgba(71, 85, 105, 0.3);">
+        <h4 style="color: var(--emerald-400); margin-bottom: 0.75rem;">RESUMEN DEL CÁLCULO</h4>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+          <div style="background: rgba(15, 23, 42, 0.4); padding: 0.5rem; border-radius: 0.375rem;">
+            <strong style="color: var(--slate-300);">Saldo disponible:</strong>
+            <div style="color: var(--emerald-400); font-size: 1.1rem; font-weight: bold;">${availableDays.toFixed(1)} días</div>
+          </div>
+          
+          <div style="background: rgba(15, 23, 42, 0.4); padding: 0.5rem; border-radius: 0.375rem;">
+            <strong style="color: var(--slate-300);">Días a tomar:</strong>
+            <div style="color: var(--blue-400); font-size: 1.1rem; font-weight: bold;">${daysToTake.toFixed(1)} días</div>
+          </div>
+          
+          <div style="background: rgba(15, 23, 42, 0.4); padding: 0.5rem; border-radius: 0.375rem;">
+            <strong style="color: var(--slate-300);">Guardar para diciembre:</strong>
+            <div style="color: var(--amber-400); font-size: 1.1rem; font-weight: bold;">${decemberSave.toFixed(1)} días</div>
+          </div>
+          
+          <div style="background: rgba(15, 23, 42, 0.4); padding: 0.5rem; border-radius: 0.375rem;">
+            <strong style="color: var(--slate-300);">Días descontados:</strong>
+            <div style="color: var(--red-400); font-size: 1.1rem; font-weight: bold;">${daysTaken.toFixed(1)} días</div>
+          </div>
+        </div>
+        
+        <div style="background: rgba(15, 23, 42, 0.6); padding: 0.75rem; border-radius: 0.375rem; margin-bottom: 1rem;">
+          <strong style="color: var(--slate-300);">Cálculo de días laborales:</strong><br>
+          <span style="color: var(--slate-400);">
+            ${daysToTake.toFixed(1)} días de vacaciones ÷ ${WORK_DAYS_PER_VACATION_DAY} = ${workDaysNeeded} días laborales requeridos<br>
+            Días contados: ${workDaysCounted} días laborales<br>
+            Días no laborales saltados: ${nonWorkingDaysCount} días
+          </span>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+          <div style="background: rgba(59, 130, 246, 0.1); padding: 0.75rem; border-radius: 0.375rem; border: 1px solid rgba(59, 130, 246, 0.3);">
+            <strong style="color: var(--slate-300);">Fecha de salida:</strong><br>
+            <span style="color: var(--blue-300); font-weight: 500;">${formattedStartDate}</span>
+          </div>
+          
+          <div style="background: rgba(34, 197, 94, 0.1); padding: 0.75rem; border-radius: 0.375rem; border: 1px solid rgba(34, 197, 94, 0.3);">
+            <strong style="color: var(--slate-300);">Fecha de regreso:</strong><br>
+            <span style="color: var(--emerald-300); font-weight: 500;">${returnDateFormatted}</span>
+          </div>
+        </div>
+        
+        <div style="background: rgba(15, 23, 42, 0.4); padding: 0.75rem; border-radius: 0.375rem; border: 1px solid rgba(71, 85, 105, 0.3);">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+            <span style="color: var(--slate-300);">Total días utilizados:</span>
+            <span style="color: ${totalUsed > availableDays ? 'var(--red-400)' : 'var(--slate-300)'}; font-weight: bold;">
+              ${totalUsed.toFixed(1)} días
+            </span>
+          </div>
+          
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--slate-300);">Saldo restante:</span>
+            <span style="color: ${remainingBalance < 0 ? 'var(--red-400)' : 'var(--emerald-400)'}; font-weight: bold;">
+              ${remainingBalance.toFixed(1)} días
+            </span>
+          </div>
+          
+          ${remainingBalance < 0 ? `
+            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); padding: 0.5rem; margin-top: 0.5rem; border-radius: 0.375rem;">
+              <span style="color: var(--red-400);">Advertencia: El saldo sería negativo</span>
+            </div>
+          ` : ''}
+        </div>
+        
+        <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(71, 85, 105, 0.3);">
+          <small style="color: var(--slate-500); font-style: italic;">
+            Nota: Los días guardados para diciembre NO afectan la fecha de regreso
+          </small>
+        </div>
+      </div>
+    `;
+  }
+}
+
 async function loadVacationConcentradoData() {
   try {
     const result = await fetchSheetData(sheetConnections.vacations);
@@ -564,7 +715,7 @@ function renderVacationConcentradoTable() {
               return `${month}/${day}/${year}`;
             }
           } catch (e) {
-            console.error(`Error parseando fecha:`, e);
+            console.error('Error parseando fecha:', e);
           }
         }
       }
@@ -617,10 +768,10 @@ function renderVacationConcentradoTable() {
       }
     }
     
-const showActions = currentUser && (
-    currentUser.name.toLowerCase() === 'marco cruger' || 
-    currentUser.name.toLowerCase() === 'bosco alcazar'
-);
+    const showActions = currentUser && (
+        currentUser.name.toLowerCase() === 'marco cruger' || 
+        currentUser.name.toLowerCase() === 'bosco alcazar'
+    );
     
     row.innerHTML = `
       <td>${nombre}</td>
@@ -652,7 +803,7 @@ const showActions = currentUser && (
             </button>
             <button class="action-button small print" onclick="printVacationPDF(${vacationData.indexOf(item)})">
               <svg style="width: 0.75rem; height: 0.75rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 01-2-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
               </svg>
               Imprimir
             </button>
@@ -765,7 +916,7 @@ function checkUpcomingVacations() {
         );
         
         if (!hasVacations) {
-          showNotification(`⚠️ ${employee.NOMBRE} necesita agendar sus vacaciones. Le quedan ${12 - monthsWorked} mes(es) para cumplir un año.`, 'warning');
+          showNotification(`${employee.NOMBRE} necesita agendar sus vacaciones. Le quedan ${12 - monthsWorked} mes(es) para cumplir un año.`, 'warning');
         }
       }
     }
@@ -1094,157 +1245,6 @@ function setupVacationScheduleEvents() {
   }
 }
 
-function calculateVacationDates() {
-  const startDateInput = document.getElementById('schedule-start-date');
-  const daysToTakeInput = document.getElementById('schedule-days-to-take');
-  const decemberSaveInput = document.getElementById('schedule-december-save');
-  const returnDateInput = document.getElementById('schedule-return-date');
-  const infoDiv = document.getElementById('days-calculation-info');
-  const vacationDaysInput = document.getElementById('schedule-vacation-days');
-  const daysTakenInput = document.getElementById('schedule-days-taken');
-  
-  if (!startDateInput.value || !daysToTakeInput.value) {
-    return;
-  }
-  
-  const startDateStr = startDateInput.value;
-  const [year, month, day] = startDateStr.split('-').map(Number);
-  const startDate = new Date(year, month - 1, day, 12, 0, 0);
-  
-  let daysToTake = parseFloat(daysToTakeInput.value) || 0;
-  let decemberSave = parseFloat(decemberSaveInput.value) || 0;
-  const availableDays = parseFloat(vacationDaysInput.value) || 0;
-  
-  const daysTaken = daysToTake;
-  
-  if (daysTakenInput) {
-    daysTakenInput.value = daysTaken.toFixed(1);
-  }
-  
-  const formattedStartDate = `${month.toString().padStart(2, '0')}/${day.toString().padStart(2, '0')}/${year}`;
-  
-  const WORK_DAYS_PER_VACATION_DAY = 1.2;
-  const workDaysNeeded = Math.ceil(daysToTake / WORK_DAYS_PER_VACATION_DAY);
-  
-  let returnDate = new Date(startDate);
-  let workDaysCounted = 0;
-  let totalDaysElapsed = 0;
-  let nonWorkingDaysCount = 0;
-  
-  while (workDaysCounted < workDaysNeeded) {
-    returnDate.setDate(returnDate.getDate() + 1);
-    totalDaysElapsed++;
-    
-    const dateStr = formatDateForInput(returnDate.toISOString().split('T')[0]);
-    const isNonWorking = isNonWorkingDay(dateStr);
-    
-    if (!isNonWorking) {
-      workDaysCounted++;
-    } else {
-      nonWorkingDaysCount++;
-    }
-    
-    if (totalDaysElapsed > 365) {
-      break;
-    }
-  }
-  
-  while (isNonWorkingDay(formatDateForInput(returnDate.toISOString().split('T')[0]))) {
-    returnDate.setDate(returnDate.getDate() + 1);
-  }
-  
-  const returnYear = returnDate.getFullYear();
-  const returnMonth = (returnDate.getMonth() + 1).toString().padStart(2, '0');
-  const returnDay = returnDate.getDate().toString().padStart(2, '0');
-  const returnDateFormatted = `${returnMonth}/${returnDay}/${returnYear}`;
-  
-  if (returnDateInput) {
-    returnDateInput.value = returnDateFormatted;
-  }
-  
-  const totalUsed = daysToTake + decemberSave;
-  const remainingBalance = availableDays - totalUsed;
-  
-  if (infoDiv) {
-    infoDiv.innerHTML = `
-      <div style="background: rgba(30, 41, 59, 0.5); padding: 1rem; border-radius: 0.5rem; border: 1px solid rgba(71, 85, 105, 0.3);">
-        <h4 style="color: var(--emerald-400); margin-bottom: 0.75rem;">RESUMEN DEL CÁLCULO</h4>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
-          <div style="background: rgba(15, 23, 42, 0.4); padding: 0.5rem; border-radius: 0.375rem;">
-            <strong style="color: var(--slate-300);">Saldo disponible:</strong>
-            <div style="color: var(--emerald-400); font-size: 1.1rem; font-weight: bold;">${availableDays.toFixed(1)} días</div>
-          </div>
-          
-          <div style="background: rgba(15, 23, 42, 0.4); padding: 0.5rem; border-radius: 0.375rem;">
-            <strong style="color: var(--slate-300);">Días a tomar:</strong>
-            <div style="color: var(--blue-400); font-size: 1.1rem; font-weight: bold;">${daysToTake.toFixed(1)} días</div>
-          </div>
-          
-          <div style="background: rgba(15, 23, 42, 0.4); padding: 0.5rem; border-radius: 0.375rem;">
-            <strong style="color: var(--slate-300);">Guardar para diciembre:</strong>
-            <div style="color: var(--amber-400); font-size: 1.1rem; font-weight: bold;">${decemberSave.toFixed(1)} días</div>
-          </div>
-          
-          <div style="background: rgba(15, 23, 42, 0.4); padding: 0.5rem; border-radius: 0.375rem;">
-            <strong style="color: var(--slate-300);">Días descontados:</strong>
-            <div style="color: var(--red-400); font-size: 1.1rem; font-weight: bold;">${daysTaken.toFixed(1)} días</div>
-          </div>
-        </div>
-        
-        <div style="background: rgba(15, 23, 42, 0.6); padding: 0.75rem; border-radius: 0.375rem; margin-bottom: 1rem;">
-          <strong style="color: var(--slate-300);">Cálculo de días laborales:</strong><br>
-          <span style="color: var(--slate-400);">
-            ${daysToTake.toFixed(1)} días de vacaciones ÷ ${WORK_DAYS_PER_VACATION_DAY} = ${workDaysNeeded} días laborales requeridos<br>
-            Días contados: ${workDaysCounted} días laborales<br>
-            Días no laborales saltados: ${nonWorkingDaysCount} días
-          </span>
-        </div>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
-          <div style="background: rgba(59, 130, 246, 0.1); padding: 0.75rem; border-radius: 0.375br; border: 1px solid rgba(59, 130, 246, 0.3);">
-            <strong style="color: var(--slate-300);">Fecha de salida:</strong><br>
-            <span style="color: var(--blue-300); font-weight: 500;">${formattedStartDate}</span>
-          </div>
-          
-          <div style="background: rgba(34, 197, 94, 0.1); padding: 0.75rem; border-radius: 0.375br; border: 1px solid rgba(34, 197, 94, 0.3);">
-            <strong style="color: var(--slate-300);">Fecha de regreso:</strong><br>
-            <span style="color: var(--emerald-300); font-weight: 500;">${returnDateFormatted}</span>
-          </div>
-        </div>
-        
-        <div style="background: rgba(15, 23, 42, 0.4); padding: 0.75rem; border-radius: 0.375rem; border: 1px solid rgba(71, 85, 105, 0.3);">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-            <span style="color: var(--slate-300);">Total días utilizados:</span>
-            <span style="color: ${totalUsed > availableDays ? 'var(--red-400)' : 'var(--slate-300)'}; font-weight: bold;">
-              ${totalUsed.toFixed(1)} días
-            </span>
-          </div>
-          
-          <div style="display: flex; justify-content: space-between;">
-            <span style="color: var(--slate-300);">Saldo restante:</span>
-            <span style="color: ${remainingBalance < 0 ? 'var(--red-400)' : 'var(--emerald-400)'}; font-weight: bold;">
-              ${remainingBalance.toFixed(1)} días
-            </span>
-          </div>
-          
-          ${remainingBalance < 0 ? `
-            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); padding: 0.5rem; margin-top: 0.5rem; border-radius: 0.375rem;">
-              <span style="color: var(--red-400);">⚠️ Advertencia: El saldo sería negativo</span>
-            </div>
-          ` : ''}
-        </div>
-        
-        <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(71, 85, 105, 0.3);">
-          <small style="color: var(--slate-500); font-style: italic;">
-            Nota: Los días guardados para diciembre NO afectan la fecha de regreso
-          </small>
-        </div>
-      </div>
-    `;
-  }
-}
-
 function getDayName(dayNumber) {
   const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
   return days[dayNumber] || 'Desconocido';
@@ -1296,7 +1296,7 @@ function validateVacationScheduleForm() {
   }
   
   if (daysValue + decemberValue > availableDays) {
-    showNotification(`La suma de días a tomar (${daysValue}) y guardar (${decemberValue}) = ${(daysValue + diciembreValue).toFixed(1)} supera los días disponibles (${availableDays})`, 'error');
+    showNotification(`La suma de días a tomar (${daysValue}) y guardar (${decemberValue}) = ${(daysValue + decemberValue).toFixed(1)} supera los días disponibles (${availableDays})`, 'error');
     return false;
   }
   
@@ -1815,8 +1815,221 @@ function applyBlinkingStyles() {
       font-size: 0.75rem;
       font-style: italic;
     }
+    
+    .notification-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 400px;
+      max-height: 80vh;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 10px;
+      pointer-events: none;
+    }
+    
+    .notification-container::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .notification-container::-webkit-scrollbar-track {
+      background: rgba(30, 41, 59, 0.3);
+      border-radius: 3px;
+    }
+    
+    .notification-container::-webkit-scrollbar-thumb {
+      background: rgba(71, 85, 105, 0.5);
+      border-radius: 3px;
+    }
+    
+    .notification-container::-webkit-scrollbar-thumb:hover {
+      background: rgba(71, 85, 105, 0.7);
+    }
+    
+    .notification-item {
+      position: relative;
+      background: rgba(30, 41, 59, 0.95);
+      border: 1px solid rgba(71, 85, 105, 0.5);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      width: 100%;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      animation: slideInRight 0.3s ease forwards;
+      pointer-events: auto;
+      transform: translateX(120%);
+      opacity: 0;
+      margin-bottom: 5px;
+    }
+    
+    .notification-item.show {
+      animation: slideInRight 0.3s ease forwards;
+    }
+    
+    .notification-item.hide {
+      animation: slideOutRight 0.3s ease forwards;
+    }
+    
+    @keyframes slideInRight {
+      from {
+        transform: translateX(120%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+    
+    @keyframes slideOutRight {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(120%);
+        opacity: 0;
+      }
+    }
+    
+    .notification-item.success {
+      border-left: 4px solid #10b981;
+    }
+    
+    .notification-item.error {
+      border-left: 4px solid #ef4444;
+    }
+    
+    .notification-item.warning {
+      border-left: 4px solid #f59e0b;
+    }
+    
+    .notification-content {
+      flex: 1;
+      margin-right: 1rem;
+    }
+    
+    .notification-message {
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+    
+    .close-notification-btn {
+      background: none;
+      border: none;
+      color: var(--slate-400);
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      transition: color 0.2s, background-color 0.2s;
+    }
+    
+    .close-notification-btn:hover {
+      color: white;
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    #suspension-notification,
+    .dismissal-notification {
+      display: none !important;
+    }
+    
+    @media (max-width: 768px) {
+      .notification-container {
+        max-width: 300px;
+        right: 10px;
+        top: 10px;
+      }
+      
+      .notification-item {
+        padding: 0.75rem;
+      }
+    }
   `;
   document.head.appendChild(style);
+}
+
+let notificationContainer = null;
+const activeNotifications = new Set();
+
+function createNotificationContainer() {
+    if (notificationContainer) return;
+    
+    notificationContainer = document.createElement('div');
+    notificationContainer.id = 'notification-container';
+    notificationContainer.className = 'notification-container';
+    
+    document.body.appendChild(notificationContainer);
+}
+
+function showNotification(message, type = 'success') {
+    createNotificationContainer();
+    
+    const notificationId = Date.now() + Math.random();
+    const notification = document.createElement('div');
+    notification.className = `notification-item ${type}`;
+    notification.dataset.id = notificationId;
+    
+    const messageSpan = document.createElement('span');
+    messageSpan.className = 'notification-message';
+    messageSpan.textContent = message;
+    
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'close-notification-btn';
+    closeBtn.innerHTML = '&times;';
+    closeBtn.addEventListener('click', () => {
+        removeNotification(notificationId);
+    });
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'notification-content';
+    contentDiv.appendChild(messageSpan);
+    
+    notification.appendChild(contentDiv);
+    notification.appendChild(closeBtn);
+    
+    notificationContainer.appendChild(notification);
+    activeNotifications.add(notificationId);
+    
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 10);
+    
+    setTimeout(() => {
+        removeNotification(notificationId);
+    }, 5000);
+    
+    return notificationId;
+}
+
+function removeNotification(id) {
+    const notification = document.querySelector(`.notification-item[data-id="${id}"]`);
+    if (notification) {
+        notification.classList.remove('show');
+        notification.classList.add('hide');
+        
+        notification.addEventListener('animationend', () => {
+            if (notification.parentNode) {
+                notification.remove();
+                activeNotifications.delete(id);
+            }
+        }, { once: true });
+    }
 }
 
 function initializeEventListeners() {
@@ -2604,7 +2817,7 @@ function openEditEmployeeModal(employee, index) {
   const form = document.getElementById('edit-employee-form');
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    await handleEditEmployeeSubmit(originalEmployee, index);
+    await handleEditEmployeeSubmit(employee, index);
   });
 }
 
@@ -3554,38 +3767,6 @@ function validateAttendanceForm() {
   return true;
 }
 
-function showNotification(message, type = 'success') {
-  const notification = document.createElement('div');
-  notification.className = `notification ${type}`;
-  
-  if (message.includes('<')) {
-    notification.innerHTML = message;
-  } else {
-    const messageSpan = document.createElement('span');
-    messageSpan.textContent = message;
-    notification.appendChild(messageSpan);
-  }
-  
-  const closeBtn = document.createElement('button');
-  closeBtn.className = 'close-notification';
-  closeBtn.innerHTML = '&times;';
-  closeBtn.addEventListener('click', () => {
-    notification.remove();
-  });
-  
-  notification.appendChild(closeBtn);
-  document.body.appendChild(notification);
-  
-  setTimeout(() => {
-    notification.style.opacity = '0';
-    setTimeout(() => {
-      if (notification.parentNode) {
-        notification.remove();
-      }
-    }, 500);
-  }, 5000);
-}
-
 function initializeTableFilters() {
   setupFilterAutocomplete();
 }
@@ -4100,36 +4281,15 @@ function playSuspensionSound() {
 }
 
 function showSuspensionNotification() {
-  if (elements.suspensionNotification) {
-    elements.suspensionNotification.style.display = 'flex';
-    elements.suspensionNotification.className = 'notification warning';
-    document.getElementById('notification-message').textContent = 
-      `Hay ${suspensionCandidates.length} candidato(s) a suspensión pendientes`;
+  if (suspensionCandidates.length > 0) {
+    showNotification(`Hay ${suspensionCandidates.length} candidato(s) a suspensión pendientes`, 'warning');
   }
 }
 
 function showDismissalNotification() {
-  const notification = document.createElement('div');
-  notification.className = 'notification dismissal-notification';
-  notification.innerHTML = `
-    <span><strong>CANDIDATO A BAJA AUTOMÁTICA:</strong> ${automaticDismissalCandidates.length} empleado(s) con 4+ faltas en 30 días</span>
-    <button class="close-notification">&times;</button>
-  `;
-  
-  notification.querySelector('.close-notification').addEventListener('click', () => {
-    notification.remove();
-  });
-  
-  document.body.appendChild(notification);
-  
-  setTimeout(() => {
-    notification.style.opacity = '0';
-    setTimeout(() => {
-      if (notification.parentNode) {
-        notification.remove();
-      }
-    }, 500);
-  }, 10000);
+  if (automaticDismissalCandidates.length > 0) {
+    showNotification(`CANDIDATO A BAJA AUTOMÁTICA: ${automaticDismissalCandidates.length} empleado(s) con 4+ faltas en 30 días`, 'error');
+  }
 }
 
 function scheduleHourlySuspensionCheck() {
@@ -4657,7 +4817,3 @@ window.handleVacationScheduleSubmitWithPDF = handleVacationScheduleSubmitWithPDF
 document.addEventListener('DOMContentLoaded', function() {
   initializeApp();
 });
-
-
-
-
