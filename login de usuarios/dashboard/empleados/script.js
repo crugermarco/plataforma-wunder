@@ -433,10 +433,10 @@ async function initializeApp() {
       elements.addVacationScheduleBtn.addEventListener('click', openVacationScheduleModal);
     }
     
-    showNotification('Aplicacion cargada correctamente', 'success');
+    showNotification('Aplicación cargada correctamente', 'success');
   } catch (error) {
-    console.error('Error inicializando la aplicacion:', error);
-    showNotification('Error al cargar la aplicacion. Verifica la conexion.', 'error');
+    console.error('Error inicializando la aplicación:', error);
+    showNotification('Error al cargar la aplicación. Verifica la conexión.', 'error');
   }
 }
 
@@ -455,245 +455,242 @@ async function loadNonWorkingDaysData() {
 }
 
 function isNonWorkingDay(date) {
-  if (!date) return false;
-  
-  try {
-    let year, month, day;
-
-    if (typeof date === 'string' && date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      const parts = date.split('-');
-      year = parseInt(parts[0]);
-      month = parseInt(parts[1]);
-      day = parseInt(parts[2]);
-    } else {
-      const dateObj = new Date(date);
-      if (isNaN(dateObj.getTime())) return false;
-      year = dateObj.getFullYear();
-      month = dateObj.getMonth() + 1;
-      day = dateObj.getDate();
-    }
-
-    const jsDate = new Date(year, month - 1, day);
-    const dayOfWeek = jsDate.getDay();
-
-    if (dayOfWeek === 0 || dayOfWeek === 6) {
-      return true;
-    }
-
-    const mm = month.toString().padStart(2, '0');
-    const dd = day.toString().padStart(2, '0');
-    const dateStr = `${mm}/${dd}/${year}`;
-
-    const specificNonWorkingDays = [
-      '02/02/2026',
-      '03/16/2026',
-      '04/03/2026',
-      '05/01/2026',
-      '09/16/2026',
-      '11/16/2026',
-      '12/25/2026',
-      '01/01/2027'
-    ];
-
-    if (specificNonWorkingDays.includes(dateStr)) {
-      return true;
-    }
-
-    if (nonWorkingDaysData && nonWorkingDaysData.length > 0) {
-      return nonWorkingDaysData.some(item => {
-        if (!item.FECHA && !item.Date) return false;
-        try {
-          const raw = item.FECHA || item.Date;
-          const nwDate = new Date(raw);
-          if (isNaN(nwDate.getTime())) return false;
-          const nwYear = nwDate.getFullYear();
-          const nwMonth = (nwDate.getMonth() + 1).toString().padStart(2, '0');
-          const nwDay = nwDate.getDate().toString().padStart(2, '0');
-          const nwStr = `${nwMonth}/${nwDay}/${nwYear}`;
-          return nwStr === dateStr;
-        } catch (e) {
-          return false;
+    if (!date) return false;
+    
+    try {
+      let year, month, day;
+      
+      if (typeof date === 'string' && date.includes('-')) {
+        const parts = date.split('-');
+        if (parts.length === 3) {
+          year = parseInt(parts[0]);
+          month = parseInt(parts[1]);
+          day = parseInt(parts[2]);
         }
-      });
+      } else {
+        const dateObj = new Date(date);
+        if (isNaN(dateObj.getTime())) return false;
+        year = dateObj.getFullYear();
+        month = dateObj.getMonth() + 1;
+        day = dateObj.getDate();
+      }
+      
+      const dateObj = new Date(year, month - 1, day);
+      const dayOfWeek = dateObj.getDay();
+      if (dayOfWeek === 0 || dayOfWeek === 6) {
+        return true;
+      }
+      
+      const monthStr = month.toString().padStart(2, '0');
+      const dayStr = day.toString().padStart(2, '0');
+      const dateStr = `${monthStr}/${dayStr}/${year}`;
+      
+      const specificNonWorkingDays = [
+        '02/02/2026',
+        '03/16/2026',
+        '04/03/2026', 
+        '05/01/2026',
+        '09/16/2026',
+        '11/16/2026',
+        '12/25/2026',
+        '01/01/2027'
+      ];
+      
+      if (specificNonWorkingDays.includes(dateStr)) {
+        return true;
+      }
+      
+      if (nonWorkingDaysData && nonWorkingDaysData.length > 0) {
+        return nonWorkingDaysData.some(item => {
+          if (!item.FECHA && !item.Date) return false;
+          try {
+            let itemDate;
+            if (typeof item.FECHA === 'string') {
+              const itemParts = item.FECHA.split('/');
+              if (itemParts.length === 3) {
+                const itemMonth = parseInt(itemParts[0]);
+                const itemDay = parseInt(itemParts[1]);
+                const itemYear = parseInt(itemParts[2]);
+                return itemMonth === month && itemDay === day && itemYear === year;
+              }
+            }
+            itemDate = new Date(item.FECHA || item.Date);
+            return itemDate.getMonth() + 1 === month && 
+                   itemDate.getDate() === day && 
+                   itemDate.getFullYear() === year;
+          } catch (e) {
+            return false;
+          }
+        });
+      }
+      
+      return false;
+    } catch (e) {
+      return false;
     }
-
-    return false;
-  } catch (e) {
-    return false;
   }
-}
 
 function calculateVacationDates() {
-  const startDateInput = document.getElementById('schedule-start-date');
-  const daysToTakeInput = document.getElementById('schedule-days-to-take');
-  const decemberSaveInput = document.getElementById('schedule-december-save');
-  const returnDateInput = document.getElementById('schedule-return-date');
-  const infoDiv = document.getElementById('days-calculation-info');
-  const vacationDaysInput = document.getElementById('schedule-vacation-days');
-  const daysTakenInput = document.getElementById('schedule-days-taken');
-  
-  if (!startDateInput.value || !daysToTakeInput.value) {
-    return;
-  }
-  
-  const startDateStr = startDateInput.value;
-  const parts = startDateStr.split('-').map(Number);
-  const startYear = parts[0];
-  const startMonth = parts[1];
-  const startDay = parts[2];
-
-  let daysToTake = parseFloat(daysToTakeInput.value) || 0;
-  let decemberSave = parseFloat(decemberSaveInput.value) || 0;
-  const availableDays = parseFloat(vacationDaysInput.value) || 0;
-  
-  const daysTaken = daysToTake;
-  
-  if (daysTakenInput) {
-    daysTakenInput.value = daysTaken.toFixed(1);
-  }
-  
-  const formattedStartDate = `${startMonth.toString().padStart(2, '0')}/${startDay.toString().padStart(2, '0')}/${startYear}`;
-  
-  const WORK_DAYS_PER_VACATION_DAY = 1.2;
-  const workDaysNeeded = Math.ceil(daysToTake / WORK_DAYS_PER_VACATION_DAY);
-
-  let currentYear = startYear;
-  let currentMonth = startMonth;
-  let currentDay = startDay;
-  let workDaysCounted = 0;
-  let totalDaysElapsed = 0;
-  let nonWorkingDaysCount = 0;
-
-  while (workDaysCounted < workDaysNeeded) {
-    const tempDate = new Date(currentYear, currentMonth - 1, currentDay);
-    tempDate.setDate(tempDate.getDate() + 1);
-    currentYear = tempDate.getFullYear();
-    currentMonth = tempDate.getMonth() + 1;
-    currentDay = tempDate.getDate();
-    totalDaysElapsed++;
-
-    const yyyymmdd = `${currentYear}-${currentMonth.toString().padStart(2, '0')}-${currentDay.toString().padStart(2, '0')}`;
-    const isNonWorking = isNonWorkingDay(yyyymmdd);
-
-    if (!isNonWorking) {
-      workDaysCounted++;
-    } else {
-      nonWorkingDaysCount++;
+    const startDateInput = document.getElementById('schedule-start-date');
+    const daysToTakeInput = document.getElementById('schedule-days-to-take');
+    const decemberSaveInput = document.getElementById('schedule-december-save');
+    const returnDateInput = document.getElementById('schedule-return-date');
+    const infoDiv = document.getElementById('days-calculation-info');
+    const vacationDaysInput = document.getElementById('schedule-vacation-days');
+    const daysTakenInput = document.getElementById('schedule-days-taken');
+    
+    if (!startDateInput.value || !daysToTakeInput.value) {
+        return;
     }
-
-    if (totalDaysElapsed > 365) {
-      break;
+    
+    const startDateStr = startDateInput.value; // '2026-04-02'
+    const [year, month, day] = startDateStr.split('-').map(Number);
+    
+    // Crear fecha en UTC para evitar problemas de zona horaria
+    const startDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+    
+    let daysToTake = parseFloat(daysToTakeInput.value) || 0;
+    let decemberSave = parseFloat(decemberSaveInput.value) || 0;
+    const availableDays = parseFloat(vacationDaysInput.value) || 0;
+    
+    const daysTaken = daysToTake;
+    
+    if (daysTakenInput) {
+        daysTakenInput.value = daysTaken.toFixed(1);
     }
-  }
-
-  let safeReturnYear = currentYear;
-  let safeReturnMonth = currentMonth;
-  let safeReturnDay = currentDay;
-
-  let safetyCounter = 0;
-  while (true) {
-    const yyyymmdd = `${safeReturnYear}-${safeReturnMonth.toString().padStart(2, '0')}-${safeReturnDay.toString().padStart(2, '0')}`;
-    if (!isNonWorkingDay(yyyymmdd)) {
-      break;
+    
+    const formattedStartDate = `${month.toString().padStart(2, '0')}/${day.toString().padStart(2, '0')}/${year}`;
+    
+    const VACATION_DAY_VALUE = 1.2;
+    const workDaysNeeded = Math.ceil(daysToTake / VACATION_DAY_VALUE);
+    
+    let currentDate = new Date(startDate);
+    let workDaysCounted = 0;
+    let nonWorkingDaysCount = 0;
+    
+    console.log('=== INICIO CÁLCULO ===');
+    console.log('Fecha de salida (UTC):', currentDate.toISOString());
+    console.log('Días a tomar:', daysToTake);
+    console.log('Días laborales necesarios:', workDaysNeeded);
+    
+    while (workDaysCounted < workDaysNeeded) {
+        currentDate.setDate(currentDate.getDate() + 1);
+        
+        const currentYear = currentDate.getUTCFullYear();
+        const currentMonth = (currentDate.getUTCMonth() + 1).toString().padStart(2, '0');
+        const currentDay = currentDate.getUTCDate().toString().padStart(2, '0');
+        const dateStrForCheck = `${currentYear}-${currentMonth}-${currentDay}`;
+        
+        const isNonWorking = isNonWorkingDay(dateStrForCheck);
+        
+        console.log(
+            'Fecha:', currentDate.toLocaleDateString('es-MX'), 
+            '| Laborable?', !isNonWorking,
+            '| Contador:', workDaysCounted + (isNonWorking ? 0 : 1)
+        );
+        
+        if (!isNonWorking) {
+            workDaysCounted++;
+        } else {
+            nonWorkingDaysCount++;
+        }
     }
-    const tempDate = new Date(safeReturnYear, safeReturnMonth - 1, safeReturnDay);
-    tempDate.setDate(tempDate.getDate() + 1);
-    safeReturnYear = tempDate.getFullYear();
-    safeReturnMonth = tempDate.getMonth() + 1;
-    safeReturnDay = tempDate.getDate();
-    safetyCounter++;
-    if (safetyCounter > 30) break;
-  }
-
-  const returnMonth = safeReturnMonth.toString().padStart(2, '0');
-  const returnDay = safeReturnDay.toString().padStart(2, '0');
-  const returnDateFormatted = `${returnMonth}/${returnDay}/${safeReturnYear}`;
-  
-  if (returnDateInput) {
-    returnDateInput.value = returnDateFormatted;
-  }
-  
-  const totalUsed = daysToTake + decemberSave;
-  const remainingBalance = availableDays - totalUsed;
-  
-  if (infoDiv) {
-    infoDiv.innerHTML = `
-      <div style="background: rgba(30, 41, 59, 0.5); padding: 1rem; border-radius: 0.5rem; border: 1px solid rgba(71, 85, 105, 0.3);">
-        <h4 style="color: var(--emerald-400); margin-bottom: 0.75rem;">RESUMEN DEL CALCULO</h4>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
-          <div style="background: rgba(15, 23, 42, 0.4); padding: 0.5rem; border-radius: 0.375rem;">
-            <strong style="color: var(--slate-300);">Saldo disponible:</strong>
-            <div style="color: var(--emerald-400); font-size: 1.1rem; font-weight: bold;">${availableDays.toFixed(1)} dias</div>
-          </div>
-          
-          <div style="background: rgba(15, 23, 42, 0.4); padding: 0.5rem; border-radius: 0.375rem;">
-            <strong style="color: var(--slate-300);">Dias a tomar:</strong>
-            <div style="color: var(--blue-400); font-size: 1.1rem; font-weight: bold;">${daysToTake.toFixed(1)} dias</div>
-          </div>
-          
-          <div style="background: rgba(15, 23, 42, 0.4); padding: 0.5rem; border-radius: 0.375rem;">
-            <strong style="color: var(--slate-300);">Guardar para diciembre:</strong>
-            <div style="color: var(--amber-400); font-size: 1.1rem; font-weight: bold;">${decemberSave.toFixed(1)} dias</div>
-          </div>
-          
-          <div style="background: rgba(15, 23, 42, 0.4); padding: 0.5rem; border-radius: 0.375rem;">
-            <strong style="color: var(--slate-300);">Dias descontados:</strong>
-            <div style="color: var(--red-400); font-size: 1.1rem; font-weight: bold;">${daysTaken.toFixed(1)} dias</div>
-          </div>
-        </div>
-        
-        <div style="background: rgba(15, 23, 42, 0.6); padding: 0.75rem; border-radius: 0.375rem; margin-bottom: 1rem;">
-          <strong style="color: var(--slate-300);">Calculo de dias laborales:</strong><br>
-          <span style="color: var(--slate-400);">
-            ${daysToTake.toFixed(1)} dias de vacaciones / ${WORK_DAYS_PER_VACATION_DAY} = ${workDaysNeeded} dias laborales requeridos<br>
-            Dias contados: ${workDaysCounted} dias laborales<br>
-            Dias no laborales saltados: ${nonWorkingDaysCount} dias
-          </span>
-        </div>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
-          <div style="background: rgba(59, 130, 246, 0.1); padding: 0.75rem; border-radius: 0.375rem; border: 1px solid rgba(59, 130, 246, 0.3);">
-            <strong style="color: var(--slate-300);">Fecha de salida:</strong><br>
-            <span style="color: var(--blue-300); font-weight: 500;">${formattedStartDate}</span>
-          </div>
-          
-          <div style="background: rgba(34, 197, 94, 0.1); padding: 0.75rem; border-radius: 0.375rem; border: 1px solid rgba(34, 197, 94, 0.3);">
-            <strong style="color: var(--slate-300);">Fecha de regreso:</strong><br>
-            <span style="color: var(--emerald-300); font-weight: 500;">${returnDateFormatted}</span>
-          </div>
-        </div>
-        
-        <div style="background: rgba(15, 23, 42, 0.4); padding: 0.75rem; border-radius: 0.375rem; border: 1px solid rgba(71, 85, 105, 0.3);">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-            <span style="color: var(--slate-300);">Total dias utilizados:</span>
-            <span style="color: ${totalUsed > availableDays ? 'var(--red-400)' : 'var(--slate-300)'}; font-weight: bold;">
-              ${totalUsed.toFixed(1)} dias
-            </span>
-          </div>
-          
-          <div style="display: flex; justify-content: space-between;">
-            <span style="color: var(--slate-300);">Saldo restante:</span>
-            <span style="color: ${remainingBalance < 0 ? 'var(--red-400)' : 'var(--emerald-400)'}; font-weight: bold;">
-              ${remainingBalance.toFixed(1)} dias
-            </span>
-          </div>
-          
-          ${remainingBalance < 0 ? `
-            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); padding: 0.5rem; margin-top: 0.5rem; border-radius: 0.375rem;">
-              <span style="color: var(--red-400);">Advertencia: El saldo seria negativo</span>
+    
+    console.log('=== FECHA FINAL ===');
+    console.log('Fecha calculada (UTC):', currentDate.toISOString());
+    
+    const returnYear = currentDate.getUTCFullYear();
+    const returnMonth = (currentDate.getUTCMonth() + 1).toString().padStart(2, '0');
+    const returnDay = currentDate.getUTCDate().toString().padStart(2, '0');
+    const returnDateFormatted = `${returnMonth}/${returnDay}/${returnYear}`;
+    
+    console.log('Fecha formateada:', returnDateFormatted);
+    
+    if (returnDateInput) {
+        returnDateInput.value = returnDateFormatted;
+    }
+    
+    const totalUsed = daysToTake + decemberSave;
+    const remainingBalance = availableDays - totalUsed;
+    
+    if (infoDiv) {
+        infoDiv.innerHTML = `
+        <div style="background: rgba(30, 41, 59, 0.5); padding: 1rem; border-radius: 0.5rem; border: 1px solid rgba(71, 85, 105, 0.3);">
+            <h4 style="color: var(--emerald-400); margin-bottom: 0.75rem;">RESUMEN DEL CÁLCULO</h4>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+                <div style="background: rgba(15, 23, 42, 0.4); padding: 0.5rem; border-radius: 0.375rem;">
+                    <strong style="color: var(--slate-300);">Saldo disponible:</strong>
+                    <div style="color: var(--emerald-400); font-size: 1.1rem; font-weight: bold;">${availableDays.toFixed(1)} días</div>
+                </div>
+                
+                <div style="background: rgba(15, 23, 42, 0.4); padding: 0.5rem; border-radius: 0.375rem;">
+                    <strong style="color: var(--slate-300);">Días a tomar:</strong>
+                    <div style="color: var(--blue-400); font-size: 1.1rem; font-weight: bold;">${daysToTake.toFixed(1)} días</div>
+                </div>
+                
+                <div style="background: rgba(15, 23, 42, 0.4); padding: 0.5rem; border-radius: 0.375rem;">
+                    <strong style="color: var(--slate-300);">Guardar para diciembre:</strong>
+                    <div style="color: var(--amber-400); font-size: 1.1rem; font-weight: bold;">${decemberSave.toFixed(1)} días</div>
+                </div>
+                
+                <div style="background: rgba(15, 23, 42, 0.4); padding: 0.5rem; border-radius: 0.375rem;">
+                    <strong style="color: var(--slate-300);">Días descontados:</strong>
+                    <div style="color: var(--red-400); font-size: 1.1rem; font-weight: bold;">${daysTaken.toFixed(1)} días</div>
+                </div>
             </div>
-          ` : ''}
+            
+            <div style="background: rgba(15, 23, 42, 0.6); padding: 0.75rem; border-radius: 0.375rem; margin-bottom: 1rem;">
+                <strong style="color: var(--slate-300);">Cálculo de días laborales:</strong><br>
+                <span style="color: var(--slate-400);">
+                    ${daysToTake.toFixed(1)} días de vacaciones ÷ ${VACATION_DAY_VALUE} = ${workDaysNeeded} días laborales requeridos<br>
+                    Días laborales contados: ${workDaysCounted}<br>
+                    Días no laborales saltados: ${nonWorkingDaysCount} días
+                </span>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+                <div style="background: rgba(59, 130, 246, 0.1); padding: 0.75rem; border-radius: 0.375rem; border: 1px solid rgba(59, 130, 246, 0.3);">
+                    <strong style="color: var(--slate-300);">Fecha de salida:</strong><br>
+                    <span style="color: var(--blue-300); font-weight: 500;">${formattedStartDate}</span>
+                </div>
+                
+                <div style="background: rgba(34, 197, 94, 0.1); padding: 0.75rem; border-radius: 0.375rem; border: 1px solid rgba(34, 197, 94, 0.3);">
+                    <strong style="color: var(--slate-300);">Fecha de regreso:</strong><br>
+                    <span style="color: var(--emerald-300); font-weight: 500;">${returnDateFormatted}</span>
+                </div>
+            </div>
+            
+            <div style="background: rgba(15, 23, 42, 0.4); padding: 0.75rem; border-radius: 0.375rem; border: 1px solid rgba(71, 85, 105, 0.3);">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span style="color: var(--slate-300);">Total días utilizados:</span>
+                    <span style="color: ${totalUsed > availableDays ? 'var(--red-400)' : 'var(--slate-300)'}; font-weight: bold;">
+                        ${totalUsed.toFixed(1)} días
+                    </span>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: var(--slate-300);">Saldo restante:</span>
+                    <span style="color: ${remainingBalance < 0 ? 'var(--red-400)' : 'var(--emerald-400)'}; font-weight: bold;">
+                        ${remainingBalance.toFixed(1)} días
+                    </span>
+                </div>
+                
+                ${remainingBalance < 0 ? `
+                    <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); padding: 0.5rem; margin-top: 0.5rem; border-radius: 0.375rem;">
+                        <span style="color: var(--red-400);">Advertencia: El saldo sería negativo</span>
+                    </div>
+                ` : ''}
+            </div>
+            
+            <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(71, 85, 105, 0.3);">
+                <small style="color: var(--slate-500); font-style: italic;">
+                    Nota: Los días guardados para diciembre NO afectan la fecha de regreso
+                </small>
+            </div>
         </div>
-        
-        <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(71, 85, 105, 0.3);">
-          <small style="color: var(--slate-500); font-style: italic;">
-            Nota: Los dias guardados para diciembre NO afectan la fecha de regreso
-          </small>
-        </div>
-      </div>
-    `;
-  }
+        `;
+    }
 }
 
 async function loadVacationConcentradoData() {
@@ -713,7 +710,7 @@ async function loadVacationConcentradoData() {
     
   } catch (error) {
     console.error('Error al cargar vacaciones:', error);
-    showNotification('Error critico al cargar vacaciones', 'error');
+    showNotification('Error crítico al cargar vacaciones', 'error');
   }
 }
 
@@ -780,10 +777,10 @@ function renderVacationConcentradoTable() {
     
     const nombre = item.NOMBRE || '';
     const numeroEmpleado = item['NUMERO DE EMPLEADO'] || '';
-    const area = item['AREA'] || '';
-    const diasVacaciones = item['DIAS VACACIONES'] || '0';
+    const area = item['ÁREA'] || '';
+    const diasVacaciones = item['DÍAS VACACIONES'] || '0';
     const autorizadas = item['AUTORIZADAS'] === true || item['AUTORIZADAS'] === 'TRUE' || item['AUTORIZADAS'] === 'true';
-    const diasTomados = item['DIAS TOMADOS'] || '0';
+    const diasTomados = item['DÍAS TOMADOS'] || '0';
     const guardarDiciembre = item['GUARDAR DICIEMBRE'] || '0';
     
     const row = document.createElement('tr');
@@ -894,7 +891,7 @@ function applyVacationFilters() {
   
   if (vacationFilters.area) {
     filteredVacationData = filteredVacationData.filter(item => {
-      const area = item['AREA'] || '';
+      const area = item['ÁREA'] || '';
       return area.toLowerCase().includes(vacationFilters.area);
     });
   }
@@ -928,17 +925,17 @@ async function toggleVacationAuthorization(index, isAuthorized) {
     const result = await fetchSheetData(sheetConnections.vacations, 'update', updateData);
     
     if (result.error) {
-      showNotification('Error al actualizar autorizacion: ' + result.error, 'error');
+      showNotification('Error al actualizar autorización: ' + result.error, 'error');
       return;
     }
     
     vacationData[index]['AUTORIZADAS'] = isAuthorized;
     applyVacationFilters();
-    showNotification(`Vacacion ${isAuthorized ? 'autorizada' : 'desautorizada'} exitosamente`, 'success');
+    showNotification(`Vacación ${isAuthorized ? 'autorizada' : 'desautorizada'} exitosamente`, 'success');
     
   } catch (error) {
     console.error('Error en toggleVacationAuthorization:', error);
-    showNotification('Error al actualizar autorizacion', 'error');
+    showNotification('Error al actualizar autorización', 'error');
   }
 }
 
@@ -959,7 +956,7 @@ function checkUpcomingVacations() {
         );
         
         if (!hasVacations) {
-          showNotification(`${employee.NOMBRE} necesita agendar sus vacaciones. Le quedan ${12 - monthsWorked} mes(es) para cumplir un anio.`, 'warning');
+          showNotification(`${employee.NOMBRE} necesita agendar sus vacaciones. Le quedan ${12 - monthsWorked} mes(es) para cumplir un año.`, 'warning');
         }
       }
     }
@@ -996,18 +993,18 @@ function openVacationScheduleModal() {
             <input type="text" class="form-input" id="schedule-entry-date" readonly>
           </div>
           <div class="form-group">
-            <label class="form-label">Numero de Empleado</label>
+            <label class="form-label">Número de Empleado</label>
             <input type="text" class="form-input" id="schedule-employee-id" readonly>
           </div>
         </div>
         
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Area</label>
+            <label class="form-label">Área</label>
             <input type="text" class="form-input" id="schedule-area" readonly>
           </div>
           <div class="form-group">
-            <label class="form-label">Dias de Vacaciones Disponibles</label>
+            <label class="form-label">Días de Vacaciones Disponibles</label>
             <input type="text" class="form-input" id="schedule-vacation-days" readonly>
           </div>
         </div>
@@ -1035,10 +1032,10 @@ function openVacationScheduleModal() {
         </div>
         
         <div class="form-group">
-          <label class="form-label">Dias de Vacaciones a Tomar *</label>
+          <label class="form-label">Días de Vacaciones a Tomar *</label>
           <input type="number" class="form-input" id="schedule-days-to-take" min="1.2" step="1.2" required 
             oninput="calculateVacationDates()">
-          <small style="color: var(--slate-400);">Cada dia de vacaciones equivale a 1.2 dias laborales</small>
+          <small style="color: var(--slate-400);">Cada día de vacaciones equivale a 1.2 días laborales</small>
           <div id="days-calculation-info" style="margin-top: 0.5rem; font-size: 0.9rem; color: var(--slate-300);"></div>
         </div>
         
@@ -1051,15 +1048,15 @@ function openVacationScheduleModal() {
         </div>
         
         <div class="form-group">
-          <label class="form-label">Dias que se Descontaran</label>
+          <label class="form-label">Días que se Descontarán</label>
           <input type="text" class="form-input" id="schedule-days-taken" readonly>
         </div>
         
         <div class="form-group">
-          <label class="form-label">Guardar Dias de Vacaciones para Diciembre</label>
+          <label class="form-label">Guardar Días de Vacaciones para Diciembre</label>
           <input type="number" class="form-input" id="schedule-december-save" min="0" step="1.2" value="0" 
             oninput="calculateVacationDates()">
-          <small style="color: var(--slate-400);">Dias de vacaciones que se guardaran para diciembre</small>
+          <small style="color: var(--slate-400);">Días de vacaciones que se guardarán para diciembre</small>
         </div>
         
         <div class="button-group">
@@ -1131,6 +1128,13 @@ function generateFridayOptions() {
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
       return `${year}-${month}-${day}`;
+    });
+    
+    const fridayFormattedForDisplay = fridays.map(date => {
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${month}/${day}/${year}`;
     });
     
     customPayDateInput.min = fridayFormattedForInput[0];
@@ -1282,7 +1286,7 @@ function setupVacationScheduleEvents() {
 }
 
 function getDayName(dayNumber) {
-  const days = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
+  const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
   return days[dayNumber] || 'Desconocido';
 }
 
@@ -1314,7 +1318,7 @@ function validateVacationScheduleForm() {
   
   const daysValue = parseFloat(daysToTake.value);
   if (isNaN(daysValue) || daysValue < 1.2) {
-    showNotification('Los dias a tomar deben ser al menos 1.2 dias', 'error');
+    showNotification('Los días a tomar deben ser al menos 1.2 días', 'error');
     return false;
   }
   
@@ -1322,27 +1326,27 @@ function validateVacationScheduleForm() {
   const availableDays = parseFloat(vacationDays.value) || 0;
   
   if (daysValue > availableDays) {
-    showNotification(`Los dias a tomar (${daysValue}) superan los dias disponibles (${availableDays})`, 'error');
+    showNotification(`Los días a tomar (${daysValue}) superan los días disponibles (${availableDays})`, 'error');
     return false;
   }
   
   if (decemberValue > availableDays) {
-    showNotification(`Los dias a guardar (${decemberValue}) superan los dias disponibles (${availableDays})`, 'error');
+    showNotification(`Los días a guardar (${decemberValue}) superan los días disponibles (${availableDays})`, 'error');
     return false;
   }
   
   if (daysValue + decemberValue > availableDays) {
-    showNotification(`La suma de dias a tomar (${daysValue}) y guardar (${decemberValue}) = ${(daysValue + decemberValue).toFixed(1)} supera los dias disponibles (${availableDays})`, 'error');
+    showNotification(`La suma de días a tomar (${daysValue}) y guardar (${decemberValue}) = ${(daysValue + decemberValue).toFixed(1)} supera los días disponibles (${availableDays})`, 'error');
     return false;
   }
   
   if (payDateSelect.value === '') {
-    showNotification('Seleccione una opcion de fecha de pago', 'error');
+    showNotification('Seleccione una opción de fecha de pago', 'error');
     return false;
   }
   
   if (payDateSelect.value === 'fecha' && !customPayDateInput.value) {
-    showNotification('Seleccione una fecha de pago valida', 'error');
+    showNotification('Seleccione una fecha de pago válida', 'error');
     return false;
   }
   
@@ -1364,7 +1368,7 @@ function deleteVacationRecord(index) {
   
   const record = vacationData[index];
   
-  if (confirm(`Estas seguro de eliminar las vacaciones de ${record.NOMBRE} (${record['FECHA SALIDA']} - ${record['FECHA REGRESO']})?`)) {
+  if (confirm(`¿Estás seguro de eliminar las vacaciones de ${record.NOMBRE} (${record['FECHA SALIDA']} - ${record['FECHA REGRESO']})?`)) {
     deleteVacationFromSheet(record, index);
   }
 }
@@ -1432,13 +1436,13 @@ function handleVacationScheduleSubmit(e) {
     'NOMBRE': name,
     'FECHA DE INGRESO': document.getElementById('schedule-entry-date').value,
     'NUMERO DE EMPLEADO': document.getElementById('schedule-employee-id').value,
-    'AREA': document.getElementById('schedule-area').value,
-    'DIAS VACACIONES': document.getElementById('schedule-vacation-days').value,
+    'ÁREA': document.getElementById('schedule-area').value,
+    'DÍAS VACACIONES': document.getElementById('schedule-vacation-days').value,
     'FECHA DE PAGO': getPayDateValue(),
     'FECHA SALIDA': formattedStartDate,
     'FECHA REGRESO': formattedReturnDate,
     'AUTORIZADAS': document.getElementById('schedule-authorized').checked ? 'TRUE' : 'FALSE',
-    'DIAS TOMADOS': daysTaken.toFixed(1),
+    'DÍAS TOMADOS': daysTaken.toFixed(1),
     'GUARDAR DICIEMBRE': decemberSave.toFixed(1)
   };
   
@@ -1475,7 +1479,13 @@ function getPayDateValue() {
   } else if (payDateSelect.value === 'fecha' && customPayDateInput.value) {
     const dateStr = customPayDateInput.value;
     const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    
+    if (date.getDay() !== 5) {
+    }
+    
     const formattedDate = `${month.toString().padStart(2, '0')}/${day.toString().padStart(2, '0')}/${year}`;
+    
     return formattedDate;
   }
   
@@ -1533,8 +1543,8 @@ function createAppliedSuspensionsTable() {
       <thead>
         <tr>
           <th>Nombre</th>
-          <th>Fecha Suspension</th>
-          <th>Dias</th>
+          <th>Fecha Suspensión</th>
+          <th>Días</th>
           <th>Faltas Originales</th>
           <th>Estado</th>
         </tr>
@@ -1559,7 +1569,7 @@ function createDismissalCandidatesTable() {
   dismissalTable.className = 'glassmorphism-table';
   dismissalTable.innerHTML = `
     <div class="table-header">
-      <h3 class="mini-table-title">CANDIDATOS A BAJA AUTOMATICA <span class="counter-badge blinking-red" id="dismissal-candidates-count">0</span></h3>
+      <h3 class="mini-table-title">CANDIDATOS A BAJA AUTOMÁTICA <span class="counter-badge blinking-red" id="dismissal-candidates-count">0</span></h3>
       <button class="modern-button export-button export-suspension-btn" data-table="dismissal">
         <svg style="width: 1rem; height: 1rem; margin-right: 0.5rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -1571,9 +1581,9 @@ function createDismissalCandidatesTable() {
       <thead>
         <tr>
           <th>Nombre</th>
-          <th>Faltas en 30 dias</th>
+          <th>Faltas en 30 días</th>
           <th>Primera Falta</th>
-          <th>Ultima Falta</th>
+          <th>Última Falta</th>
           <th>Estado</th>
         </tr>
       </thead>
@@ -1634,22 +1644,22 @@ function exportSuspensionTable(tableType) {
     case 'pending':
       data = suspensionCandidates;
       filename = 'suspensiones_pendientes';
-      headers = ['Nombre', 'Primera Falta', 'Faltas', 'Dias Sugeridos', 'Estado'];
+      headers = ['Nombre', 'Primera Falta', 'Faltas', 'Días Sugeridos', 'Estado'];
       break;
     case 'not-applied':
       data = notAppliedSuspensions;
       filename = 'suspensiones_no_aplicadas';
-      headers = ['Nombre', 'Primera Falta', 'Fecha Limite', 'Estado'];
+      headers = ['Nombre', 'Primera Falta', 'Fecha Límite', 'Estado'];
       break;
     case 'applied':
       data = appliedSuspensions;
       filename = 'suspensiones_aplicadas';
-      headers = ['Nombre', 'Fecha Suspension', 'Dias', 'Faltas Originales', 'Estado'];
+      headers = ['Nombre', 'Fecha Suspensión', 'Días', 'Faltas Originales', 'Estado'];
       break;
     case 'dismissal':
       data = automaticDismissalCandidates;
       filename = 'candidatos_baja_automatica';
-      headers = ['Nombre', 'Faltas en 30 dias', 'Primera Falta', 'Ultima Falta', 'Estado'];
+      headers = ['Nombre', 'Faltas en 30 días', 'Primera Falta', 'Última Falta', 'Estado'];
       break;
   }
   
@@ -1667,7 +1677,7 @@ function exportSuspensionTable(tableType) {
         row.push(`"${item.employeeName}"`);
         row.push(`"${formatDate(item.firstAbsenceDate)}"`);
         row.push(`"${item.absencesCount} faltas (${item.mondayFridayCount} en lunes/viernes)"`);
-        row.push(`"${item.suggestedDays} dia(s)"`);
+        row.push(`"${item.suggestedDays} día(s)"`);
         row.push(`"${item.status}"`);
         break;
       case 'not-applied':
@@ -1679,7 +1689,7 @@ function exportSuspensionTable(tableType) {
       case 'applied':
         row.push(`"${item.employeeName}"`);
         row.push(`"${formatDate(item.suspensionDate)}"`);
-        row.push(`"${item.days} dia(s)"`);
+        row.push(`"${item.days} día(s)"`);
         row.push(`"${item.originalAbsences}"`);
         row.push(`"REALIZADA"`);
         break;
@@ -2296,7 +2306,7 @@ function renderAttendanceTable() {
   
   if (!hasActiveFilters && filteredAttendanceData.length > 20) {
     const row = document.createElement('tr');
-    row.innerHTML = `<td colspan="4" class="no-data">Mostrando las ultimas 20 de ${filteredAttendanceData.length} registros. Usa filtros para ver mas registros.</td>`;
+    row.innerHTML = `<td colspan="4" class="no-data">Mostrando las últimas 20 de ${filteredAttendanceData.length} registros. Usa filtros para ver más registros.</td>`;
     elements.attendanceTableBody.appendChild(row);
   }
 }
@@ -2415,14 +2425,14 @@ function showEmployeeCardModal(employee) {
           </div>
           <div class="employee-card-right">
             <div class="employee-info-section">
-              <h4 class="info-section-title">INFORMACION DEL EMPLEADO</h4>
+              <h4 class="info-section-title">INFORMACIÓN DEL EMPLEADO</h4>
               <div class="info-grid">
                 <div class="info-item">
                   <span class="info-label">NOMBRE:</span>
                   <span class="info-value">${employee.NOMBRE || 'No disponible'}</span>
                 </div>
                 <div class="info-item">
-                  <span class="info-label">NUMERO DE EMPLEADO:</span>
+                  <span class="info-label">NÚMERO DE EMPLEADO:</span>
                   <span class="info-value">${employee['NUMERO DE EMPLEADO'] || 'No disponible'}</span>
                 </div>
                 <div class="info-item">
@@ -2434,11 +2444,11 @@ function showEmployeeCardModal(employee) {
                   <span class="info-value">${employee.AREA || 'No disponible'}</span>
                 </div>
                 <div class="info-item">
-                  <span class="info-label">ANIOS DE SERVICIO:</span>
+                  <span class="info-label">AÑOS DE SERVICIO:</span>
                   <span class="info-value">${employee.AÑOS || '0'}</span>
                 </div>
                 <div class="info-item">
-                  <span class="info-label">DIAS DE VACACIONES:</span>
+                  <span class="info-label">DÍAS DE VACACIONES:</span>
                   <span class="info-value">${employee['DIAS DE VACACIONES'] || '0'}</span>
                 </div>
               </div>
@@ -2450,7 +2460,7 @@ function showEmployeeCardModal(employee) {
                   <svg style="width: 1rem; height: 1rem; margin-right: 0.5rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                   </svg>
-                  Editar Informacion
+                  Editar Información
                 </button>
               ` : ''}
             </div>
@@ -2471,19 +2481,23 @@ function showEmployeeCardModal(employee) {
         max-height: 90vh;
         overflow-y: auto;
       }
+      
       .employee-card-container {
         display: flex;
         gap: 2rem;
         margin-bottom: 1.5rem;
       }
+      
       .employee-card-left {
         flex: 1;
         min-width: 400px;
       }
+      
       .employee-card-right {
         flex: 1;
         min-width: 400px;
       }
+      
       .gafete-large-container {
         background: rgba(30, 41, 59, 0.6);
         border-radius: 1rem;
@@ -2496,6 +2510,7 @@ function showEmployeeCardModal(employee) {
         width: 100%;
         height: 450px;
       }
+      
       .gafete-large-image {
         max-width: 100%;
         max-height: 400px;
@@ -2505,6 +2520,7 @@ function showEmployeeCardModal(employee) {
         object-fit: contain;
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
       }
+      
       .no-image-message {
         color: var(--slate-400);
         font-size: 1.1rem;
@@ -2519,6 +2535,7 @@ function showEmployeeCardModal(employee) {
         align-items: center;
         justify-content: center;
       }
+      
       .employee-info-section {
         background: rgba(30, 41, 59, 0.6);
         border-radius: 1rem;
@@ -2530,6 +2547,7 @@ function showEmployeeCardModal(employee) {
         display: flex;
         flex-direction: column;
       }
+      
       .info-section-title {
         color: var(--emerald-400);
         font-size: 1.1rem;
@@ -2538,17 +2556,20 @@ function showEmployeeCardModal(employee) {
         padding-bottom: 0.5rem;
         border-bottom: 2px solid rgba(16, 185, 129, 0.3);
       }
+      
       .info-grid {
         display: flex;
         flex-direction: column;
         gap: 0.75rem;
         flex: 1;
       }
+      
       .info-item {
         display: flex;
         flex-direction: column;
         gap: 0.25rem;
       }
+      
       .info-label {
         font-weight: 700;
         color: var(--slate-300);
@@ -2556,6 +2577,7 @@ function showEmployeeCardModal(employee) {
         text-transform: uppercase;
         letter-spacing: 0.05em;
       }
+      
       .info-value {
         color: white;
         font-weight: 500;
@@ -2565,10 +2587,12 @@ function showEmployeeCardModal(employee) {
         border-radius: 0.5rem;
         border: 1px solid rgba(71, 85, 105, 0.3);
       }
+      
       .employee-actions {
         margin-top: auto;
         width: 100%;
       }
+      
       .action-button.full-width {
         width: 100%;
         padding: 0.75rem;
@@ -2577,28 +2601,43 @@ function showEmployeeCardModal(employee) {
         align-items: center;
         justify-content: center;
       }
+      
       .gafete-image {
         cursor: pointer;
         transition: transform 0.2s;
       }
+      
       .gafete-image:hover {
         transform: scale(1.05);
       }
+      
+      .action-button.small.view {
+        background: linear-gradient(135deg, var(--purple-600), var(--purple-500));
+      }
+      
+      .action-button.small.view:hover {
+        background: linear-gradient(135deg, var(--purple-700), var(--purple-600));
+      }
+      
       @media (max-width: 768px) {
         .employee-card-container {
           flex-direction: column;
         }
+        
         .employee-card-left,
         .employee-card-right {
           min-width: 100%;
         }
+        
         .employee-card-modal-content {
           max-width: 95%;
         }
+        
         .gafete-large-container {
           min-height: 350px;
           height: 350px;
         }
+        
         .gafete-large-image {
           max-height: 300px;
         }
@@ -2734,7 +2773,7 @@ function deleteEmployeeData(index) {
   
   const employee = employeesData[index];
   
-  if (confirm(`Estas seguro de eliminar a ${employee.NOMBRE} (${employee['NUMERO DE EMPLEADO']})?`)) {
+  if (confirm(`¿Estás seguro de eliminar a ${employee.NOMBRE} (${employee['NUMERO DE EMPLEADO']})?`)) {
     deleteEmployeeFromSheet(employee, index);
   }
 }
@@ -2798,7 +2837,7 @@ function openEditEmployeeModal(employee, index) {
           <input type="text" class="form-input" id="edit-area" value="${employee.AREA || ''}">
         </div>
         <div class="form-group">
-          <label class="form-label">ANIOS</label>
+          <label class="form-label">AÑOS</label>
           <input type="number" class="form-input" id="edit-anos" value="${employee.AÑOS || ''}" step="0.1">
         </div>
         <div class="form-group">
@@ -2920,7 +2959,7 @@ function openAddEmployeeModal() {
           <input type="text" class="form-input" id="add-area">
         </div>
         <div class="form-group">
-          <label class="form-label">ANIOS</label>
+          <label class="form-label">AÑOS</label>
           <input type="number" class="form-input" id="add-anos" step="0.1">
         </div>
         <div class="form-group">
@@ -3008,7 +3047,7 @@ function renderSuspensionCandidates() {
   
   if (suspensionCandidates.length === 0) {
     const row = document.createElement('tr');
-    row.innerHTML = '<td colspan="6" class="no-data">No hay candidatos a suspension pendientes</td>';
+    row.innerHTML = '<td colspan="6" class="no-data">No hay candidatos a suspensión pendientes</td>';
     elements.suspensionsTableBody.appendChild(row);
     return;
   }
@@ -3025,14 +3064,14 @@ function renderSuspensionCandidates() {
       <td>${candidate.employeeName}</td>
       <td>${formatDate(candidate.firstAbsenceDate)}</td>
       <td>${candidate.absencesCount} falta(s) (${candidate.mondayFridayCount} en lunes/viernes)</td>
-      <td>${candidate.suggestedDays} dia(s)</td>
+      <td>${candidate.suggestedDays} día(s)</td>
       <td><span class="status-badge status-pendiente">${candidate.status}</span></td>
       <td>
         <button class="action-button" onclick="openSuspensionModal(${index})">
-          Aplicar Suspension
+          Aplicar Suspensión
         </button>
         <br>
-        <small>Vence en ${daysRemaining} dias</small>
+        <small>Vence en ${daysRemaining} días</small>
       </td>
     `;
     elements.suspensionsTableBody.appendChild(row);
@@ -3083,7 +3122,7 @@ function renderAppliedSuspensions() {
     row.innerHTML = `
       <td>${suspension.employeeName}</td>
       <td>${formatDate(suspension.suspensionDate)}</td>
-      <td>${suspension.days} dia(s)</td>
+      <td>${suspension.days} día(s)</td>
       <td>${suspension.originalAbsences}</td>
       <td><span class="status-badge status-aplicada">REALIZADA</span></td>
     `;
@@ -3103,7 +3142,7 @@ function renderDismissalCandidates() {
   
   if (automaticDismissalCandidates.length === 0) {
     const row = document.createElement('tr');
-    row.innerHTML = '<td colspan="5" class="no-data">No hay candidatos a baja automatica</td>';
+    row.innerHTML = '<td colspan="5" class="no-data">No hay candidatos a baja automática</td>';
     elements.dismissalCandidatesBody.appendChild(row);
     return;
   }
@@ -3371,10 +3410,10 @@ function checkMissingEmployees() {
       const motivo = record.MOTIVO;
       return [
         'Permiso - Por Hora',
-        'Permiso - Por Dia',
+        'Permiso - Por Día',
         'Falta injustificada',
         'Vacaciones',
-        'Suspension',
+        'Suspensión',
         'Falta justificada',
         'NO SE ESCANEA O NO CUENTA CON GAFETE',
         '5hrs',
@@ -3417,7 +3456,7 @@ function renderMissingEmployees(employees) {
     row.innerHTML = `
       <td>${employee.name}</td>
       <td>${employee.lastRecord}</td>
-      <td>${employee.days} dias ${employee.has5hrs ? '<span class="blinking-text">5hrs disponibles</span>' : ''}</td>
+      <td>${employee.days} días ${employee.has5hrs ? '<span class="blinking-text">5hrs disponibles</span>' : ''}</td>
     `;
     elements.missingEmployeesBody.appendChild(row);
   });
@@ -3451,10 +3490,10 @@ function updateAttendanceTypeOptions() {
     <option value="">Seleccione un tipo</option>
     <option value="Asistencia">Asistencia</option>
     <option value="Permiso - Por Hora">Permiso - Por Hora</option>
-    <option value="Permiso - Por Dia">Permiso - Por Dia</option>
+    <option value="Permiso - Por Día">Permiso - Por Día</option>
     <option value="Falta injustificada">Falta injustificada</option>
     <option value="Vacaciones">Vacaciones</option>
-    <option value="Suspension">Suspension</option>
+    <option value="Suspensión">Suspensión</option>
     <option value="Falta justificada">Falta justificada</option>
     <option value="NO SE ESCANEA O NO CUENTA CON GAFETE">NO SE ESCANEA O NO CUENTA CON GAFETE</option>
     <option value="5hrs">5hrs</option>
@@ -3654,7 +3693,7 @@ async function generatePermissionPDF(formData) {
     const spreadsheetId = sheetConnections.permissions.spreadsheetId;
     const fallbackUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=pdf&gid=0`;
     
-    showNotification(`Error al descargar automaticamente. <a href="${fallbackUrl}" target="_blank" style="color: white; text-decoration: underline;">Haz clic aqui para descargar formato manualmente</a>`, 'error');
+    showNotification(`Error al descargar automáticamente. <a href="${fallbackUrl}" target="_blank" style="color: white; text-decoration: underline;">Haz clic aquí para descargar formato manualmente</a>`, 'error');
   }
 }
 
@@ -3738,10 +3777,10 @@ function getPoints(type) {
   const pointsMap = {
     'Asistencia': 'parametro de prueba',
     'Permiso - Por Hora': 'Revisar hoja de permiso',
-    'Permiso - Por Dia': '-10',
+    'Permiso - Por Día': '-10',
     'Falta injustificada': '-10',
     'Vacaciones': 'N/A',
-    'Suspension': '-10',
+    'Suspensión': '-10',
     'Falta justificada': '-10',
     'NO SE ESCANEA O NO CUENTA CON GAFETE': '-$10',
     '5hrs': 'N/A',
@@ -3801,17 +3840,17 @@ function updatePageTitles(sectionName) {
     elements.pageTitle.textContent = 'Control de Asistencias';
     elements.pageSubtitle.textContent = 'Gestiona las asistencias y faltas del personal';
   } else if (sectionName === 'suspensiones') {
-    elements.pageTitle.textContent = 'Gestion de Suspensiones';
+    elements.pageTitle.textContent = 'Gestión de Suspensiones';
     elements.pageSubtitle.textContent = 'Administra las suspensiones del personal';
   } else if (sectionName === 'vacaciones') {
-    elements.pageTitle.textContent = 'Gestion de Vacaciones';
+    elements.pageTitle.textContent = 'Gestión de Vacaciones';
     elements.pageSubtitle.textContent = 'Administra las vacaciones programadas del personal';
   } else if (sectionName === 'permisos') {
     elements.pageTitle.textContent = 'Solicitud de Permisos';
     elements.pageSubtitle.textContent = 'Gestiona los permisos del personal';
   } else if (sectionName === 'data') {
     elements.pageTitle.textContent = 'Base de Datos';
-    elements.pageSubtitle.textContent = 'Gestiona la informacion de los empleados';
+    elements.pageSubtitle.textContent = 'Gestiona la información de los empleados';
   }
 }
 
@@ -3981,7 +4020,7 @@ function createDateInputs(suggestedDays) {
   dateContainer.innerHTML = '';
   
   const title = document.createElement('h4');
-  title.textContent = `Fechas de Aplicacion de Suspension (${suggestedDays} dia(s)) - Lunes a Viernes`;
+  title.textContent = `Fechas de Aplicación de Suspensión (${suggestedDays} día(s)) - Lunes a Viernes`;
   title.style.color = 'var(--slate-300)';
   title.style.marginBottom = '1rem';
   dateContainer.appendChild(title);
@@ -3997,7 +4036,7 @@ function createDateInputs(suggestedDays) {
     dateInputGroup.className = 'date-input-group';
     
     const label = document.createElement('label');
-    label.textContent = `Dia ${i + 1}:`;
+    label.textContent = `Día ${i + 1}:`;
     label.htmlFor = `suspension-date-${i}`;
     label.style.minWidth = '80px';
     
@@ -4032,16 +4071,16 @@ async function handleSuspensionSubmit(e) {
     const date = input.value;
     
     if (!date) {
-      showNotification('Por favor complete todas las fechas de suspension', 'error');
+      showNotification('Por favor complete todas las fechas de suspensión', 'error');
       hasError = true;
       break;
     }
     
     if (!isValidSuspensionDay(date)) {
       const dateObj = new Date(date);
-      const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
+      const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
       const dayName = dayNames[dateObj.getDay()];
-      showNotification(`La fecha ${date} (${dayName}) debe ser dia laboral (lunes a viernes)`, 'error');
+      showNotification(`La fecha ${date} (${dayName}) debe ser día laboral (lunes a viernes)`, 'error');
       hasError = true;
       break;
     }
@@ -4055,7 +4094,7 @@ async function handleSuspensionSubmit(e) {
   const employee = employeesData.find(emp => emp.NOMBRE === candidate.employeeName);
   
   try {
-    showNotification('Procesando suspension...', 'success');
+    showNotification('Procesando suspensión...', 'success');
     
     const alreadyApplied = appliedSuspensions.some(applied => 
       applied.employeeName === candidate.employeeName && 
@@ -4063,7 +4102,7 @@ async function handleSuspensionSubmit(e) {
     );
     
     if (alreadyApplied) {
-      showNotification('Esta suspension ya fue aplicada anteriormente', 'error');
+      showNotification('Esta suspensión ya fue aplicada anteriormente', 'error');
       return;
     }
     
@@ -4084,10 +4123,10 @@ async function handleSuspensionSubmit(e) {
     closeSuspensionModal();
     await loadSuspensionData();
     await updateSuspensionStatuses();
-    showNotification('Suspension aplicada exitosamente', 'success');
+    showNotification('Suspensión aplicada exitosamente', 'success');
     
   } catch (error) {
-    showNotification('Error al aplicar la suspension: ' + error.message, 'error');
+    showNotification('Error al aplicar la suspensión: ' + error.message, 'error');
   }
 }
 
@@ -4132,7 +4171,7 @@ async function updateSuspensionConcentradoCorrectly(candidate, suspensionDates) 
     }
     
     if (updatedCount === 0) {
-      throw new Error('No se pudo actualizar ningun registro en el concentrado');
+      throw new Error('No se pudo actualizar ningún registro en el concentrado');
     }
     
     return { success: true, updatedCount };
@@ -4144,13 +4183,13 @@ async function updateSuspensionConcentradoCorrectly(candidate, suspensionDates) 
 
 async function generateSuspensionPDF(candidate, employee, suspensionDates) {
   try {
-    showNotification('Generando PDF de suspension...', 'success');
+    showNotification('Generando PDF de suspensión...', 'success');
     
     const formattedDates = suspensionDates.map(date => formatDateForSuspension(date)).join('-');
     const today = new Date();
     const todayFormatted = formatDateForSuspension(today);
     
-    const suspensionDataForPDF = {
+    const suspensionData = {
       'Nombre': candidate.employeeName,
       'NumeroEmpleado': employee ? employee['NUMERO DE EMPLEADO'] : '',
       'FechadeHoy': todayFormatted,
@@ -4161,11 +4200,11 @@ async function generateSuspensionPDF(candidate, employee, suspensionDates) {
     const saveResult = await fetchSheetData(
       sheetConnections.suspensionFormato,
       'append',
-      [suspensionDataForPDF]
+      [suspensionData]
     );
     
     if (saveResult.error) {
-      throw new Error('Error al guardar en formato de suspension: ' + saveResult.error);
+      throw new Error('Error al guardar en formato de suspensión: ' + saveResult.error);
     }
     
     await new Promise(resolve => setTimeout(resolve, 3000));
@@ -4194,7 +4233,7 @@ async function generateSuspensionPDF(candidate, employee, suspensionDates) {
         window.URL.revokeObjectURL(url);
       }, 100);
       
-      showNotification('PDF de suspension descargado exitosamente', 'success');
+      showNotification('PDF de suspensión descargado exitosamente', 'success');
       
     } catch (fetchError) {
       const downloadLink = document.createElement('a');
@@ -4210,7 +4249,7 @@ async function generateSuspensionPDF(candidate, employee, suspensionDates) {
         document.body.removeChild(downloadLink);
       }, 1000);
       
-      showNotification('PDF de suspension descargado exitosamente', 'success');
+      showNotification('PDF de suspensión descargado exitosamente', 'success');
     }
     
   } catch (error) {
@@ -4225,7 +4264,7 @@ async function generateSuspensionPDF(candidate, employee, suspensionDates) {
     downloadLink.click();
     setTimeout(() => document.body.removeChild(downloadLink), 1000);
     
-    showNotification('PDF de suspension descargado (metodo alternativo)', 'success');
+    showNotification('PDF de suspensión descargado (método alternativo)', 'success');
   }
 }
 
@@ -4248,12 +4287,12 @@ function confirmSuspensionDate() {
   const selectedDate = document.getElementById('selected-suspension-date').value;
   
   if (!selectedDate) {
-    showNotification('Por favor seleccione una fecha de suspension', 'error');
+    showNotification('Por favor seleccione una fecha de suspensión', 'error');
     return;
   }
   
   if (!isValidSuspensionDay(selectedDate)) {
-    showNotification('La fecha de suspension debe ser dia laboral (lunes a viernes)', 'error');
+    showNotification('La fecha de suspensión debe ser día laboral (lunes a viernes)', 'error');
     return;
   }
   
@@ -4283,13 +4322,13 @@ function playSuspensionSound() {
 
 function showSuspensionNotification() {
   if (suspensionCandidates.length > 0) {
-    showNotification(`Hay ${suspensionCandidates.length} candidato(s) a suspension pendientes`, 'warning');
+    showNotification(`Hay ${suspensionCandidates.length} candidato(s) a suspensión pendientes`, 'warning');
   }
 }
 
 function showDismissalNotification() {
   if (automaticDismissalCandidates.length > 0) {
-    showNotification(`CANDIDATO A BAJA AUTOMATICA: ${automaticDismissalCandidates.length} empleado(s) con 4+ faltas en 30 dias`, 'error');
+    showNotification(`CANDIDATO A BAJA AUTOMÁTICA: ${automaticDismissalCandidates.length} empleado(s) con 4+ faltas en 30 días`, 'error');
   }
 }
 
@@ -4333,7 +4372,7 @@ function exportDataTable() {
     return;
   }
 
-  let csvContent = "NOMBRE,GAFETE,FECHA DE INGRESO,NUMERO DE EMPLEADO,AREA,ANOS,DIAS DE VACACIONES\n";
+  let csvContent = "NOMBRE,GAFETE,FECHA DE INGRESO,NUMERO DE EMPLEADO,AREA,AÑOS,DIAS DE VACACIONES\n";
   
   employeesData.forEach(item => {
     const row = [
@@ -4372,20 +4411,20 @@ function exportVacationToExcel() {
     return;
   }
 
-  let csvContent = "NOMBRE,FECHA DE INGRESO,NUMERO DE EMPLEADO,AREA,DIAS VACACIONES,FECHA DE PAGO,FECHA SALIDA,FECHA REGRESO,AUTORIZADAS,DIAS TOMADOS,GUARDAR DICIEMBRE\n";
+  let csvContent = "NOMBRE,FECHA DE INGRESO,NUMERO DE EMPLEADO,ÁREA,DÍAS VACACIONES,FECHA DE PAGO,FECHA SALIDA,FECHA REGRESO,AUTORIZADAS,DÍAS TOMADOS,GUARDAR DICIEMBRE\n";
   
   filteredVacationData.forEach(item => {
     const row = [
       `"${item.NOMBRE || ''}"`,
       `"${formatDate(item['FECHA DE INGRESO']) || ''}"`,
       `"${item['NUMERO DE EMPLEADO'] || ''}"`,
-      `"${item['AREA'] || ''}"`,
-      `"${item['DIAS VACACIONES'] || '0'}"`,
+      `"${item['ÁREA'] || ''}"`,
+      `"${item['DÍAS VACACIONES'] || '0'}"`,
       `"${item['FECHA DE PAGO'] || ''}"`,
       `"${formatDate(item['FECHA SALIDA']) || ''}"`,
       `"${formatDate(item['FECHA REGRESO']) || ''}"`,
       `"${item['AUTORIZADAS'] ? 'TRUE' : 'FALSE'}"`,
-      `"${item['DIAS TOMADOS'] || '0'}"`,
+      `"${item['DÍAS TOMADOS'] || '0'}"`,
       `"${item['GUARDAR DICIEMBRE'] || '0'}"`
     ].join(',');
     csvContent += row + '\n';
@@ -4461,9 +4500,9 @@ async function printVacationPDF(index) {
     const fechaPago = formatDateForPDF(record['FECHA DE PAGO']);
     const fechaSalida = formatDateForPDF(record['FECHA SALIDA']);
     const fechaRegreso = formatDateForPDF(record['FECHA REGRESO']);
-    const diasTomados = record['DIAS TOMADOS'] || '0';
-    const diasVacaciones = record['DIAS VACACIONES'] || '0';
-    const area = record['AREA'] || '';
+    const diasTomados = record['DÍAS TOMADOS'] || '0';
+    const diasVacaciones = record['DÍAS VACACIONES'] || '0';
+    const area = record['ÁREA'] || '';
     
     if (!nombre) {
       showNotification('Error: No se pudo obtener el nombre del empleado', 'error');
@@ -4507,8 +4546,8 @@ async function generateVacationPDFFromSchedule(formData) {
       fechaPago: formData['FECHA DE PAGO'] || '',
       fechaSalida: formData['FECHA SALIDA'] || '',
       fechaRegreso: formData['FECHA REGRESO'] || '',
-      diasTomados: formData['DIAS TOMADOS'] || '0',
-      diasVacaciones: formData['DIAS VACACIONES'] || '0',
+      diasTomados: formData['DÍAS TOMADOS'] || '0',
+      diasVacaciones: formData['DÍAS VACACIONES'] || '0',
       comentarios: ''
     };
     
@@ -4541,13 +4580,13 @@ function handleVacationScheduleSubmitWithPDF(e) {
     'NOMBRE': name,
     'FECHA DE INGRESO': document.getElementById('schedule-entry-date').value,
     'NUMERO DE EMPLEADO': document.getElementById('schedule-employee-id').value,
-    'AREA': document.getElementById('schedule-area').value,
-    'DIAS VACACIONES': document.getElementById('schedule-vacation-days').value,
+    'ÁREA': document.getElementById('schedule-area').value,
+    'DÍAS VACACIONES': document.getElementById('schedule-vacation-days').value,
     'FECHA DE PAGO': getPayDateValue(),
     'FECHA SALIDA': formattedStartDate,
     'FECHA REGRESO': returnDate,
     'AUTORIZADAS': document.getElementById('schedule-authorized').checked ? 'TRUE' : 'FALSE',
-    'DIAS TOMADOS': daysTaken.toFixed(1),
+    'DÍAS TOMADOS': daysTaken.toFixed(1),
     'GUARDAR DICIEMBRE': decemberSave.toFixed(1)
   };
   
@@ -4567,7 +4606,7 @@ function handleVacationScheduleSubmitWithPDF(e) {
     
     showNotification('Vacaciones guardadas exitosamente', 'success');
     
-    if (confirm('Desea generar el formato PDF de vacaciones ahora?')) {
+    if (confirm('¿Desea generar el formato PDF de vacaciones ahora?')) {
       generateVacationPDFFromSchedule(formData);
     }
     
@@ -4595,7 +4634,7 @@ async function generateVacationPDFDirect(vacationData) {
     const margin = 25;
     
     const today = new Date();
-    const diasSemana = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+    const diasSemana = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
     const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
     const diaSemana = diasSemana[today.getDay()];
     const dia = today.getDate();
@@ -4611,11 +4650,11 @@ async function generateVacationPDFDirect(vacationData) {
     const logoRightPath = 'logos/wunderbar.png';
     
     const loadImage = (url) => {
-      return new Promise((res, rej) => {
+      return new Promise((resolve, reject) => {
         const img = new Image();
         img.crossOrigin = 'anonymous';
-        img.onload = () => res(img);
-        img.onerror = rej;
+        img.onload = () => resolve(img);
+        img.onerror = reject;
         img.src = url;
       });
     };
@@ -4765,7 +4804,7 @@ async function generateVacationPDFDirect(vacationData) {
     const pdfUrl = URL.createObjectURL(pdfBlob);
     
     const timestamp = new Date().getTime();
-    const safeName = vacationData.nombre.replace(/[^a-zA-Z0-9]/g, '_').replace(/\s+/g, '_');
+    const safeName = vacationData.nombre.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]/g, '_').replace(/\s+/g, '_');
     const fileName = `Formato_Vacaciones_${safeName}_${timestamp}.pdf`;
     
     const downloadLink = document.createElement('a');
