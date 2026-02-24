@@ -530,7 +530,7 @@ function isNonWorkingDay(date) {
     }
   }
 
-function calculateVacationDates() {
+  function calculateVacationDates() {
     const startDateInput = document.getElementById('schedule-start-date');
     const daysToTakeInput = document.getElementById('schedule-days-to-take');
     const decemberSaveInput = document.getElementById('schedule-december-save');
@@ -543,15 +543,14 @@ function calculateVacationDates() {
         return;
     }
     
-    const startDateStr = startDateInput.value; // '2026-04-02'
+    const startDateStr = startDateInput.value;
     const [year, month, day] = startDateStr.split('-').map(Number);
     
-    // Crear fecha en UTC para evitar problemas de zona horaria
     const startDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
     
-    let daysToTake = parseFloat(daysToTakeInput.value) || 0;
-    let decemberSave = parseFloat(decemberSaveInput.value) || 0;
-    const availableDays = parseFloat(vacationDaysInput.value) || 0;
+    let daysToTake = Math.round(parseFloat(daysToTakeInput.value) * 10) / 10 || 0;
+    let decemberSave = Math.round(parseFloat(decemberSaveInput.value) * 10) / 10 || 0;
+    const availableDays = Math.round(parseFloat(vacationDaysInput.value) * 10) / 10 || 0;
     
     const daysTaken = daysToTake;
     
@@ -562,49 +561,83 @@ function calculateVacationDates() {
     const formattedStartDate = `${month.toString().padStart(2, '0')}/${day.toString().padStart(2, '0')}/${year}`;
     
     const VACATION_DAY_VALUE = 1.2;
-    const workDaysNeeded = Math.ceil(daysToTake / VACATION_DAY_VALUE);
-    
-    let currentDate = new Date(startDate);
-    let workDaysCounted = 0;
-    let nonWorkingDaysCount = 0;
+    const exactWorkDays = daysToTake / VACATION_DAY_VALUE;
+    const isExact = Math.abs(exactWorkDays - Math.round(exactWorkDays)) < 0.0001;
+    const workDaysNeeded = isExact ? Math.round(exactWorkDays) : Math.ceil(exactWorkDays);
     
     console.log('=== INICIO CÁLCULO ===');
-    console.log('Fecha de salida (UTC):', currentDate.toISOString());
-    console.log('Días a tomar:', daysToTake);
+    console.log('Fecha de salida (inicio vacaciones):', startDate.toISOString());
+    console.log('Días a tomar (redondeado):', daysToTake);
     console.log('Días laborales necesarios:', workDaysNeeded);
+    console.log('¿Es exacto?', isExact);
+    
+    let lastVacationDay = new Date(startDate);
+    let workDaysCounted = 1; 
+    let nonWorkingDaysCount = 0;
+    
+    console.log(`Día 1 (inicio): ${lastVacationDay.toLocaleDateString('es-MX')} - LABORABLE ✓ (contador: ${workDaysCounted})`);
     
     while (workDaysCounted < workDaysNeeded) {
-        currentDate.setDate(currentDate.getDate() + 1);
+        lastVacationDay.setDate(lastVacationDay.getDate() + 1);
         
-        const currentYear = currentDate.getUTCFullYear();
-        const currentMonth = (currentDate.getUTCMonth() + 1).toString().padStart(2, '0');
-        const currentDay = currentDate.getUTCDate().toString().padStart(2, '0');
+        const currentYear = lastVacationDay.getUTCFullYear();
+        const currentMonth = (lastVacationDay.getUTCMonth() + 1).toString().padStart(2, '0');
+        const currentDay = lastVacationDay.getUTCDate().toString().padStart(2, '0');
         const dateStrForCheck = `${currentYear}-${currentMonth}-${currentDay}`;
         
         const isNonWorking = isNonWorkingDay(dateStrForCheck);
         
-        console.log(
-            'Fecha:', currentDate.toLocaleDateString('es-MX'), 
-            '| Laborable?', !isNonWorking,
-            '| Contador:', workDaysCounted + (isNonWorking ? 0 : 1)
-        );
-        
         if (!isNonWorking) {
             workDaysCounted++;
+            console.log(`${lastVacationDay.toLocaleDateString('es-MX')} - LABORABLE ✓ (contador: ${workDaysCounted})`);
         } else {
             nonWorkingDaysCount++;
+            console.log(`${lastVacationDay.toLocaleDateString('es-MX')} - NO LABORABLE ✗ (contador: ${workDaysCounted})`);
         }
     }
     
-    console.log('=== FECHA FINAL ===');
-    console.log('Fecha calculada (UTC):', currentDate.toISOString());
+    console.log('=== ÚLTIMO DÍA DE VACACIONES ===');
+    console.log('Último día de vacaciones:', lastVacationDay.toISOString());
+    console.log('Fecha formateada:', lastVacationDay.toLocaleDateString('es-MX'));
     
-    const returnYear = currentDate.getUTCFullYear();
-    const returnMonth = (currentDate.getUTCMonth() + 1).toString().padStart(2, '0');
-    const returnDay = currentDate.getUTCDate().toString().padStart(2, '0');
+    let returnDate = new Date(lastVacationDay);
+    returnDate.setDate(returnDate.getDate() + 1);
+    
+    console.log('=== DÍA DE REGRESO INICIAL ===');
+    console.log('Día de regreso propuesto (siguiente día):', returnDate.toISOString());
+    console.log('Fecha propuesta:', returnDate.toLocaleDateString('es-MX'));
+    
+    let skippedReturnDays = 0;
+    let maxIterations = 30;
+    let iterations = 0;
+    
+    while (iterations < maxIterations) {
+        iterations++;
+        
+        const returnYear = returnDate.getUTCFullYear();
+        const returnMonth = (returnDate.getUTCMonth() + 1).toString().padStart(2, '0');
+        const returnDay = returnDate.getUTCDate().toString().padStart(2, '0');
+        const returnDateStr = `${returnYear}-${returnMonth}-${returnDay}`;
+        
+        if (isNonWorkingDay(returnDateStr)) {
+            console.log(`Día de regreso ${returnDate.toLocaleDateString('es-MX')} es NO LABORABLE, avanzando...`);
+            returnDate.setDate(returnDate.getDate() + 1);
+            skippedReturnDays++;
+        } else {
+            console.log(`Día de regreso ${returnDate.toLocaleDateString('es-MX')} es LABORABLE ✓`);
+            break;
+        }
+    }
+    
+    console.log('=== FECHA DE REGRESO FINAL ===');
+    console.log('Días no laborables saltados después de vacaciones:', skippedReturnDays);
+    
+    const returnYear = returnDate.getUTCFullYear();
+    const returnMonth = (returnDate.getUTCMonth() + 1).toString().padStart(2, '0');
+    const returnDay = returnDate.getUTCDate().toString().padStart(2, '0');
     const returnDateFormatted = `${returnMonth}/${returnDay}/${returnYear}`;
     
-    console.log('Fecha formateada:', returnDateFormatted);
+    console.log('Fecha de regreso final:', returnDateFormatted);
     
     if (returnDateInput) {
         returnDateInput.value = returnDateFormatted;
@@ -643,9 +676,19 @@ function calculateVacationDates() {
             <div style="background: rgba(15, 23, 42, 0.6); padding: 0.75rem; border-radius: 0.375rem; margin-bottom: 1rem;">
                 <strong style="color: var(--slate-300);">Cálculo de días laborales:</strong><br>
                 <span style="color: var(--slate-400);">
-                    ${daysToTake.toFixed(1)} días de vacaciones ÷ ${VACATION_DAY_VALUE} = ${workDaysNeeded} días laborales requeridos<br>
-                    Días laborales contados: ${workDaysCounted}<br>
-                    Días no laborales saltados: ${nonWorkingDaysCount} días
+                    ${daysToTake.toFixed(1)} días de vacaciones ÷ ${VACATION_DAY_VALUE} = ${exactWorkDays.toFixed(2)} días laborales<br>
+                    Días laborales requeridos: ${workDaysNeeded}<br>
+                    Días laborales durante vacaciones: ${workDaysCounted}<br>
+                    Días no laborales durante vacaciones: ${nonWorkingDaysCount} días
+                </span>
+            </div>
+            
+            <div style="background: rgba(15, 23, 42, 0.4); padding: 0.75rem; border-radius: 0.375rem; margin-bottom: 1rem;">
+                <strong style="color: var(--slate-300);">Fechas importantes:</strong><br>
+                <span style="color: var(--slate-400); display: block;">
+                    📅 Inicio de vacaciones: ${formattedStartDate}<br>
+                    📅 Último día de vacaciones: ${lastVacationDay.toLocaleDateString('es-MX')}<br>
+                    ${skippedReturnDays > 0 ? `⏩ Días no laborables después de vacaciones: ${skippedReturnDays} días` : ''}
                 </span>
             </div>
             
@@ -678,14 +721,14 @@ function calculateVacationDates() {
                 
                 ${remainingBalance < 0 ? `
                     <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); padding: 0.5rem; margin-top: 0.5rem; border-radius: 0.375rem;">
-                        <span style="color: var(--red-400);">Advertencia: El saldo sería negativo</span>
+                        <span style="color: var(--red-400);">Advertencia: El empleado no cuenta con los dias para cubrir dicho periodo</span>
                     </div>
                 ` : ''}
             </div>
             
             <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(71, 85, 105, 0.3);">
                 <small style="color: var(--slate-500); font-style: italic;">
-                    Nota: Los días guardados para diciembre NO afectan la fecha de regreso
+                    Nota: La fecha de regreso se calcula partiendo de la fecha de salida y tomando 1.2 por dia, brincando los dias no laborables
                 </small>
             </div>
         </div>
@@ -1096,26 +1139,24 @@ function generateFridayOptions() {
   
   if (!customPayDateInput) return;
   
-  let targetMonth, targetYear;
+  let targetYear;
   
   if (startDateInput && startDateInput.value) {
-    const [year, month, day] = startDateInput.value.split('-');
+    const [year] = startDateInput.value.split('-');
     targetYear = parseInt(year);
-    targetMonth = parseInt(month) - 1;
   } else {
     const today = new Date();
     const ensenadaDate = new Date(today.toLocaleString('en-US', { timeZone: 'America/Tijuana' }));
     targetYear = ensenadaDate.getFullYear();
-    targetMonth = ensenadaDate.getMonth();
   }
   
-  const firstDayOfMonth = new Date(targetYear, targetMonth, 1);
-  const lastDayOfMonth = new Date(targetYear, targetMonth + 1, 0);
+  const firstDayOfYear = new Date(targetYear, 0, 1);
+  const lastDayOfYear = new Date(targetYear, 11, 31);
   
   let fridays = [];
-  let currentDate = new Date(firstDayOfMonth);
+  let currentDate = new Date(firstDayOfYear);
   
-  while (currentDate <= lastDayOfMonth) {
+  while (currentDate <= lastDayOfYear) {
     if (currentDate.getDay() === 5) {
       fridays.push(new Date(currentDate));
     }
@@ -1130,13 +1171,6 @@ function generateFridayOptions() {
       return `${year}-${month}-${day}`;
     });
     
-    const fridayFormattedForDisplay = fridays.map(date => {
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const year = date.getFullYear();
-      return `${month}/${day}/${year}`;
-    });
-    
     customPayDateInput.min = fridayFormattedForInput[0];
     customPayDateInput.max = fridayFormattedForInput[fridayFormattedForInput.length - 1];
     
@@ -1144,16 +1178,16 @@ function generateFridayOptions() {
     
     if (startDateInput && startDateInput.value) {
       const startDate = new Date(startDateInput.value);
+      const startDateTime = startDate.getTime();
       
-      for (let i = fridays.length - 1; i >= 0; i--) {
-        if (fridays[i] <= startDate) {
-          selectedFriday = fridays[i];
-          break;
-        }
-      }
+      const fridaysBeforeOrEqual = fridays.filter(friday => {
+        return friday.getTime() <= startDateTime;
+      });
       
-      if (!selectedFriday) {
-        selectedFriday = fridays[fridays.length - 1];
+      if (fridaysBeforeOrEqual.length > 0) {
+        selectedFriday = fridaysBeforeOrEqual[fridaysBeforeOrEqual.length - 1];
+      } else {
+        selectedFriday = fridays[0];
       }
     } else {
       selectedFriday = fridays[0];
@@ -1179,17 +1213,6 @@ function generateFridayOptions() {
     } else {
       fridayDisplayElement.innerHTML = `<strong>Viernes de pago:</strong> ${formatDateForDisplay(selectedFriday)}`;
     }
-    
-  } else {
-    const defaultDate = new Date(targetYear, targetMonth, 15);
-    const defaultYear = defaultDate.getFullYear();
-    const defaultMonth = String(defaultDate.getMonth() + 1).padStart(2, '0');
-    const defaultDay = String(defaultDate.getDate()).padStart(2, '0');
-    const defaultFormatted = `${defaultYear}-${defaultMonth}-${defaultDay}`;
-    
-    customPayDateInput.min = defaultFormatted;
-    customPayDateInput.max = defaultFormatted;
-    customPayDateInput.value = defaultFormatted;
   }
 }
 
