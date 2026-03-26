@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     reportes: './reportes/index.html',
     enfermeria: './enfermeria/index.html',
     produccion: './zab/index.html',
-    bitacoras: './BITACORAS/index.html',
+    bitacoras: 'https://wunderbar-bitacoras.vercel.app/',
     configuracion: './cnc/produccion.html'
   };
 
@@ -63,7 +63,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Delegación única para todos los botones en appsGrid
   appsGrid.addEventListener('click', (e) => {
     const openBtn = e.target.closest('.action-btn.primary');
     const infoBtn = e.target.closest('.action-btn.info-btn');
@@ -72,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const url = openBtn.getAttribute('data-url');
       console.log('Listener delegado activado para botón Abrir:', url);
       if (!openBtn.disabled && url) {
-        window.open(url, '_blank');
+        window.location.href = url;
       } else {
         alert('Acceso restringido a esta aplicación.');
       }
@@ -86,7 +85,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Efecto visual círculos (opcional)
   document.addEventListener('mousemove', (e) => {
     const circles = document.querySelectorAll('.circle');
     circles.forEach((circle, index) => {
@@ -97,9 +95,3 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 });
-
-
-
-
-
-
