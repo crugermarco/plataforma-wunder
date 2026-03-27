@@ -43,6 +43,11 @@ const sheetConnections = {
     spreadsheetId: '1ZDpnn0axnQ80USHsTbGbx92cTq7LI1g-ZOBuadoT0hY',
     sheetName: 'FORMATO DE VACACIONES'
   },
+  rotation: {
+    scriptUrl: 'https://script.google.com/macros/s/AKfycbywyZ337b5-zmVjKhceOPEeUlR7mw8xb5aUjY-qVHvCADrtHbc8EF1tUga2jZYe9nv7vg/exec',
+    spreadsheetId: '1Cj6EaRlXmhA5hN3UKy_288iWKHkw-woEVLTqz1jj_wM',
+    sheetName: 'REGISTRO'
+  }
 };
 
 const columnMappingVacation = {
@@ -84,6 +89,14 @@ let vacationFilters = {
     nombre: '',
     area: '',
     diciembre: ''
+};
+let rotationData = [];
+let filteredRotationData = [];
+let rotationFilters = {
+  fecha: '',
+  nombre: '',
+  id: '',
+  operacion: ''
 };
 
 const elements = {
@@ -129,7 +142,14 @@ const elements = {
   vacationConcentradoBody: null,
   vacationFilterNombre: null,
   vacationFilterArea: null,
-  vacationFilterDiciembre: null
+  vacationFilterDiciembre: null,
+  rotationTableBody: null,
+  rotationFilterFecha: null,
+  rotationFilterNombre: null,
+  rotationFilterId: null,
+  rotationFilterOperacion: null,
+  exportRotationBtn: null,
+  refreshRotationBtn: null
 };
 
 function initializeDOMElements() {
@@ -169,6 +189,13 @@ function initializeDOMElements() {
   elements.vacationFilterNombre = document.getElementById('vacation-filter-nombre');
   elements.vacationFilterArea = document.getElementById('vacation-filter-area');
   elements.vacationFilterDiciembre = document.getElementById('vacation-filter-diciembre');
+  elements.rotationTableBody = document.getElementById('rotation-table-body');
+  elements.rotationFilterFecha = document.getElementById('rotation-filter-fecha');
+  elements.rotationFilterNombre = document.getElementById('rotation-filter-nombre');
+  elements.rotationFilterId = document.getElementById('rotation-filter-id');
+  elements.rotationFilterOperacion = document.getElementById('rotation-filter-operacion');
+  elements.exportRotationBtn = document.getElementById('export-rotation-btn');
+  elements.refreshRotationBtn = document.getElementById('refresh-rotation-btn');
 }
 
 function formatDate(dateString) {
@@ -438,6 +465,22 @@ async function initializeApp() {
     console.error('Error inicializando la aplicación:', error);
     showNotification('Error al cargar la aplicación. Verifica la conexión.', 'error');
   }
+
+  await loadRotationData();
+  setupRotationFilters();
+
+  if (elements.refreshRotationBtn) {
+  elements.refreshRotationBtn.addEventListener('click', async () => {
+    await loadRotationData();
+    showNotification('Datos de rotación actualizados', 'success');
+  });
+ }
+
+  if (elements.exportRotationBtn) {
+  elements.exportRotationBtn.addEventListener('click', exportRotationToExcel);
+  }
+
+
 }
 
 async function loadNonWorkingDaysData() {
@@ -3871,6 +3914,9 @@ function updatePageTitles(sectionName) {
   } else if (sectionName === 'permisos') {
     elements.pageTitle.textContent = 'Solicitud de Permisos';
     elements.pageSubtitle.textContent = 'Gestiona los permisos del personal';
+  } else if (sectionName === 'rotacion') {
+    elements.pageTitle.textContent = 'Registro de Rotación';
+    elements.pageSubtitle.textContent = 'Control de operaciones y rotación del personal';
   } else if (sectionName === 'data') {
     elements.pageTitle.textContent = 'Base de Datos';
     elements.pageSubtitle.textContent = 'Gestiona la información de los empleados';
@@ -4851,6 +4897,176 @@ async function generateVacationPDFDirect(vacationData) {
     showNotification('Error al generar PDF: ' + error.message, 'error');
     return { success: false, error: error.message };
   }
+}
+
+async function loadRotationData() {
+  try {
+    const result = await fetchSheetData(sheetConnections.rotation);
+    if (result.error) {
+      showNotification('Error al cargar datos de rotación', 'error');
+      return;
+    }
+    
+    rotationData = result.data || [];
+    filteredRotationData = [...rotationData];
+    renderRotationTable();
+  } catch (error) {
+    console.error('Error cargando rotación:', error);
+    showNotification('Error al cargar datos de rotación', 'error');
+  }
+}
+
+function renderRotationTable() {
+  if (!elements.rotationTableBody) return;
+  
+  elements.rotationTableBody.innerHTML = '';
+  
+  let displayData = filteredRotationData;
+  
+  const hasActiveFilters = rotationFilters.fecha || rotationFilters.nombre || rotationFilters.id || rotationFilters.operacion;
+  
+  if (!hasActiveFilters) {
+    displayData = filteredRotationData.slice(-100);
+  }
+  
+  if (displayData.length === 0) {
+    const row = document.createElement('tr');
+    row.innerHTML = '<td colspan="4" class="no-data">No hay datos de rotación disponibles</td>';
+    elements.rotationTableBody.appendChild(row);
+    return;
+  }
+  
+  displayData.forEach(item => {
+    const row = document.createElement('tr');
+    
+    const fecha = item.FECHA !== undefined && item.FECHA !== null ? String(item.FECHA) : '';
+    const nombre = item['NOMBRE DEL PERSONAL'] !== undefined && item['NOMBRE DEL PERSONAL'] !== null ? String(item['NOMBRE DEL PERSONAL']) : '';
+    const id = item['ID #'] !== undefined && item['ID #'] !== null ? String(item['ID #']) : '';
+    const operacion = item['OPERACION REALIZADA'] !== undefined && item['OPERACION REALIZADA'] !== null ? String(item['OPERACION REALIZADA']) : '';
+    
+    row.innerHTML = `
+      <td>${fecha}</td>
+      <td>${nombre}</td>
+      <td>${id}</td>
+      <td>${operacion}</td>
+    `;
+    elements.rotationTableBody.appendChild(row);
+  });
+
+  const counter = document.getElementById('rotation-count');
+  if (counter) {
+  counter.textContent = filteredRotationData.length;
+  }
+}
+
+function setupRotationFilters() {
+  if (elements.rotationFilterFecha) {
+    elements.rotationFilterFecha.addEventListener('input', function() {
+      rotationFilters.fecha = this.value.toLowerCase();
+      applyRotationFilters();
+    });
+  }
+  
+  if (elements.rotationFilterNombre) {
+    elements.rotationFilterNombre.addEventListener('input', function() {
+      rotationFilters.nombre = this.value.toLowerCase();
+      applyRotationFilters();
+    });
+  }
+  
+  if (elements.rotationFilterId) {
+    elements.rotationFilterId.addEventListener('input', function() {
+      rotationFilters.id = this.value.toLowerCase();
+      applyRotationFilters();
+    });
+  }
+  
+  if (elements.rotationFilterOperacion) {
+    elements.rotationFilterOperacion.addEventListener('input', function() {
+      rotationFilters.operacion = this.value.toLowerCase();
+      applyRotationFilters();
+    });
+  }
+}
+
+function applyRotationFilters() {
+  filteredRotationData = [...rotationData];
+  
+  if (rotationFilters.fecha) {
+    filteredRotationData = filteredRotationData.filter(item => {
+      const value = item.FECHA;
+      if (value === null || value === undefined) return false;
+      return String(value).toLowerCase().includes(rotationFilters.fecha);
+    });
+  }
+  
+  if (rotationFilters.nombre) {
+    filteredRotationData = filteredRotationData.filter(item => {
+      const value = item['NOMBRE DEL PERSONAL'];
+      if (value === null || value === undefined) return false;
+      return String(value).toLowerCase().includes(rotationFilters.nombre);
+    });
+  }
+  
+  if (rotationFilters.id) {
+    filteredRotationData = filteredRotationData.filter(item => {
+      const value = item['ID #'];
+      if (value === null || value === undefined) return false;
+      return String(value).toLowerCase().includes(rotationFilters.id);
+    });
+  }
+  
+  if (rotationFilters.operacion) {
+    filteredRotationData = filteredRotationData.filter(item => {
+      const value = item['OPERACION REALIZADA'];
+      if (value === null || value === undefined) return false;
+      return String(value).toLowerCase().includes(rotationFilters.operacion);
+    });
+  }
+  
+  renderRotationTable();
+}
+
+function exportRotationToExcel() {
+  let dataToExport = filteredRotationData;
+  
+  if (!rotationFilters.fecha && !rotationFilters.nombre && !rotationFilters.id && !rotationFilters.operacion) {
+    dataToExport = rotationData;
+  }
+  
+  if (dataToExport.length === 0) {
+    showNotification('No hay datos para exportar', 'error');
+    return;
+  }
+  
+  let csvContent = "FECHA,NOMBRE DEL PERSONAL,ID #,OPERACION REALIZADA\n";
+  
+  dataToExport.forEach(item => {
+    const row = [
+      `"${item.FECHA || ''}"`,
+      `"${item['NOMBRE DEL PERSONAL'] || ''}"`,
+      `"${item['ID #'] || ''}"`,
+      `"${item['OPERACION REALIZADA'] || ''}"`
+    ].join(',');
+    csvContent += row + '\n';
+  });
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  
+  const today = new Date();
+  const dateStr = `${today.getDate().toString().padStart(2, '0')}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getFullYear()}`;
+  
+  link.setAttribute('href', url);
+  link.setAttribute('download', `rotacion_${dateStr}.csv`);
+  link.style.visibility = 'hidden';
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  
+  showNotification('Datos exportados exitosamente', 'success');
 }
 
 window.openSuspensionModal = openSuspensionModal;
