@@ -78,6 +78,35 @@
             0%, 100% { background-color: transparent; }
             50% { background-color: rgba(0, 253, 34, 0.356); }
         }
+
+        .filters-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: rgba(15, 23, 42, 0.3);
+            border-radius: 0.75rem;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .filter-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--slate-400);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .table-actions {
+            display: flex;
+            gap: 0.75rem;
+        }
     </style>
 </head>
 <body>
@@ -92,7 +121,7 @@
         <div class="sidebar">
             <div class="sidebar-header">
                 <h1 class="sidebar-title">GESTIÓN DE EMPLEADOS</h1>
-                <p class="sidebar-subtitle">Panel de Control Sistema CRUGER 5.1</p>
+                <p class="sidebar-subtitle">Panel de Control Sistema CRUGER 6.0.1</p>
                 <div id="userNameDisplay" class="user-name-display"></div>
             </div>
            
@@ -120,6 +149,12 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                     </svg>
                     PERMISOS
+                </div>
+                <div class="nav-item" data-section="rotacion">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    ROTACIÓN
                 </div>
                 <div class="nav-item" data-section="data">
                     <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -365,6 +400,65 @@
                         </thead>
                         <tbody id="permissions-table-body"></tbody>
                     </table>
+                </div>
+            </div>
+
+            <div class="section-content" id="rotacion-section">
+                <div class="glassmorphism-card">
+                  
+                    <div class="filters-container">
+                        <div class="filter-group">
+                            <label class="filter-label">FECHA</label>
+                            <input type="text" id="rotation-filter-fecha" class="filter-input" placeholder="Buscar por fecha...">
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">NOMBRE</label>
+                            <input type="text" id="rotation-filter-nombre" class="filter-input" placeholder="Buscar por nombre...">
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">ID#</label>
+                            <input type="text" id="rotation-filter-id" class="filter-input" placeholder="Buscar por ID...">
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">OPERACIÓN</label>
+                            <input type="text" id="rotation-filter-operacion" class="filter-input" placeholder="Buscar por operación...">
+                        </div>
+                    </div>
+                    
+                    <div class="glassmorphism-table">
+                        <div class="table-header">
+                            <h3 class="table-title">Registros de Rotación <span class="counter-badge" id="rotation-count">0</span></h3>
+                            <div class="table-actions">
+                                <button id="refresh-rotation-btn" class="modern-button">
+                                    <svg style="width: 1rem; height: 1rem; margin-right: 0.5rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                    </svg>
+                                    Actualizar
+                                </button>
+                                <button id="export-rotation-btn" class="modern-button export-button">
+                                    <svg style="width: 1rem; height: 1rem; margin-right: 0.5rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                    Exportar Excel
+                                </button>
+                            </div>
+                        </div>
+                        <table class="data-table" id="rotation-table">
+                            <thead>
+                                <tr>
+                                    <th>FECHA</th>
+                                    <th>NOMBRE DEL PERSONAL</th>
+                                    <th>ID #</th>
+                                    <th>OPERACION REALIZADA</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rotation-table-body">
+                                <tr>
+                                    <td colspan="4" class="loading-data">Cargando datos...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
