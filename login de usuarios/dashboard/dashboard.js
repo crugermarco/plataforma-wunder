@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     rotaciones: './rotaciones/index.html',
     vencimientos: './vencimientos/index.html',
     wunder: './wunder/index.html',
-    empleados: './empleados/index.html',
+    empleados: 'https://gestion-de-empleados-wunderbar-lauh.vercel.app/',
     reportes: './reportes/index.html',
     enfermeria: './enfermeria/index.html',
     produccion: './zab/index.html',
