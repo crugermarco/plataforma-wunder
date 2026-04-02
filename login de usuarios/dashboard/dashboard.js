@@ -69,9 +69,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (openBtn) {
       const url = openBtn.getAttribute('data-url');
-      console.log('Listener delegado activado para botón Abrir:', url);
       if (!openBtn.disabled && url) {
-        window.location.href = url;
+        const appId = openBtn.closest('.app-card')?.getAttribute('data-app');
+        if (appId === 'empleados') {
+          const userParam = encodeURIComponent(JSON.stringify(user));
+          window.location.href = `${url}?user=${userParam}`;
+        } else {
+          window.location.href = url;
+        }
       } else {
         alert('Acceso restringido a esta aplicación.');
       }
